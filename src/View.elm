@@ -5,7 +5,7 @@ import Html.Attributes exposing (..)
 import Math.Vector2 as Vec2
 import Mesh exposing (fullscreenMesh)
 import Model exposing (Model)
-import Shaders exposing (backgroundFragmentShader, vertexShader)
+import Shaders exposing (fragmentShader, vertexShader)
 import Update exposing (Msg)
 import WebGL
 
@@ -13,7 +13,7 @@ import WebGL
 view : Model -> Html Msg
 view model =
     div [ class "w-100 h-100 fixed top-0 left-0 overflow-auto bg-black" ]
-        [ -- Main WebGL canvas for background effect
+        [ -- WebGL canvas with no uniforms at all
           WebGL.toHtml
             [ width (floor (Vec2.getX model.resolution))
             , height (floor (Vec2.getY model.resolution))
@@ -22,17 +22,16 @@ view model =
             ]
             [ WebGL.entity
                 vertexShader
-                backgroundFragmentShader
+                fragmentShader
                 fullscreenMesh
-                { time = model.time
-                , resolution = model.resolution
-                }
+                {}
+
+            -- Empty record - no uniforms passed
             ]
 
-        -- Content container with default content
+        -- Simple content overlay
         , div [ class "relative z-1 pa3 white tc" ]
             [ h1 [ class "f1 lh-title" ] [ text "Y2K Retro Portfolio" ]
-            , p [ class "f3" ] [ text "A simpler version of the WebGL-based site" ]
-            , p [ class "f5 mt5" ] [ text "© 2025 - MIT License" ]
+            , p [ class "f3" ] [ text "Basic WebGL Version" ]
             ]
         ]
