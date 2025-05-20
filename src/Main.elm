@@ -6,9 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as Decode
-import Math.Vector2 as Vec2
-import Math.Vector3 as Vec3
-import WebGL
+import Time
 
 
 
@@ -17,18 +15,31 @@ import WebGL
 
 type alias Model =
     { time : Float
-    , resolution : Vec2.Vec2
-    , mousePosition : Vec2.Vec2
-    , buttonClicked : Bool
+    , currentPage : Page
+    , menuOpen : Bool
+    , loadingProgress : Float
+    , isLoading : Bool
+    , mouseX : Float
+    , mouseY : Float
     }
+
+
+type Page
+    = Home
+    | Projects
+    | About
+    | Contact
 
 
 init : { width : Int, height : Int } -> ( Model, Cmd Msg )
 init flags =
     ( { time = 0
-      , resolution = Vec2.vec2 (toFloat flags.width) (toFloat flags.height)
-      , mousePosition = Vec2.vec2 0 0
-      , buttonClicked = False
+      , currentPage = Home
+      , menuOpen = False
+      , loadingProgress = 0
+      , isLoading = True
+      , mouseX = 0
+      , mouseY = 0
       }
     , Cmd.none
     )
@@ -40,9 +51,11 @@ init flags =
 
 type Msg
     = Tick Float
+    | ChangePage Page
+    | ToggleMenu
+    | IncrementLoading Float
+    | FinishLoading
     | MouseMove Float Float
-    | WindowResize Int Int
-    | ButtonClick
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -51,14 +64,36 @@ update msg model =
         Tick delta ->
             ( { model | time = model.time + delta * 0.001 }, Cmd.none )
 
+        ChangePage page ->
+            ( { model | currentPage = page, menuOpen = False }, Cmd.none )
+
+        ToggleMenu ->
+            ( { model | menuOpen = not model.menuOpen }, Cmd.none )
+
+        IncrementLoading amount ->
+            let
+                newProgress =
+                    Basics.min 100 (model.loadingProgress + amount)
+
+                isComplete =
+                    newProgress >= 100
+            in
+            ( { model
+                | loadingProgress = newProgress
+                , isLoading = not isComplete
+              }
+            , if isComplete then
+                Cmd.none
+
+              else
+                Cmd.none
+            )
+
+        FinishLoading ->
+            ( { model | isLoading = False }, Cmd.none )
+
         MouseMove x y ->
-            ( { model | mousePosition = Vec2.vec2 x y }, Cmd.none )
-
-        WindowResize width height ->
-            ( { model | resolution = Vec2.vec2 (toFloat width) (toFloat height) }, Cmd.none )
-
-        ButtonClick ->
-            ( { model | buttonClicked = not model.buttonClicked }, Cmd.none )
+            ( { model | mouseX = x, mouseY = y }, Cmd.none )
 
 
 
@@ -67,24 +102,375 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "w-100 h-100 fixed top-0 left-0 overflow-auto bg-black", onClick ButtonClick ]
-        [ WebGL.toHtml
-            [ width (floor (Vec2.getX model.resolution))
-            , height (floor (Vec2.getY model.resolution))
-            , class "fixed top-0 left-0 z-0"
-            , style "display" "block"
+    div []
+        [ if model.isLoading then
+            viewLoading model
+
+          else
+            viewMain model
+        ]
+
+
+viewLoading : Model -> Html Msg
+viewLoading model =
+    div [ class "fixed top-0 left-0 w-100 h-100 bg-black white code flex flex-column justify-center items-center z-999" ]
+        [ h2 [ class "mb4 tracked-tight glitch" ] [ text "INITIALIZING SYSTEM" ]
+        , div [ class "w-50 h1 ba b--white mv3 relative overflow-hidden" ]
+            [ div
+                [ class "h-100 bg-white absolute top-0 left-0 transition-all"
+                , style "width" (String.fromFloat model.loadingProgress ++ "%")
+                ]
+                []
             ]
-            [ WebGL.entity
-                vertexShader
-                fragmentShader
-                fullscreenMesh
-                { time = model.time
-                , resolution = model.resolution
-                , mousePosition = model.mousePosition
-                , buttonClicked = model.buttonClicked
-                }
+        , p [ class "mt3 blink" ] [ text "Please wait... " ]
+        , div [ class "mt3 f7 o-50" ]
+            [ text ("Loading " ++ String.fromInt (floor model.loadingProgress) ++ "% complete")
+            ]
+        , div [ class "absolute bottom-1 left-1 f7 o-50 code" ]
+            [ text "v.2.5.0 | © 2025 DUNEDIN"
             ]
         ]
+
+
+viewMain : Model -> Html Msg
+viewMain model =
+    div [ class "w-100 min-vh-100 bg-black white code relative overflow-hidden" ]
+        [ viewHeader model
+        , viewBrowserBar model
+        , viewNavBar model
+        , viewContent model
+        , viewNoise
+        , viewScanlines
+        ]
+
+
+viewHeader : Model -> Html Msg
+viewHeader model =
+    header [ class "w-100 h3 bg-dark-gray flex items-center justify-between ph3 bb b--silver" ]
+        [ div [ class "flex items-center" ]
+            [ span [ class "mr2 f7 o-70" ] [ text "SYS:" ]
+            , span [ class "f4 tracked b cyan-blue" ] [ text "CYBER REALISM" ]
+            ]
+        , div [ class "flex-ns dn" ]
+            [ div [ class "mh2 ba b--gray gray pa1 f7" ] [ text (String.fromFloat model.time |> String.left 5) ]
+            , div [ class "mh2 ba b--gray gray pa1 f7" ]
+                [ text ("X:" ++ (String.fromFloat model.mouseX |> String.left 5))
+                , text (" Y:" ++ (String.fromFloat model.mouseY |> String.left 5))
+                ]
+            ]
+        ]
+
+
+viewBrowserBar : Model -> Html Msg
+viewBrowserBar model =
+    div [ class "w-100 bg-near-white dark-gray flex items-center ph2 pv1 f7 bb b--silver" ]
+        [ div [ class "flex w-100 items-center" ]
+            [ span [ class "mr2 gray" ] [ text "Location:" ]
+            , div
+                [ class "flex-grow-1 ba b--silver bg-white black ph2 pv1" ]
+                [ case model.currentPage of
+                    Home ->
+                        text "VIRTUAL DELIGHT"
+
+                    Projects ->
+                        text "CYBER REALISM"
+
+                    About ->
+                        text "CROSS TOWN TRAFFIC"
+
+                    Contact ->
+                        text "MIXER INSPIRATIONS"
+                ]
+            , span [ class "mh2" ] [ text "YOOF" ]
+            , span [ class "mh2" ] [ text "154" ]
+            , span [ class "mh2" ] [ text "SUMMER 97" ]
+            ]
+        ]
+
+
+viewNavBar : Model -> Html Msg
+viewNavBar model =
+    let
+        navButton icon label page =
+            button
+                [ class "h-100 bn bg-inherit flex flex-column items-center justify-center pa2 pointer grow bw1"
+                , classList [ ( "bg-light-blue", model.currentPage == page ) ]
+                , onClick (ChangePage page)
+                ]
+                [ div [ class "f5 mb1" ] [ text icon ]
+                , div [ class "f7" ] [ text label ]
+                ]
+    in
+    div [ class "w-100 bg-light-gray dark-gray flex items-center bb b--silver" ]
+        [ navButton "⬅️" "Back" Home
+        , navButton "➡️" "Forward" Home
+        , navButton "🏠" "Home" Home
+        , navButton "🔄" "Reload" Home
+        , navButton "🖼️" "Images" Projects
+        , navButton "📂" "Open" About
+        , navButton "🖨️" "Print" Home
+        , navButton "🔍" "Find" Contact
+        , navButton "⏹️" "Stop" Home
+        ]
+
+
+viewContent : Model -> Html Msg
+viewContent model =
+    div [ class "pa3 flex flex-column" ]
+        [ div [ class "w-100 bt bb b--gray pv2 mb3 flex items-center overflow-x-auto" ]
+            (List.map viewNavigationItem
+                [ "What's New?", "What's Cool?", "Handbook", "Net Search", "Net Directory", "Newsgroups" ]
+            )
+        , case model.currentPage of
+            Home ->
+                viewHomePage model
+
+            Projects ->
+                viewProjectsPage model
+
+            About ->
+                viewAboutPage model
+
+            Contact ->
+                viewContactPage model
+        ]
+
+
+viewNavigationItem : String -> Html Msg
+viewNavigationItem label =
+    div [ class "mr2 bg-light-gray pa1 br2 f7 gray pointer grow" ]
+        [ text label ]
+
+
+viewHomePage : Model -> Html Msg
+viewHomePage model =
+    div [ class "flex flex-wrap" ]
+        [ div [ class "w-100 w-60-ns pa2" ]
+            [ div [ class "pa3 br2 bg-navy blue mb3 relative overflow-hidden" ]
+                [ h2 [ class "mt0 mb3 f3 pink" ] [ text "VIRTUAL DELIGHT" ]
+                , p [ class "measure" ] [ text "Welcome to the digital utopia of tomorrow, where beauty is evolutionized and style is your interface to the world." ]
+                , p [ class "measure" ] [ text "Browse the collections. Mix the fabrics. Create your virtual self." ]
+                , div [ class "absolute top-0 right-0 pa2 o-70 f7" ]
+                    [ text "ID: 1001100"
+                    ]
+                ]
+            , div [ class "pa3 br2 bg-dark-blue light-blue" ]
+                [ h3 [ class "mt0 mb2 f4 yellow" ] [ text "SYSTEM STATUS" ]
+                , div [ class "flex flex-wrap" ]
+                    [ statusBlock "Memory" "87%" "bg-pink"
+                    , statusBlock "CPU" "42%" "bg-green"
+                    , statusBlock "Network" "91%" "bg-gold"
+                    , statusBlock "Data" "53%" "bg-light-purple"
+                    ]
+                ]
+            ]
+        , div [ class "w-100 w-40-ns pa2" ]
+            [ div [ class "pa3 br2 bg-dark-gray near-white mb3" ]
+                [ h3 [ class "mt0 mb3 f4 light-green" ] [ text "LATEST UPDATES" ]
+                , ul [ class "list pl0" ]
+                    [ updateItem "FABRIC SYSTEM v2.5" "05.13.2025"
+                    , updateItem "NEURAL INTERFACE PATCH" "04.29.2025"
+                    , updateItem "COLOR CALIBRATION UPDATE" "04.15.2025"
+                    ]
+                ]
+            , colorPalette
+            ]
+        , div [ class "w-100 pa2 mt3" ]
+            [ div [ class "flex justify-center" ]
+                [ navArrow "◀" "Previous"
+                , navArrow "▲" "Up"
+                , navArrow "▶" "Next"
+                ]
+            ]
+        ]
+
+
+viewProjectsPage : Model -> Html Msg
+viewProjectsPage model =
+    div [ class "flex flex-wrap" ]
+        [ div [ class "w-100 w-30-ns pa2" ]
+            [ fabricSwatch "bg-gold" "european stretch fabrics (F)"
+            , fabricSwatch "bg-dark-red" "archive"
+            , fabricSwatch "bg-blue" "LDS (t)"
+            ]
+        , div [ class "w-100 w-40-ns pa2 tc" ]
+            [ div [ class "relative" ]
+                [ div [ class "tc pa3" ]
+                    [ div [ class "dib w-80 h5 bg-yellow relative overflow-hidden mb3" ]
+                        [ div [ class "absolute top-0 left-0 w-100 h-100 bg-black-30" ] []
+                        , div [ class "absolute top-0 left-0 w-100 h-100 flex items-center justify-center white f4 fw7" ]
+                            [ text "CYBER FIGURE"
+                            ]
+                        ]
+                    , div [ class "f7 silver mb2" ] [ text "mainstroke (E)" ]
+                    ]
+                ]
+            ]
+        , div [ class "w-100 w-30-ns pa2" ]
+            [ fabricSwatch "bg-navy" "velcromp (P)"
+            , fabricSwatch "bg-dark-green" "tektronix (S)"
+            , fabricSwatch "bg-purple" "LDS (l)"
+            ]
+        , div [ class "w-100 pa2 mt3" ]
+            [ div [ class "flex justify-center" ]
+                [ navArrow "◀" "Previous"
+                , navArrow "▲" "Up"
+                , navArrow "▶" "Next"
+                ]
+            ]
+        , colorPalette
+        ]
+
+
+viewAboutPage : Model -> Html Msg
+viewAboutPage model =
+    div [ class "flex flex-wrap relative" ]
+        [ div [ class "absolute top-0 left-0 w-100 h-100 o-30" ]
+            [ div
+                [ class "w-100 h-100 bg-center bg-no-repeat"
+                , style "background-image" "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"500\" height=\"500\" viewBox=\"0 0 500 500\"><rect width=\"500\" height=\"500\" fill=\"none\" stroke=\"white\" stroke-width=\"1\"/><path d=\"M 0,0 L 500,500 M 500,0 L 0,500\" stroke=\"white\" stroke-width=\"1\"/></svg>')"
+                ]
+                []
+            ]
+        , div [ class "w-100 w-50-ns pa2 relative z-1" ]
+            [ div [ class "pa3 br2 bg-navy white mb3" ]
+                [ h2 [ class "mt0 mb3 f3 hot-pink" ] [ text "CROSS TOWN TRAFFIC" ]
+                , p [ class "measure" ] [ text "The digital highways are congested with data flows and information packets." ]
+                , p [ class "measure" ] [ text "Navigate the urban grid system to find your destination in the cyber landscape." ]
+                ]
+            , fabricSwatch "bg-blue" "velcronr (P)"
+            , fabricSwatch "bg-dark-blue" "wayfarer (T/HOF (D)"
+            ]
+        , div [ class "w-100 w-50-ns pa2 relative z-1" ]
+            [ fabricSwatch "bg-navy" "HOF (D)"
+            , fabricSwatch "bg-blue" "LDS (l)"
+            , div [ class "pa3 br2 bg-dark-gray near-white mb3" ]
+                [ h3 [ class "mt0 mb3 f4 light-yellow" ] [ text "TRANSPORT METRICS" ]
+                , ul [ class "list pl0" ]
+                    [ updateItem "NETWORK CAPACITY" "87%"
+                    , updateItem "BANDWIDTH ALLOCATION" "42%"
+                    , updateItem "ACCESS CLEARANCE" "LEVEL 5"
+                    ]
+                ]
+            ]
+        , div [ class "w-100 pa2 mt3 relative z-1" ]
+            [ div [ class "flex justify-center" ]
+                [ navArrow "◀" "Previous"
+                , navArrow "▲" "Up"
+                , navArrow "▶" "Next"
+                ]
+            ]
+        , colorPalette
+        ]
+
+
+viewContactPage : Model -> Html Msg
+viewContactPage model =
+    div [ class "flex flex-wrap" ]
+        [ div [ class "w-100 w-30-ns pa2" ]
+            [ fabricSwatch "bg-yellow" "LDS (l)"
+            , fabricSwatch "bg-gold" "telemetra (SX)"
+            , fabricSwatch "bg-blue" "LDS (l)"
+            ]
+        , div [ class "w-100 w-40-ns pa2" ]
+            [ div [ class "pa3 br2 bg-dark-gray near-white mb3" ]
+                [ h2 [ class "mt0 mb3 f3 light-green tc" ] [ text "MIXER INSPIRATIONS" ]
+                , div [ class "flex flex-column items-center" ]
+                    [ div [ class "w2 h2 bg-hot-pink mb2" ] []
+                    , div [ class "w3 h1 bg-gold mb2" ] []
+                    , div [ class "w2 h2 bg-green mb2" ] []
+                    , p [ class "measure tc f7 silver" ] [ text "Select from palette samples and combine to create your unique digital signature." ]
+                    ]
+                ]
+            ]
+        , div [ class "w-100 w-30-ns pa2" ]
+            [ fabricSwatch "bg-green" "kaksyams (SX)"
+            , fabricSwatch "bg-hot-pink" "microfoam (E)"
+            , fabricSwatch "bg-blue" "LDS (l)"
+            ]
+        , div [ class "w-100 pa2 mt3" ]
+            [ div [ class "flex justify-center" ]
+                [ navArrow "◀" "Previous"
+                , navArrow "▲" "Up"
+                , navArrow "▶" "Next"
+                ]
+            ]
+        , colorPalette
+        ]
+
+
+statusBlock : String -> String -> String -> Html Msg
+statusBlock label value color =
+    div [ class "w-50 pa2" ]
+        [ div [ class "f7 silver mb1" ] [ text label ]
+        , div [ class "w-100 h1 bg-white overflow-hidden" ]
+            [ div [ class (color ++ " h-100"), style "width" value ] [] ]
+        , div [ class "tr f7 silver mt1" ] [ text value ]
+        ]
+
+
+updateItem : String -> String -> Html Msg
+updateItem title date =
+    li [ class "pb2 mb2 bb b--gray-20" ]
+        [ div [ class "flex justify-between items-center" ]
+            [ span [ class "f7 near-white" ] [ text title ]
+            , span [ class "f7 light-blue" ] [ text date ]
+            ]
+        ]
+
+
+fabricSwatch : String -> String -> Html Msg
+fabricSwatch color label =
+    div [ class "mb3" ]
+        [ div [ class (color ++ " w-100 h3 ba b--white-30 mb1") ] []
+        , div [ class "f7 silver tc" ] [ text label ]
+        ]
+
+
+navArrow : String -> String -> Html Msg
+navArrow symbol tooltip =
+    div [ class "mh2 pv2 ph3 ba b--silver br2 pointer hover-bg-dark-gray tc" ]
+        [ div [ class "f5" ] [ text symbol ]
+        , div [ class "f7 silver" ] [ text tooltip ]
+        ]
+
+
+colorPalette : Html Msg
+colorPalette =
+    div [ class "w-100 flex mt3" ]
+        [ colorBlock "bg-near-white" "13-4250"
+        , colorBlock "bg-light-yellow" "15-0942"
+        , colorBlock "bg-gold" "16-1054"
+        , colorBlock "bg-light-red" "18-1664"
+        , colorBlock "bg-navy" "19-4026"
+        ]
+
+
+colorBlock : String -> String -> Html Msg
+colorBlock color code =
+    div [ class "flex-auto" ]
+        [ div [ class (color ++ " h2 ba b--white-30") ] []
+        , div [ class "f7 silver tc mt1" ] [ text code ]
+        ]
+
+
+viewNoise : Html Msg
+viewNoise =
+    div
+        [ class "fixed top-0 left-0 w-100 h-100 z-1 pointer-events-none o-10"
+        , style "background-image" "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"500\" height=\"500\" viewBox=\"0 0 500 500\"><filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.7\" numOctaves=\"10\" stitchTiles=\"stitch\"/></filter><rect width=\"500\" height=\"500\" filter=\"url(%23n)\" opacity=\"0.5\"/></svg>')"
+        ]
+        []
+
+
+viewScanlines : Html Msg
+viewScanlines =
+    div
+        [ class "fixed top-0 left-0 w-100 h-100 z-1 pointer-events-none o-20"
+        , style "background" "linear-gradient(transparent 50%, rgba(0, 0, 0, 0.5) 50%)"
+        , style "background-size" "100% 4px"
+        ]
+        []
 
 
 
@@ -92,182 +478,27 @@ view model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ Browser.Events.onAnimationFrameDelta Tick
+        , if model.isLoading && model.loadingProgress < 100 then
+            Time.every 100 (\_ -> IncrementLoading (5 + model.loadingProgress / 20))
+
+          else if model.isLoading && model.loadingProgress >= 100 then
+            Time.every 500 (\_ -> FinishLoading)
+
+          else
+            Sub.none
         , Browser.Events.onMouseMove
             (Decode.map2 MouseMove
                 (Decode.field "clientX" Decode.float)
                 (Decode.field "clientY" Decode.float)
             )
-        , Browser.Events.onResize WindowResize
         ]
 
 
 
--- SHADERS
-
-
-vertexShader : WebGL.Shader { position : Vec3.Vec3 } { u | time : Float, resolution : Vec2.Vec2, mousePosition : Vec2.Vec2 } { vUV : Vec2.Vec2 }
-vertexShader =
-    [glsl|
-        attribute vec3 position;
-        varying vec2 vUV;
-
-        void main() {
-            gl_Position = vec4(position, 1.0);
-            vUV = position.xy * 0.5 + 0.5;
-        }
-    |]
-
-
-fragmentShader : WebGL.Shader {} { u | time : Float, resolution : Vec2.Vec2, mousePosition : Vec2.Vec2, buttonClicked : Bool } { vUV : Vec2.Vec2 }
-fragmentShader =
-    [glsl|
-        precision mediump float;
-        uniform float time;
-        uniform vec2 resolution;
-        uniform vec2 mousePosition;
-        uniform bool buttonClicked;
-        varying vec2 vUV;
-
-        float hash(vec2 p) {
-            return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-        }
-
-        float rectangle(vec2 uv, vec2 center, vec2 size) {
-            vec2 d = abs(uv - center) - size;
-            return 1.0 - smoothstep(-0.01, 0.01, min(max(d.x, d.y), 0.0));
-        }
-
-        float text(vec2 uv, vec2 center, float scale, int textType) {
-            vec2 d = uv - center;
-            float letterWidth = 0.05 * scale;
-            float letterHeight = 0.1 * scale;
-            float spacing = 0.02 * scale;
-
-            // Simple representation of the text based on textType
-            if (textType == 0) { // "HOME"
-                float h = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float o = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float m = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float e = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                return max(max(h, o), max(m, e));
-            } else if (textType == 1) { // "PROJECTS"
-                float p = rectangle(d + vec2(-0.2 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float r = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float o = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float j = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float e = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float c = rectangle(d + vec2(0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float t = rectangle(d + vec2(0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float s = rectangle(d + vec2(0.2 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                return max(max(max(p, r), max(o, j)), max(max(e, c), max(t, s)));
-            } else if (textType == 2) { // "ABOUT"
-                float a = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float b = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float o = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float u = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float t = rectangle(d + vec2(0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                return max(max(a, b), max(o, max(u, t)));
-            } else if (textType == 3) { // "CONTACT"
-                float c = rectangle(d + vec2(-0.2 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float o = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float n = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float t = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float a = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float c2 = rectangle(d + vec2(0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                float t2 = rectangle(d + vec2(0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-                return max(max(max(c, o), max(n, t)), max(max(a, c2), t2));
-            }
-            return 0.0;
-        }
-
-        void main() {
-            // Base grey color
-            vec3 color = vec3(0.5, 0.5, 0.5);
-
-            // Add noise for a hazy effect
-            float noise = hash(vUV * 100.0 + time * 0.1) * 0.1;
-            color += vec3(noise);
-
-            // Add scanlines for a retro effect
-            float scanline = sin(gl_FragCoord.y * 0.5) * 0.1 + 0.9;
-            color *= scanline;
-
-            // Draw a header
-            vec2 headerCenter = vec2(0.5, 0.9);
-            vec2 headerSize = vec2(0.8, 0.1);
-            float header = rectangle(vUV, headerCenter, headerSize);
-            color = mix(color, vec3(0.3, 0.3, 0.3), header);
-
-            // Draw a navigation button
-            vec2 navButtonCenter = vec2(0.1, 0.8);
-            vec2 navButtonSize = vec2(0.1, 0.05);
-            float navButton = rectangle(vUV, navButtonCenter, navButtonSize);
-            color = mix(color, vec3(0.6, 0.6, 0.6), navButton);
-
-            // Draw text on the navigation button
-            float textScale = 0.5;
-            float textOnNavButton = text(vUV, navButtonCenter, textScale, 0);
-            vec3 textColor = vec3(0.0, 0.0, 0.0); // Black color for the text
-            color = mix(color, textColor, textOnNavButton);
-
-            // Draw a project area
-            vec2 projectCenter = vec2(0.3, 0.5);
-            vec2 projectSize = vec2(0.2, 0.2);
-            float project = rectangle(vUV, projectCenter, projectSize);
-            color = mix(color, vec3(0.4, 0.4, 0.4), project);
-
-            // Draw text on the project area
-            float textOnProject = text(vUV, projectCenter, textScale, 1);
-            color = mix(color, textColor, textOnProject);
-
-            // Draw another project area
-            vec2 project2Center = vec2(0.7, 0.5);
-            vec2 project2Size = vec2(0.2, 0.2);
-            float project2 = rectangle(vUV, project2Center, project2Size);
-            color = mix(color, vec3(0.4, 0.4, 0.4), project2);
-
-            // Draw text on the second project area
-            float textOnProject2 = text(vUV, project2Center, textScale, 2);
-            color = mix(color, textColor, textOnProject2);
-
-            // Draw a footer
-            vec2 footerCenter = vec2(0.5, 0.1);
-            vec2 footerSize = vec2(0.8, 0.1);
-            float footer = rectangle(vUV, footerCenter, footerSize);
-            color = mix(color, vec3(0.3, 0.3, 0.3), footer);
-
-            // Draw text on the footer
-            float textOnFooter = text(vUV, footerCenter, textScale, 3);
-            color = mix(color, textColor, textOnFooter);
-
-            gl_FragColor = vec4(color, 1.0);
-        }
-    |]
-
-
-
--- Fullscreen quad mesh
-
-
-fullscreenMesh : WebGL.Mesh { position : Vec3.Vec3 }
-fullscreenMesh =
-    WebGL.triangles
-        [ ( { position = Vec3.vec3 -1 -1 0 }
-          , { position = Vec3.vec3 1 -1 0 }
-          , { position = Vec3.vec3 1 1 0 }
-          )
-        , ( { position = Vec3.vec3 -1 -1 0 }
-          , { position = Vec3.vec3 1 1 0 }
-          , { position = Vec3.vec3 -1 1 0 }
-          )
-        ]
-
-
-
--- Main Program
+-- MAIN
 
 
 main : Program { width : Int, height : Int } Model Msg
