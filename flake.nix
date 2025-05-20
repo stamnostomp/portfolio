@@ -37,7 +37,7 @@
             setup-project() {
               mkdir -p src
               cd src
-              elm init
+              elm init || true
               elm install elm/core
               elm install elm/html
               elm install elm/browser
@@ -49,7 +49,14 @@
             }
 
             start-dev() {
+              elm make src/Main.elm --output=elm.js
               elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js
+            }
+
+            start-dev-debug() {
+              echo "Starting with debug output..."
+              elm make src/Main.elm --output=elm.js --debug
+              elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js --debug
             }
 
             build() {
