@@ -42,6 +42,7 @@ fetchCommits toMsg =
         )
         (Task.succeed ())
 
+
 -- This is how you would implement real GitHub API calls with proper error handling:
 -- (Commented out to use the mock data above instead)
 {-
@@ -54,6 +55,9 @@ fetchCommitsReal toMsg =
 -}
 
 
+-- DECODERS AND FORMATTERS
+
+-- Decoder for GitHub API commits response
 decodeCommits : Decode.Decoder (List Commit)
 decodeCommits =
     Decode.list
@@ -65,16 +69,7 @@ decodeCommits =
         )
 
 
-decodeCommits : Decode.Decoder (List Commit)
-decodeCommits =
-    Decode.list
-        (Decode.map3 Commit
-            (Decode.at [ "commit", "message" ] Decode.string)
-            (Decode.at [ "commit", "author", "date" ] Decode.string)
-            (Decode.field "sha" Decode.string)
-        )
-
-
+-- Format dates to Y2K style
 formatDate : String -> String
 formatDate isoDate =
     -- Simple date formatting function

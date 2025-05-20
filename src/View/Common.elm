@@ -111,7 +111,13 @@ updateItem title date maybeUrl =
         titleElement =
             case maybeUrl of
                 Just url ->
-                    a [ href url, class "f7 near-white no-underline hover-light-blue", target "_blank" ]
+                    a
+                        [ href url
+                        , class "light-blue hover-white no-underline"
+                        , target "_blank"
+                        , rel "noopener noreferrer"
+                        , style "cursor" "pointer"
+                        ]
                         [ text title
                         , span [ class "ml1 f8 o-60" ] [ text "↗" ]
                         ]

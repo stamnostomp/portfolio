@@ -32,9 +32,9 @@ view model =
             , div [ class "pa3 br2 bg-dark-gray near-white mb3" ]
                 [ h3 [ class "mt0 mb3 f4 light-yellow" ] [ text "TRANSPORT METRICS" ]
                 , ul [ class "list pl0" ]
-                    [ updateItem "NETWORK CAPACITY" "87%"
-                    , updateItem "BANDWIDTH ALLOCATION" "42%"
-                    , updateItem "ACCESS CLEARANCE" "LEVEL 5"
+                    [ updateItem "NETWORK CAPACITY" "87%" Nothing
+                    , updateItem "BANDWIDTH ALLOCATION" "42%" Nothing
+                    , updateItem "ACCESS CLEARANCE" "LEVEL 5" Nothing
                     ]
                 ]
             ]
