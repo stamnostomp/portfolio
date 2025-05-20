@@ -53,12 +53,16 @@ view model =
                                     let
                                         -- Truncate long commit messages
                                         truncatedMessage =
-                                            if String.length commit.message > 40 then
-                                                String.left 37 commit.message ++ "..."
+                                            if String.length commit.message > 38 then
+                                                String.left 35 commit.message ++ "..."
                                             else
                                                 commit.message
+
+                                        -- Add repository name tag
+                                        messageWithRepo =
+                                            truncatedMessage ++ " [" ++ commit.repoName ++ "]"
                                     in
-                                    updateItem truncatedMessage (GitHub.formatDate commit.date) (Just commit.url)
+                                    updateItem messageWithRepo (GitHub.formatDate commit.date) (Just commit.url)
                                 )
                                 model.gitHubCommits
                             )

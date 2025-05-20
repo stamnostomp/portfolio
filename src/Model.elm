@@ -7,6 +7,7 @@ module Model exposing
 
 import Browser
 import GitHub
+
 import Http
 import Math.Vector2 as Vec2
 
