@@ -1,0 +1,124 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Y2K Retro Portfolio</title>
+  <!-- Tachyons CSS for minimal utility classes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tachyons/4.12.0/tachyons.min.css">
+  <style>
+    /* Base styles */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Courier New", monospace;
+      background-color: #000;
+      color: #fff;
+    }
+
+    /* Custom cursor */
+    * {
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="white" /></svg>') 8 8, auto;
+    }
+
+    /* Disable text selection for better Y2K aesthetic */
+    body {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* WebGL canvas positioning */
+    canvas {
+      display: block;
+    }
+
+    /* Loading screen */
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      color: #0f0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      font-family: "Courier New", monospace;
+    }
+
+    .loading-bar {
+      width: 50%;
+      height: 20px;
+      border: 2px solid #0f0;
+      margin-top: 20px;
+      position: relative;
+    }
+
+    .loading-progress {
+      height: 100%;
+      background-color: #0f0;
+      width: 0;
+      transition: width 0.5s;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+  </style>
+  <script src="elm.js"></script>
+</head>
+<body class="bg-black white code">
+  <!-- Loading screen -->
+  <div id="loading" class="loading">
+    <h2>LOADING Y2K EXPERIENCE</h2>
+    <div class="loading-bar">
+      <div id="loading-progress" class="loading-progress"></div>
+    </div>
+    <p class="mt3 blink">Please wait...</p>
+  </div>
+
+  <div id="elm-app"></div>
+
+  <script>
+    // Simulate loading progress
+    let progress = 0;
+    const progressBar = document.getElementById('loading-progress');
+    const loadingScreen = document.getElementById('loading');
+
+    const loadingInterval = setInterval(() => {
+      progress += Math.random() * 5;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(loadingInterval);
+        setTimeout(() => {
+          loadingScreen.style.display = 'none';
+        }, 500);
+      }
+      progressBar.style.width = progress + '%';
+    }, 100);
+
+    // Initialize the Elm application with window dimensions
+    document.addEventListener('DOMContentLoaded', function() {
+      var app = Elm.Main.init({
+        node: document.getElementById('elm-app'),
+        flags: {
+          width: window.innerWidth,
+          height: window.innerHeight
+        }
+      });
+    });
+  </script>
+</body>
+</html>
