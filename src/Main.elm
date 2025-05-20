@@ -140,19 +140,47 @@ fragmentShader =
             return 1.0 - smoothstep(-0.01, 0.01, min(max(d.x, d.y), 0.0));
         }
 
-        float text(vec2 uv, vec2 center, float scale) {
+        float text(vec2 uv, vec2 center, float scale, int textType) {
             vec2 d = uv - center;
             float letterWidth = 0.05 * scale;
             float letterHeight = 0.1 * scale;
             float spacing = 0.02 * scale;
 
-            // Simple representation of the text "CLICK"
-            float c = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-            float l = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-            float i = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth * 0.5, letterHeight));
-            float k = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
-
-            return max(max(c, l), max(i, k));
+            // Simple representation of the text based on textType
+            if (textType == 0) { // "HOME"
+                float h = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float o = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float m = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float e = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                return max(max(h, o), max(m, e));
+            } else if (textType == 1) { // "PROJECTS"
+                float p = rectangle(d + vec2(-0.2 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float r = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float o = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float j = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float e = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float c = rectangle(d + vec2(0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float t = rectangle(d + vec2(0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float s = rectangle(d + vec2(0.2 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                return max(max(max(p, r), max(o, j)), max(max(e, c), max(t, s)));
+            } else if (textType == 2) { // "ABOUT"
+                float a = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float b = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float o = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float u = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float t = rectangle(d + vec2(0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                return max(max(a, b), max(o, max(u, t)));
+            } else if (textType == 3) { // "CONTACT"
+                float c = rectangle(d + vec2(-0.2 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float o = rectangle(d + vec2(-0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float n = rectangle(d + vec2(-0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float t = rectangle(d + vec2(-0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float a = rectangle(d + vec2(0.05 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float c2 = rectangle(d + vec2(0.1 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                float t2 = rectangle(d + vec2(0.15 * scale, 0), vec2(0, 0), vec2(letterWidth, letterHeight));
+                return max(max(max(c, o), max(n, t)), max(max(a, c2), t2));
+            }
+            return 0.0;
         }
 
         void main() {
@@ -167,28 +195,53 @@ fragmentShader =
             float scanline = sin(gl_FragCoord.y * 0.5) * 0.1 + 0.9;
             color *= scanline;
 
-            // Draw a button
-            vec2 buttonCenter = vec2(0.5, 0.5);
-            vec2 buttonSize = vec2(0.2, 0.1);
-            float button = rectangle(vUV, buttonCenter, buttonSize);
+            // Draw a header
+            vec2 headerCenter = vec2(0.5, 0.9);
+            vec2 headerSize = vec2(0.8, 0.1);
+            float header = rectangle(vUV, headerCenter, headerSize);
+            color = mix(color, vec3(0.3, 0.3, 0.3), header);
 
-            // Highlight the button if the mouse is over it
-            vec2 normalizedMouse = mousePosition / resolution;
-            float mouseOverButton = rectangle(normalizedMouse, buttonCenter, buttonSize);
-            vec3 buttonColor = mix(vec3(0.7, 0.7, 0.7), vec3(0.9, 0.9, 0.9), mouseOverButton);
+            // Draw a navigation button
+            vec2 navButtonCenter = vec2(0.1, 0.8);
+            vec2 navButtonSize = vec2(0.1, 0.05);
+            float navButton = rectangle(vUV, navButtonCenter, navButtonSize);
+            color = mix(color, vec3(0.6, 0.6, 0.6), navButton);
 
-            // Change button color if clicked
-            if (buttonClicked) {
-                buttonColor = vec3(0.4, 0.4, 0.9);
-            }
-
-            color = mix(color, buttonColor, button);
-
-            // Draw text on the button
+            // Draw text on the navigation button
             float textScale = 0.5;
-            float textOnButton = text(vUV, buttonCenter, textScale);
+            float textOnNavButton = text(vUV, navButtonCenter, textScale, 0);
             vec3 textColor = vec3(0.0, 0.0, 0.0); // Black color for the text
-            color = mix(color, textColor, textOnButton);
+            color = mix(color, textColor, textOnNavButton);
+
+            // Draw a project area
+            vec2 projectCenter = vec2(0.3, 0.5);
+            vec2 projectSize = vec2(0.2, 0.2);
+            float project = rectangle(vUV, projectCenter, projectSize);
+            color = mix(color, vec3(0.4, 0.4, 0.4), project);
+
+            // Draw text on the project area
+            float textOnProject = text(vUV, projectCenter, textScale, 1);
+            color = mix(color, textColor, textOnProject);
+
+            // Draw another project area
+            vec2 project2Center = vec2(0.7, 0.5);
+            vec2 project2Size = vec2(0.2, 0.2);
+            float project2 = rectangle(vUV, project2Center, project2Size);
+            color = mix(color, vec3(0.4, 0.4, 0.4), project2);
+
+            // Draw text on the second project area
+            float textOnProject2 = text(vUV, project2Center, textScale, 2);
+            color = mix(color, textColor, textOnProject2);
+
+            // Draw a footer
+            vec2 footerCenter = vec2(0.5, 0.1);
+            vec2 footerSize = vec2(0.8, 0.1);
+            float footer = rectangle(vUV, footerCenter, footerSize);
+            color = mix(color, vec3(0.3, 0.3, 0.3), footer);
+
+            // Draw text on the footer
+            float textOnFooter = text(vUV, footerCenter, textScale, 3);
+            color = mix(color, textColor, textOnFooter);
 
             gl_FragColor = vec4(color, 1.0);
         }
