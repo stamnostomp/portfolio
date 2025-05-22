@@ -1,4 +1,4 @@
--- src/Main.elm - Original structure with smooth transitions
+-- src/Main.elm - Updated to use the new Contact page module
 
 
 module Main exposing (main)
@@ -12,6 +12,7 @@ import Json.Decode as Decode
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), TransitionState(..), init)
 import Navigation.GoopNav as GoopNav
+import Pages.Contact
 import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
 import Types exposing (Page(..))
@@ -40,15 +41,13 @@ main =
 view : Model -> Html Msg
 view model =
     div [ Attr.class "relative w-100 min-vh-100 overflow-hidden bg-black" ]
-        [ -- Background
-          viewBackground
-        , -- Goop navigation
+        [ -- Goop navigation (WebGL provides the background)
           viewGoopNavigation model
         , -- Content square (when active)
           viewContentSquare model
         , -- Debug info (optional)
           viewDebugInfo model
-        , -- Add CSS for the cycle animation
+        , -- Add CSS for the cycle animation and button hover
           node "style"
             []
             [ text """
@@ -56,27 +55,17 @@ view model =
                 0% { background-position: 0% 50%; }
                 100% { background-position: 300% 50%; }
             }
+
+            /* Close button hover effect */
+            button:hover {
+                border-color: rgba(0, 150, 255, 0.5) !important;
+                color: rgba(200, 230, 255, 0.9) !important;
+                box-shadow: 0 0 15px rgba(0, 150, 255, 0.2),
+                            inset 0 0 10px rgba(0, 100, 200, 0.1);
+                background: rgba(20, 40, 60, 0.3) !important;
+            }
             """ ]
         ]
-
-
-
--- Simple dark background
-
-
-viewBackground : Html Msg
-viewBackground =
-    div
-        [ Attr.style "position" "fixed"
-        , Attr.style "top" "0"
-        , Attr.style "left" "0"
-        , Attr.style "width" "100%"
-        , Attr.style "height" "100%"
-        , Attr.style "background" "linear-gradient(45deg, #0a0a0a, #1a1a1a)"
-        , Attr.style "z-index" "0"
-        , Attr.class "pointer-events-none"
-        ]
-        []
 
 
 
@@ -272,11 +261,11 @@ viewContentSquare model =
                 , Attr.style "height" (String.fromFloat squareHeight ++ "px")
                 , Attr.style "z-index" "3"
                 , Attr.style "overflow" "auto"
-                , Attr.style "background" "rgba(10, 10, 15, 0.95)"
-                , Attr.style "border" "2px solid rgba(0, 200, 255, 0.8)"
+                , Attr.style "background" "rgba(20, 20, 25, 0.7)"
+                , Attr.style "border" "1px solid rgba(70, 70, 75, 0.4)"
                 , Attr.style "border-radius" "8px"
-                , Attr.style "backdrop-filter" "blur(10px)"
-                , Attr.style "box-shadow" "0 0 30px rgba(0, 200, 255, 0.3)"
+                , Attr.style "backdrop-filter" "blur(8px)"
+                , Attr.style "box-shadow" "0 0 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(80, 80, 85, 0.2)"
                 , Attr.style "font-family" "monospace"
                 , Attr.style "color" "white"
                 ]
@@ -286,14 +275,15 @@ viewContentSquare model =
                     , Attr.style "top" "8px"
                     , Attr.style "right" "8px"
                     , Attr.style "background" "transparent"
-                    , Attr.style "color" "white"
+                    , Attr.style "color" "#999"
                     , Attr.style "padding" "8px 12px"
-                    , Attr.style "border" "1px solid rgba(255, 255, 255, 0.3)"
+                    , Attr.style "border" "1px solid rgba(80, 80, 80, 0.3)"
                     , Attr.style "border-radius" "4px"
                     , Attr.style "cursor" "pointer"
                     , Attr.style "font-size" "12px"
                     , Attr.style "font-family" "monospace"
                     , Attr.style "z-index" "4"
+                    , Attr.style "transition" "all 0.3s"
                     , onClick CloseContent
                     ]
                     [ text "✕ CLOSE" ]
@@ -388,17 +378,8 @@ viewPageContent page model =
                 ]
 
         Contact ->
-            div []
-                [ h1 [ Attr.style "font-size" "36px", Attr.style "margin-bottom" "24px", Attr.style "color" "#00c3ff" ] [ text "CONTACT" ]
-                , p [ Attr.style "font-size" "16px", Attr.style "line-height" "1.6", Attr.style "margin-bottom" "24px" ]
-                    [ text "Get in touch for collaborations, opportunities, or just to say hello!" ]
-                , div [ Attr.style "padding" "24px", Attr.style "background" "rgba(0, 100, 50, 0.2)", Attr.style "border-radius" "8px" ]
-                    [ h3 [ Attr.style "color" "#00ff00", Attr.style "margin-bottom" "16px" ] [ text "Connect" ]
-                    , p [ Attr.style "color" "#ccc", Attr.style "margin-bottom" "8px" ] [ text "Email: your@email.com" ]
-                    , p [ Attr.style "color" "#ccc", Attr.style "margin-bottom" "8px" ] [ text "GitHub: @yourusername" ]
-                    , p [ Attr.style "color" "#ccc" ] [ text "Twitter: @yourusername" ]
-                    ]
-                ]
+            -- Use the new Contact page module
+            Pages.Contact.view
 
 
 
