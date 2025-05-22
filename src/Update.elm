@@ -1,8 +1,10 @@
+-- Updated src/Update.elm
 module Update exposing (update, errorToString)
 
 import Http
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..))
+import Navigation.GoopNav as GoopNav
 
 -- UPDATE
 
@@ -10,7 +12,21 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick delta ->
-            ( { model | time = model.time + delta * 0.001 }, Cmd.none )
+            let
+                newTime = model.time + delta * 0.001
+
+                -- Update goop navigation animation time
+                updatedGoopState =
+                    { goopNavState | animationTime = newTime }
+                    |> (\state -> { state | animationTime = newTime })
+                    where goopNavState = model.goopNavState
+            in
+            ( { model
+              | time = newTime
+              , goopNavState = updatedGoopState
+              }
+            , Cmd.none
+            )
 
         ChangePage page ->
             ( { model | currentPage = page, menuOpen = False }, Cmd.none )
@@ -40,10 +56,16 @@ update msg model =
             ( { model | isLoading = False }, Cmd.none )
 
         MouseMove x y ->
+            let
+                -- Update goop navigation with new mouse position
+                updatedGoopState =
+                    GoopNav.updateGoopNav x y model.resolution model.goopNavState
+            in
             ( { model
                 | mouseX = x
                 , mouseY = y
                 , mousePosition = Vec2.vec2 x y
+                , goopNavState = updatedGoopState
               }
             , Cmd.none
             )
@@ -57,8 +79,53 @@ update msg model =
                     ( { model | gitHubError = Just (errorToString httpError), gitHubLoading = False }, Cmd.none )
 
         WindowResize width height ->
-            ( { model | resolution = Vec2.vec2 (toFloat width) (toFloat height) }, Cmd.none )
+            let
+                newResolution = Vec2.vec2 (toFloat width) (toFloat height)
 
+                -- Update goop navigation for new screen size
+                updatedGoopState =
+                    GoopNav.updateGoopNav model.mouseX model.mouseY newResolution model.goopNavState
+            in
+            ( { model
+              | resolution = newResolution
+              , goopNavState = updatedGoopState
+              }
+            , Cmd.none
+            )
+
+        -- New goop navigation messages
+        ToggleGoopNav ->
+            ( { model | showGoopNav = not model.showGoopNav }, Cmd.none )
+
+        ClickBranch branch ->
+            let
+                targetPage = GoopNav.getBranchPage branch
+            in
+            ( { model | currentPage = targetPage }, Cmd.none )
+
+        MouseClick x y ->
+            let
+                -- Convert mouse position for hit testing
+                normalizedMouse =
+                    Vec2.vec2
+                        ((x / Vec2.getX model.resolution) * 2.0 - 1.0)
+                        (1.0 - (y / Vec2.getY model.resolution) * 2.0)
+
+                aspectRatio = Vec2.getX model.resolution / Vec2.getY model.resolution
+                adjustedMouse =
+                    Vec2.vec2
+                        (Vec2.getX normalizedMouse * aspectRatio)
+                        (Vec2.getY normalizedMouse)
+
+                -- Check if any branch was clicked
+                clickedBranch = GoopNav.detectHoveredBranch adjustedMouse model.goopNavState.centerPosition
+            in
+            case clickedBranch of
+                Just branch ->
+                    update (ClickBranch branch) model
+
+                Nothing ->
+                    ( model, Cmd.none )
 
 errorToString : Http.Error -> String
 errorToString error =

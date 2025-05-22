@@ -1,9 +1,13 @@
+-- Simplified src/Main.elm (no HTTP dependencies)
+
+
 module Main exposing (main)
 
 import Browser
 import Browser.Events
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import Json.Decode as Decode
 import Model exposing (Model, Msg(..), Page(..), init)
 import Time
@@ -11,8 +15,10 @@ import Update exposing (update)
 import View.About
 import View.Common exposing (viewBrowserBar, viewHeader, viewNavBar, viewNavigationItem, viewNoise, viewScanlines)
 import View.Contact
+import View.GoopNavigation exposing (viewGoopNavigation, viewGoopToggle)
 import View.Home
 import View.Projects
+
 
 
 -- VIEW
@@ -23,6 +29,7 @@ view model =
     div []
         [ if model.isLoading then
             viewLoading model
+
           else
             viewMain model
         ]
@@ -31,7 +38,7 @@ view model =
 viewLoading : Model -> Html Msg
 viewLoading model =
     div [ class "fixed top-0 left-0 w-100 h-100 bg-black white code flex flex-column justify-center items-center z-999" ]
-        [ h2 [ class "mb4 tracked-tight glitch" ] [ text "INITIALIZING SYSTEM" ]
+        [ h2 [ class "mb4 tracked-tight glitch" ] [ text "INITIALIZING GOOP SYSTEM" ]
         , div [ class "w-50 h1 ba b--white mv3 relative overflow-hidden" ]
             [ div
                 [ class "h-100 bg-white absolute top-0 left-0 transition-all"
@@ -44,26 +51,32 @@ viewLoading model =
             [ text ("Loading " ++ String.fromInt (floor model.loadingProgress) ++ "% complete")
             ]
         , div [ class "absolute bottom-1 left-1 f7 o-50 code" ]
-            [ text "v.2.5.0 | © 2025 DUNEDIN"
+            [ text "GOOP NAV v.1.0 | © 2025 DUNEDIN"
             ]
         ]
 
 
 viewMain : Model -> Html Msg
 viewMain model =
-    div [ class "w-100 min-vh-100 bg-black white code relative overflow-hidden" ]
+    div
+        [ class "w-100 min-vh-100 bg-black white code relative overflow-hidden goop-navigation-container"
+        ]
         [ viewHeader model
         , viewBrowserBar model
         , viewNavBar model
         , viewContent model
         , viewNoise
         , viewScanlines
+
+        -- Add the goop navigation overlay
+        , viewGoopNavigation model
+        , viewGoopToggle model
         ]
 
 
 viewContent : Model -> Html Msg
 viewContent model =
-    div [ class "pa3 flex flex-column" ]
+    div [ class "pa3 flex flex-column relative z-1" ]
         [ div [ class "w-100 bt bb b--gray pv2 mb3 flex items-center overflow-x-auto" ]
             (List.map viewNavigationItem
                 [ "What's New?", "What's Cool?", "Handbook", "Net Search", "Net Directory", "Newsgroups" ]
@@ -93,8 +106,10 @@ subscriptions model =
         [ Browser.Events.onAnimationFrameDelta Tick
         , if model.isLoading && model.loadingProgress < 100 then
             Time.every 100 (\_ -> IncrementLoading (5 + model.loadingProgress / 20))
+
           else if model.isLoading && model.loadingProgress >= 100 then
             Time.every 500 (\_ -> FinishLoading)
+
           else
             Sub.none
         , Browser.Events.onMouseMove
@@ -103,6 +118,13 @@ subscriptions model =
                 (Decode.field "clientY" Decode.float)
             )
         , Browser.Events.onResize WindowResize
+
+        -- Add click event for goop navigation
+        , Browser.Events.onClick
+            (Decode.map2 MouseClick
+                (Decode.field "clientX" Decode.float)
+                (Decode.field "clientY" Decode.float)
+            )
         ]
 
 

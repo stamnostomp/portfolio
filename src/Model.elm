@@ -1,3 +1,6 @@
+-- Updated src/Model.elm
+
+
 module Model exposing
     ( Model
     , Msg(..)
@@ -7,11 +10,14 @@ module Model exposing
 
 import Browser
 import GitHub
-
 import Http
 import Math.Vector2 as Vec2
+import Navigation.GoopNav as GoopNav
+
+
 
 -- MODEL
+
 
 type alias Model =
     { time : Float
@@ -26,6 +32,10 @@ type alias Model =
     , gitHubLoading : Bool
     , resolution : Vec2.Vec2
     , mousePosition : Vec2.Vec2
+
+    -- Add goop navigation state
+    , goopNavState : GoopNav.GoopNavState
+    , showGoopNav : Bool
     }
 
 
@@ -36,7 +46,9 @@ type Page
     | Contact
 
 
+
 -- MSG
+
 
 type Msg
     = Tick Float
@@ -47,12 +59,22 @@ type Msg
     | MouseMove Float Float
     | GotGitHubCommits (Result Http.Error (List GitHub.Commit))
     | WindowResize Int Int
+      -- Add goop navigation messages
+    | ToggleGoopNav
+    | ClickBranch GoopNav.NavBranch
+    | MouseClick Float Float
+
 
 
 -- INIT
 
+
 init : { width : Int, height : Int } -> ( Model, Cmd Msg )
 init flags =
+    let
+        resolution =
+            Vec2.vec2 (toFloat flags.width) (toFloat flags.height)
+    in
     ( { time = 0
       , currentPage = Home
       , menuOpen = False
@@ -63,8 +85,12 @@ init flags =
       , gitHubCommits = []
       , gitHubError = Nothing
       , gitHubLoading = True
-      , resolution = Vec2.vec2 (toFloat flags.width) (toFloat flags.height)
+      , resolution = resolution
       , mousePosition = Vec2.vec2 0 0
+
+      -- Initialize goop navigation
+      , goopNavState = GoopNav.initGoopNav resolution
+      , showGoopNav = True -- Show by default, can be toggled
       }
     , GitHub.fetchCommits GotGitHubCommits
     )

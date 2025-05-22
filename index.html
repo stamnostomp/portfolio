@@ -221,6 +221,128 @@
     a {
       cursor: pointer !important;
     }
+
+
+
+   /* Goop Navigation Styles */
+.goop-navigation-container {
+    cursor: crosshair;
+}
+
+.goop-navigation-container:hover {
+    cursor: pointer;
+}
+
+/* Glow animation for hover labels */
+.glow-hover {
+    animation: glow-pulse 2s ease-in-out infinite alternate;
+    backdrop-filter: blur(2px);
+}
+
+@keyframes glow-pulse {
+    from {
+        box-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+        border-color: rgba(0, 255, 255, 0.5);
+    }
+    to {
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.8), 0 0 25px rgba(0, 255, 255, 0.4);
+        border-color: rgba(0, 255, 255, 1);
+    }
+}
+
+/* Smooth transitions for WebGL canvas */
+canvas {
+    transition: opacity 0.3s ease;
+}
+
+/* Enhanced metallic effect */
+.metallic-goop {
+    background: radial-gradient(ellipse at center,
+        rgba(192, 192, 192, 0.8) 0%,
+        rgba(64, 64, 64, 0.6) 50%,
+        rgba(0, 0, 0, 0.8) 100%);
+    mix-blend-mode: overlay;
+}
+
+/* Hover state for branches */
+.branch-hover {
+    filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.8));
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+/* Pulsing animation for active goop */
+@keyframes goop-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.goop-active {
+    animation: goop-pulse 3s ease-in-out infinite;
+}
+
+/* Y2K cyber aesthetic for labels */
+.cyber-label {
+    font-family: "Courier New", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: linear-gradient(45deg, #00ffff, #ff00ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: cyber-flicker 4s linear infinite;
+}
+
+@keyframes cyber-flicker {
+    0%, 98%, 100% { opacity: 1; }
+    99% { opacity: 0.8; }
+}
+
+/* Enhance the existing glitch effect for goop elements */
+.goop-glitch {
+    position: relative;
+}
+
+.goop-glitch::before,
+.goop-glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+
+.goop-glitch::before {
+    left: 1px;
+    text-shadow: -1px 0 #00ffff;
+    animation: goop-glitch-anim-1 2s infinite linear alternate-reverse;
+}
+
+.goop-glitch::after {
+    left: -1px;
+    text-shadow: 1px 0 #ff00ff;
+    animation: goop-glitch-anim-2 3s infinite linear alternate-reverse;
+}
+
+@keyframes goop-glitch-anim-1 {
+    0% { clip-path: inset(0% 0% 0% 0%); }
+    20% { clip-path: inset(20% 0% 0% 0%); }
+    40% { clip-path: inset(40% 0% 0% 0%); }
+    60% { clip-path: inset(60% 0% 0% 0%); }
+    80% { clip-path: inset(80% 0% 0% 0%); }
+    100% { clip-path: inset(0% 0% 0% 0%); }
+}
+
+@keyframes goop-glitch-anim-2 {
+    0% { clip-path: inset(0% 0% 0% 0%); }
+    20% { clip-path: inset(0% 0% 40% 0%); }
+    40% { clip-path: inset(0% 40% 0% 0%); }
+    60% { clip-path: inset(0% 0% 0% 40%); }
+    80% { clip-path: inset(40% 0% 0% 0%); }
+    100% { clip-path: inset(0% 0% 0% 0%); }
+}
   </style>
   <script src="elm.js"></script>
 </head>
