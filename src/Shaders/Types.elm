@@ -7,4 +7,6 @@ type alias Uniforms =
     { time : Float
     , resolution : Vec2.Vec2
     , mousePosition : Vec2.Vec2
+    , hoveredBranch : Float -- Add this for goop navigation
+    , centerPosition : Vec2.Vec2 -- Add this for goop navigation
     }

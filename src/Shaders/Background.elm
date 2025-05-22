@@ -11,6 +11,8 @@ fragmentShader =
         uniform float time;
         uniform vec2 resolution;
         uniform vec2 mousePosition;
+        uniform float hoveredBranch;
+        uniform vec2 centerPosition;
         varying vec2 vUV;
 
         float hash(vec2 p) {

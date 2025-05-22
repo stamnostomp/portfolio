@@ -1,4 +1,4 @@
--- src/View/GoopNavigation.elm
+-- src/View/GoopNavigation.elm - Fixed version
 
 
 module View.GoopNavigation exposing (viewGoopNavigation, viewHoverLabels)
@@ -10,7 +10,7 @@ import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..))
 import Navigation.GoopNav as GoopNav
 import Shaders.GoopBall as GoopBall
-import Shaders.Mesh exposing (fullscreenMesh, vertexShader)
+import Shaders.Mesh exposing (fullscreenMesh)
 import WebGL
 
 
@@ -25,7 +25,8 @@ viewGoopNavigation model =
 
     else
         div
-            [ class "absolute top-0 left-0 w-100 h-100 pointer-events-none z-2"
+            [ class "fixed top-0 left-0 w-100 h-100 pointer-events-none z-2"
+            , style "z-index" "2"
             ]
             [ -- WebGL Canvas for the goop effect
               WebGL.toHtml
@@ -35,10 +36,13 @@ viewGoopNavigation model =
                 , style "top" "0"
                 , style "left" "0"
                 , style "pointer-events" "auto"
-                , onClick (MouseClick model.mouseX model.mouseY)
+                , style "cursor" "crosshair"
+                , class "goop-navigation-container"
+
+                -- Handle clicks through the message system
                 ]
                 [ WebGL.entity
-                    vertexShader
+                    GoopBall.vertexShader
                     GoopBall.fragmentShader
                     fullscreenMesh
                     { time = model.time
@@ -50,6 +54,8 @@ viewGoopNavigation model =
                 ]
             , -- Overlay for hover labels
               viewHoverLabels model
+            , -- Toggle button for debugging
+              viewGoopToggle model
             ]
 
 
@@ -73,18 +79,20 @@ viewHoverLabels model =
                     GoopNav.getBranchLabel branch
             in
             div
-                [ class "absolute pointer-events-none z-3"
+                [ class "fixed pointer-events-none z-3"
                 , style "left" (String.fromFloat (Tuple.first labelPosition) ++ "px")
                 , style "top" (String.fromFloat (Tuple.second labelPosition) ++ "px")
                 , style "transform" "translate(-50%, -50%)"
+                , style "z-index" "3"
                 ]
                 [ div
-                    [ class "bg-dark-gray near-white pa2 br2 f6 glow-hover"
+                    [ class "bg-dark-gray near-white pa2 br2 f6 glow-hover cyber-label"
                     , style "border" "1px solid #00ffff"
                     , style "box-shadow" "0 0 10px rgba(0, 255, 255, 0.5)"
+                    , style "backdrop-filter" "blur(2px)"
                     ]
-                    [ text label
-                    , div [ class "f7 o-70 mt1" ] [ text "CLICK TO NAVIGATE" ]
+                    [ div [ class "f6 fw7" ] [ text label ]
+                    , div [ class "f7 o-70 mt1" ] [ text "◦ CLICK TO NAVIGATE ◦" ]
                     ]
                 ]
 
@@ -110,13 +118,35 @@ getBranchLabelPosition branch resolution center =
                 |> Maybe.withDefault center
 
         -- Convert to screen coordinates
+        -- Account for aspect ratio adjustment
+        aspectRatio =
+            Vec2.getX resolution / Vec2.getY resolution
+
+        adjustedX =
+            Vec2.getX branchPos / aspectRatio
+
         screenX =
-            (Vec2.getX branchPos + 1.0) * Vec2.getX resolution / 2.0
+            (adjustedX + 1.0) * Vec2.getX resolution / 2.0
 
         screenY =
             (1.0 - Vec2.getY branchPos) * Vec2.getY resolution / 2.0
+
+        -- Add some offset to position labels nicely
+        offsetX =
+            if Vec2.getX branchPos > 0 then
+                30
+
+            else
+                -30
+
+        offsetY =
+            if Vec2.getY branchPos > 0 then
+                30
+
+            else
+                -30
     in
-    ( screenX, screenY )
+    ( screenX + offsetX, screenY + offsetY )
 
 
 
@@ -126,45 +156,17 @@ getBranchLabelPosition branch resolution center =
 viewGoopToggle : Model -> Html Msg
 viewGoopToggle model =
     button
-        [ class "fixed top-4 right-4 bg-dark-gray white pa2 br2 pointer z-4"
+        [ class "fixed top-4 right-4 bg-dark-gray white pa2 br2 pointer z-4 f7"
         , style "border" "1px solid #00ffff"
+        , style "z-index" "4"
+        , style "pointer-events" "auto"
         , onClick ToggleGoopNav
         ]
         [ text
             (if model.showGoopNav then
-                "HIDE GOOP NAV"
+                "HIDE GOOP"
 
              else
-                "SHOW GOOP NAV"
+                "SHOW GOOP"
             )
         ]
-
-
-
--- CSS animations and effects (add to your index.html)
-
-
-goopNavigationCSS : String
-goopNavigationCSS =
-    """
-    .glow-hover {
-        animation: glow-pulse 2s ease-in-out infinite alternate;
-    }
-
-    @keyframes glow-pulse {
-        from {
-            box-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
-        }
-        to {
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8), 0 0 25px rgba(0, 255, 255, 0.4);
-        }
-    }
-
-    .goop-navigation-container {
-        cursor: crosshair;
-    }
-
-    .goop-navigation-container:hover {
-        cursor: pointer;
-    }
-"""

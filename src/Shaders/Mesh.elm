@@ -1,5 +1,6 @@
 module Shaders.Mesh exposing (fullscreenMesh, vertexShader)
 
+import Math.Vector2 as Vec2
 import Math.Vector3 as Vec3
 import Shaders.Types exposing (Uniforms)
 import WebGL

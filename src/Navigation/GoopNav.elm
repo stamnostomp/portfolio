@@ -1,10 +1,14 @@
--- src/Navigation/GoopNav.elm
+-- src/Navigation/GoopNav.elm - Fixed version importing Page from Types
 
 
 module Navigation.GoopNav exposing
     ( GoopNavState
     , NavBranch(..)
+    , branchToIndex
+    , detectHoveredBranch
+    , getBranchLabel
     , getBranchPage
+    , getBranchPositions
     , getHoveredBranch
     , initGoopNav
     , isPointInBranch
@@ -12,7 +16,7 @@ module Navigation.GoopNav exposing
     )
 
 import Math.Vector2 as Vec2
-import Model exposing (Page(..))
+import Types exposing (Page(..))
 
 
 
@@ -102,14 +106,14 @@ getBranchPositions center =
         centerY =
             Vec2.getY center
     in
-    [ Vec2.vec2 centerX (centerY - 0.15) -- Top
-    , Vec2.vec2 (centerX + 0.12) (centerY - 0.1) -- Top Right
-    , Vec2.vec2 (centerX + 0.18) centerY -- Right
-    , Vec2.vec2 (centerX + 0.12) (centerY + 0.15) -- Bottom Right
-    , Vec2.vec2 centerX (centerY + 0.18) -- Bottom
-    , Vec2.vec2 (centerX - 0.12) (centerY + 0.15) -- Bottom Left
-    , Vec2.vec2 (centerX - 0.18) centerY -- Left
-    , Vec2.vec2 (centerX - 0.12) (centerY - 0.1) -- Top Left
+    [ Vec2.vec2 centerX (centerY - 0.15) -- Top (About)
+    , Vec2.vec2 (centerX + 0.12) (centerY - 0.1) -- Top Right (Projects)
+    , Vec2.vec2 (centerX + 0.18) centerY -- Right (Portfolio)
+    , Vec2.vec2 (centerX + 0.12) (centerY + 0.15) -- Bottom Right (Blog)
+    , Vec2.vec2 centerX (centerY + 0.18) -- Bottom (Contact)
+    , Vec2.vec2 (centerX - 0.12) (centerY + 0.15) -- Bottom Left (Gallery)
+    , Vec2.vec2 (centerX - 0.18) centerY -- Left (Services)
+    , Vec2.vec2 (centerX - 0.12) (centerY - 0.1) -- Top Left (News)
     ]
 
 
@@ -136,8 +140,9 @@ detectHoveredBranch mousePos center =
 
         -- Check if mouse is within hover distance of any branch
         isNearBranch pos =
-            Vec2.distance mousePos pos < 0.04
+            Vec2.distance mousePos pos < 0.06
 
+        -- Slightly larger hit area
         findHoveredBranch positions branchList =
             case ( positions, branchList ) of
                 ( pos :: restPos, branch :: restBranch ) ->
@@ -172,7 +177,7 @@ isPointInBranch point branch center =
                 |> List.head
                 |> Maybe.withDefault center
     in
-    Vec2.distance point branchPos < 0.04
+    Vec2.distance point branchPos < 0.06
 
 
 
@@ -237,28 +242,23 @@ getBranchPage branch =
         BranchPortfolio ->
             Projects
 
-        -- Could be a new Portfolio page
         BranchBlog ->
             Home
 
-        -- Could be a new Blog page
         BranchContact ->
             Contact
 
         BranchGallery ->
             Projects
 
-        -- Could be a new Gallery page
         BranchServices ->
             About
 
-        -- Could be a new Services page
         BranchNews ->
             Home
 
 
 
--- Could be a new News page
 -- Get branch label for UI
 
 

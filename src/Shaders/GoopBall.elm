@@ -1,24 +1,16 @@
--- src/Shaders/GoopBall.elm
+-- src/Shaders/GoopBall.elm - Updated to use unified Uniforms
 
 
-module Shaders.GoopBall exposing (GoopAttributes, GoopUniforms, fragmentShader, vertexShader)
+module Shaders.GoopBall exposing (GoopAttributes, fragmentShader, vertexShader)
 
 import Math.Vector2 as Vec2
 import Math.Vector3 as Vec3
+import Shaders.Types exposing (Uniforms)
 import WebGL
 
 
 
 -- Types for the goop navigation
-
-
-type alias GoopUniforms =
-    { time : Float
-    , resolution : Vec2.Vec2
-    , mousePosition : Vec2.Vec2
-    , hoveredBranch : Float -- -1 for none, 0-7 for branch index
-    , centerPosition : Vec2.Vec2
-    }
 
 
 type alias GoopAttributes =
@@ -27,14 +19,18 @@ type alias GoopAttributes =
 
 
 
--- Vertex shader (same as your existing one)
+-- Vertex shader - Uses unified Uniforms type
 
 
-vertexShader : WebGL.Shader GoopAttributes GoopUniforms { vUV : Vec2.Vec2 }
+vertexShader : WebGL.Shader GoopAttributes Uniforms { vUV : Vec2.Vec2 }
 vertexShader =
     [glsl|
         attribute vec3 position;
+        uniform float time;
         uniform vec2 resolution;
+        uniform vec2 mousePosition;
+        uniform float hoveredBranch;
+        uniform vec2 centerPosition;
         varying vec2 vUV;
 
         void main() {
@@ -45,10 +41,10 @@ vertexShader =
 
 
 
--- Fragment shader for the goop ball effect
+-- Fragment shader - Uses unified Uniforms type
 
 
-fragmentShader : WebGL.Shader {} GoopUniforms { vUV : Vec2.Vec2 }
+fragmentShader : WebGL.Shader {} Uniforms { vUV : Vec2.Vec2 }
 fragmentShader =
     [glsl|
         precision mediump float;

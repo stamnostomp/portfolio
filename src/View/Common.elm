@@ -1,22 +1,23 @@
 module View.Common exposing
-    ( viewHeader
+    ( colorBlock
+    , colorPalette
+    , fabricSwatch
+    , navArrow
+    , statusBlock
+    , updateItem
     , viewBrowserBar
+    , viewHeader
     , viewNavBar
     , viewNavigationItem
     , viewNoise
     , viewScanlines
-    , statusBlock
-    , updateItem
-    , fabricSwatch
-    , navArrow
-    , colorPalette
-    , colorBlock
     )
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Model exposing (Model, Msg(..), Page(..))
+import Model exposing (Model, Msg(..))
+import Types exposing (Page(..))
 
 
 viewHeader : Model -> Html Msg

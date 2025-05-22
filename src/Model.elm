@@ -1,16 +1,16 @@
--- Simplified src/Model.elm (no HTTP dependencies)
+-- src/Model.elm - Fixed version with Page from Types module
 
 
 module Model exposing
     ( Model
     , Msg(..)
-    , Page(..)
     , init
     )
 
 import Browser
 import Math.Vector2 as Vec2
 import Navigation.GoopNav as GoopNav
+import Types exposing (Page(..))
 
 
 
@@ -28,17 +28,10 @@ type alias Model =
     , resolution : Vec2.Vec2
     , mousePosition : Vec2.Vec2
 
-    -- Add goop navigation state
+    -- Goop navigation state
     , goopNavState : GoopNav.GoopNavState
     , showGoopNav : Bool
     }
-
-
-type Page
-    = Home
-    | Projects
-    | About
-    | Contact
 
 
 
@@ -53,7 +46,7 @@ type Msg
     | FinishLoading
     | MouseMove Float Float
     | WindowResize Int Int
-      -- Add goop navigation messages
+      -- Goop navigation messages
     | ToggleGoopNav
     | ClickBranch GoopNav.NavBranch
     | MouseClick Float Float
@@ -72,17 +65,16 @@ init flags =
     ( { time = 0
       , currentPage = Home
       , menuOpen = False
-      , loadingProgress = 0
-      , isLoading = True
-      , mouseX = 0
-      , mouseY = 0
+      , loadingProgress = 100 -- Start loaded for immediate goop nav
+      , isLoading = False -- Start with loading complete
+      , mouseX = toFloat flags.width / 2 -- Center mouse initially
+      , mouseY = toFloat flags.height / 2
       , resolution = resolution
-      , mousePosition = Vec2.vec2 0 0
+      , mousePosition = Vec2.vec2 (toFloat flags.width / 2) (toFloat flags.height / 2)
 
       -- Initialize goop navigation
       , goopNavState = GoopNav.initGoopNav resolution
-      , showGoopNav = True -- Show by default, can be toggled
+      , showGoopNav = True -- Show goop nav by default
       }
     , Cmd.none
-      -- No HTTP commands needed
     )
