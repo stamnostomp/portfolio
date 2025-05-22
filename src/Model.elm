@@ -1,9 +1,10 @@
--- src/Model.elm - Fixed version with Page from Types module
+-- src/Model.elm - Enhanced with transition state
 
 
 module Model exposing
     ( Model
     , Msg(..)
+    , TransitionState(..)
     , init
     )
 
@@ -11,6 +12,17 @@ import Browser
 import Math.Vector2 as Vec2
 import Navigation.GoopNav as GoopNav
 import Types exposing (Page(..))
+
+
+
+-- TRANSITION STATE
+
+
+type TransitionState
+    = NoTransition
+    | TransitioningOut Float Page -- Progress (0.0 to 1.0) and target page
+    | ShowingContent Page Float -- Page and how long it's been shown
+    | TransitioningIn Float Page -- Progress (0.0 to 1.0) from content back to goop
 
 
 
@@ -31,6 +43,10 @@ type alias Model =
     -- Goop navigation state
     , goopNavState : GoopNav.GoopNavState
     , showGoopNav : Bool
+
+    -- NEW: Transition state
+    , transitionState : TransitionState
+    , transitionSpeed : Float -- How fast transitions happen
     }
 
 
@@ -50,6 +66,11 @@ type Msg
     | ToggleGoopNav
     | ClickBranch GoopNav.NavBranch
     | MouseClick Float Float
+      -- NEW: Transition messages
+    | StartTransition Page
+    | CompleteTransitionOut
+    | CompleteTransitionIn
+    | CloseContent
 
 
 
@@ -75,6 +96,10 @@ init flags =
       -- Initialize goop navigation
       , goopNavState = GoopNav.initGoopNav resolution
       , showGoopNav = True -- Show goop nav by default
+
+      -- NEW: Initialize transition state
+      , transitionState = NoTransition
+      , transitionSpeed = 1.5 -- Transitions take ~0.67 seconds
       }
     , Cmd.none
     )

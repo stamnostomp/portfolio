@@ -1,21 +1,43 @@
--- src/View/GoopNavigation.elm - Fixed version
+-- src/View/GoopNavigation.elm - Updated to use enhanced shaders
 
 
-module View.GoopNavigation exposing (viewGoopNavigation, viewHoverLabels)
+module View.GoopNavigation exposing
+    ( fragmentShader
+    , vertexShader
+    , viewGoopNavigation
+    , viewGoopToggle
+    , viewHoverLabels
+    )
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Math.Vector2 as Vec2
+import Math.Vector3 as Vec3
 import Model exposing (Model, Msg(..))
 import Navigation.GoopNav as GoopNav
-import Shaders.GoopBall as GoopBall
+import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
+import Shaders.Types exposing (Uniforms)
 import WebGL
 
 
 
--- Main goop navigation view
+-- Re-export the enhanced shaders from GoopBall
+
+
+vertexShader : WebGL.Shader { position : Vec3.Vec3 } Uniforms { vUV : Vec2.Vec2 }
+vertexShader =
+    Shaders.GoopBall.vertexShader
+
+
+fragmentShader : WebGL.Shader {} Uniforms { vUV : Vec2.Vec2 }
+fragmentShader =
+    Shaders.GoopBall.fragmentShader
+
+
+
+-- Main goop navigation view (called from Main.elm now)
 
 
 viewGoopNavigation : Model -> Html Msg
@@ -24,6 +46,22 @@ viewGoopNavigation model =
         text ""
 
     else
+        let
+            -- Calculate transition parameters
+            ( transitionProgress, transitionType ) =
+                case model.transitionState of
+                    Model.TransitioningOut progress _ ->
+                        ( progress, 1.0 )
+
+                    Model.TransitioningIn progress _ ->
+                        ( progress, -1.0 )
+
+                    Model.ShowingContent _ _ ->
+                        ( 1.0, 1.0 )
+
+                    Model.NoTransition ->
+                        ( 0.0, 0.0 )
+        in
         div
             [ class "fixed top-0 left-0 w-100 h-100 pointer-events-none z-2"
             , style "z-index" "2"
@@ -38,22 +76,26 @@ viewGoopNavigation model =
                 , style "pointer-events" "auto"
                 , style "cursor" "crosshair"
                 , class "goop-navigation-container"
-
-                -- Handle clicks through the message system
                 ]
                 [ WebGL.entity
-                    GoopBall.vertexShader
-                    GoopBall.fragmentShader
+                    vertexShader
+                    fragmentShader
                     fullscreenMesh
                     { time = model.time
                     , resolution = model.resolution
                     , mousePosition = model.mousePosition
                     , hoveredBranch = GoopNav.getHoveredBranch model.goopNavState
                     , centerPosition = model.goopNavState.centerPosition
+                    , transitionProgress = transitionProgress
+                    , transitionType = transitionType
                     }
                 ]
-            , -- Overlay for hover labels
-              viewHoverLabels model
+            , -- Overlay for hover labels (only when not transitioning)
+              if transitionProgress < 0.3 then
+                viewHoverLabels model
+
+              else
+                text ""
             , -- Toggle button for debugging
               viewGoopToggle model
             ]
@@ -96,7 +138,7 @@ viewHoverLabels model =
                     , style "font-weight" "600"
                     ]
                     [ div [ class "f6 fw7", style "color" "white !important" ] [ text label ]
-                    , div [ class "f7 o-70 mt1", style "color" "rgba(255, 255, 255, 0.8) !important" ] [ text "◦ CLICK TO NAVIGATE ◦" ]
+                    , div [ class "f7 o-70 mt1", style "color" "rgba(255, 255, 255, 0.8) !important" ] [ text "◦ CLICK TO EXPAND ◦" ]
                     ]
                 ]
 

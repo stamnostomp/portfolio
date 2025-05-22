@@ -1,4 +1,4 @@
--- src/Main.elm - Fixed version importing Page from Types
+-- src/Main.elm - Enhanced with content square display
 
 
 module Main exposing (main)
@@ -10,7 +10,7 @@ import Html.Attributes as Attr
 import Html.Events exposing (..)
 import Json.Decode as Decode
 import Math.Vector2 as Vec2
-import Model exposing (Model, Msg(..), init)
+import Model exposing (Model, Msg(..), TransitionState(..), init)
 import Navigation.GoopNav as GoopNav
 import Shaders.Background
 import Shaders.Mesh exposing (fullscreenMesh)
@@ -47,23 +47,21 @@ view model =
     div [ Attr.class "relative w-100 min-vh-100 overflow-hidden" ]
         [ -- Background WebGL shader
           viewBackground model
-        , -- Main content based on current page
-          viewMainContent model
-        , -- Goop navigation overlay
-          View.GoopNavigation.viewGoopNavigation model
+        , -- Content based on transition state
+          viewContent model
+        , -- Goop navigation overlay (when not in content mode)
+          viewGoopNavigation model
         , -- Loading screen (if needed)
           viewLoadingScreen model
-        , -- Browser-like UI elements
-          viewHeader model
-        , viewBrowserBar model
-        , viewNavBar model
+        , -- Browser-like UI elements (only when not in content mode)
+          viewBrowserUI model
         , -- Debug info
           viewDebugInfo model
         ]
 
 
 
--- Background WebGL shader - TEMPORARILY DISABLED FOR DEBUGGING
+-- Background WebGL shader
 
 
 viewBackground : Model -> Html Msg
@@ -82,13 +80,220 @@ viewBackground model =
 
 
 
--- Main content area
+-- Enhanced goop navigation view with transition support
+
+
+viewGoopNavigation : Model -> Html Msg
+viewGoopNavigation model =
+    if not model.showGoopNav then
+        text ""
+
+    else
+        let
+            -- Calculate transition parameters
+            ( transitionProgress, transitionType ) =
+                case model.transitionState of
+                    TransitioningOut progress _ ->
+                        ( progress, 1.0 )
+
+                    TransitioningIn progress _ ->
+                        ( progress, -1.0 )
+
+                    ShowingContent _ _ ->
+                        ( 1.0, 1.0 )
+
+                    NoTransition ->
+                        ( 0.0, 0.0 )
+        in
+        div
+            [ Attr.class "fixed top-0 left-0 w-100 h-100 pointer-events-none z-2"
+            , Attr.style "z-index" "2"
+            ]
+            [ -- WebGL Canvas for the goop effect
+              WebGL.toHtml
+                [ Attr.width (floor (Vec2.getX model.resolution))
+                , Attr.height (floor (Vec2.getY model.resolution))
+                , Attr.style "position" "absolute"
+                , Attr.style "top" "0"
+                , Attr.style "left" "0"
+                , Attr.style "pointer-events" "auto"
+                , Attr.style "cursor" "crosshair"
+                , Attr.class "goop-navigation-container"
+                ]
+                [ WebGL.entity
+                    View.GoopNavigation.vertexShader
+                    View.GoopNavigation.fragmentShader
+                    fullscreenMesh
+                    { time = model.time
+                    , resolution = model.resolution
+                    , mousePosition = model.mousePosition
+                    , hoveredBranch = GoopNav.getHoveredBranch model.goopNavState
+                    , centerPosition = model.goopNavState.centerPosition
+                    , transitionProgress = transitionProgress
+                    , transitionType = transitionType
+                    }
+                ]
+            , -- Overlay for hover labels (only when not transitioning)
+              if transitionProgress < 0.3 then
+                View.GoopNavigation.viewHoverLabels model
+
+              else
+                text ""
+            , -- Toggle button for debugging
+              View.GoopNavigation.viewGoopToggle model
+            ]
+
+
+
+-- Content display based on transition state
+
+
+viewContent : Model -> Html Msg
+viewContent model =
+    case model.transitionState of
+        ShowingContent page _ ->
+            viewContentSquare model page
+
+        TransitioningOut progress page ->
+            if progress > 0.7 then
+                viewContentSquare model page
+
+            else
+                viewMainContent model
+
+        TransitioningIn _ _ ->
+            text ""
+
+        NoTransition ->
+            viewMainContent model
+
+
+
+-- Content displayed inside the expanded square
+
+
+viewContentSquare : Model -> Page -> Html Msg
+viewContentSquare model page =
+    let
+        -- Calculate the square's screen position and size
+        centerX =
+            Vec2.getX model.resolution / 2
+
+        centerY =
+            Vec2.getY model.resolution / 2
+
+        -- Size of the content square (80% of the smaller dimension)
+        squareSize =
+            min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.8
+
+        leftPos =
+            centerX - squareSize / 2
+
+        topPos =
+            centerY - squareSize / 2
+    in
+    div
+        [ Attr.class "fixed z-3 pointer-events-auto"
+        , Attr.style "left" (String.fromFloat leftPos ++ "px")
+        , Attr.style "top" (String.fromFloat topPos ++ "px")
+        , Attr.style "width" (String.fromFloat squareSize ++ "px")
+        , Attr.style "height" (String.fromFloat squareSize ++ "px")
+        , Attr.style "z-index" "3"
+        , Attr.style "overflow" "auto"
+        , Attr.style "background" "rgba(10, 10, 15, 0.95)"
+        , Attr.style "border" "2px solid rgba(0, 200, 255, 0.8)"
+        , Attr.style "border-radius" "8px"
+        , Attr.style "backdrop-filter" "blur(10px)"
+        , Attr.style "box-shadow" "0 0 30px rgba(0, 200, 255, 0.3)"
+        , Attr.class "transition-all"
+        ]
+        [ -- Close button
+          button
+            [ Attr.class "absolute top-2 right-2 bg-transparent white pa2 br2 pointer f6 z-4"
+            , Attr.style "border" "1px solid rgba(255, 255, 255, 0.3)"
+            , Attr.style "z-index" "4"
+            , onClick CloseContent
+            ]
+            [ text "✕ CLOSE" ]
+        , -- Content
+          div [ Attr.class "pa4 white h-100 overflow-auto" ]
+            [ case page of
+                Home ->
+                    viewHomeContent model
+
+                Projects ->
+                    div []
+                        [ h1 [ Attr.class "f2 mb3 light-blue" ] [ text "PROJECTS" ]
+                        , View.Projects.view model
+                        ]
+
+                About ->
+                    div []
+                        [ h1 [ Attr.class "f2 mb3 light-blue" ] [ text "ABOUT" ]
+                        , View.About.view model
+                        ]
+
+                Contact ->
+                    div []
+                        [ h1 [ Attr.class "f2 mb3 light-blue" ] [ text "CONTACT" ]
+                        , View.Contact.view model
+                        ]
+            ]
+        ]
+
+
+
+-- Home content for the square
+
+
+viewHomeContent : Model -> Html Msg
+viewHomeContent model =
+    div [ Attr.class "tc" ]
+        [ h1 [ Attr.class "f1 mb4 cycle-colors" ] [ text "VIRTUAL DELIGHT" ]
+        , h2 [ Attr.class "f3 mb3 silver" ] [ text "Y2K RETRO PORTFOLIO" ]
+        , p [ Attr.class "f4 mb4 light-blue measure center lh-copy" ]
+            [ text "Welcome to the digital realm where organic interfaces meet cyberpunk aesthetics. Navigate through this interactive space using the goop navigation system." ]
+        , div [ Attr.class "flex flex-wrap justify-center gap-3 mb4" ]
+            [ viewContentCard "🎯" "Interactive Navigation" "Goop-based UI with organic responses"
+            , viewContentCard "🌊" "WebGL Shaders" "Real-time visual effects and animations"
+            , viewContentCard "⚡" "Reactive Design" "Mouse-driven interface transformations"
+            , viewContentCard "🔮" "Y2K Aesthetic" "Retro-futuristic visual styling"
+            ]
+        , div [ Attr.class "mt4 pa3 br2 bg-dark-gray" ]
+            [ h3 [ Attr.class "f4 mb2 hot-pink" ] [ text "SYSTEM STATUS" ]
+            , div [ Attr.class "f6 silver" ]
+                [ div [] [ text ("Time: " ++ (String.fromFloat model.time |> String.left 6)) ]
+                , div [] [ text ("Mouse: " ++ (String.fromFloat model.mouseX |> String.left 4) ++ ", " ++ (String.fromFloat model.mouseY |> String.left 4)) ]
+                , div [] [ text "Status: GOOP NAVIGATION ACTIVE" ]
+                ]
+            ]
+        ]
+
+
+
+-- Content card helper
+
+
+viewContentCard : String -> String -> String -> Html Msg
+viewContentCard icon title description =
+    div
+        [ Attr.class "w5 pa3 br2 bg-navy white ma2"
+        , Attr.style "border" "1px solid rgba(0, 150, 200, 0.3)"
+        ]
+        [ div [ Attr.class "f2 tc mb2" ] [ text icon ]
+        , h4 [ Attr.class "f5 fw7 mb2 light-blue tc" ] [ text title ]
+        , p [ Attr.class "f7 silver tc lh-copy" ] [ text description ]
+        ]
+
+
+
+-- Main content area (when not in content square mode)
 
 
 viewMainContent : Model -> Html Msg
 viewMainContent model =
     div
-        [ Attr.class "relative z-1 pa4 mt5" -- Account for header space
+        [ Attr.class "relative z-1 pa4 mt5"
         , Attr.style "min-height" "calc(100vh - 200px)"
         ]
         [ case model.currentPage of
@@ -107,7 +312,7 @@ viewMainContent model =
 
 
 
--- Home page content
+-- Home page content (original)
 
 
 viewHomePage : Model -> Html Msg
@@ -128,15 +333,33 @@ viewHomePage model =
                 , p [] [ text "🌊 Organic UI elements" ]
                 , p [] [ text "⚡ Real-time shader effects" ]
                 ]
-            , -- Navigation instructions
-              div [ Attr.class "pa3 br2 bg-dark-gray white mb3 tc" ]
+            , div [ Attr.class "pa3 br2 bg-dark-gray white mb3 tc" ]
                 [ h3 [ Attr.class "mt0 mb2 f5 hot-pink" ] [ text "NAVIGATION INSTRUCTIONS" ]
                 , p [ Attr.class "f7 silver" ] [ text "Hover over the metallic goop ball in the center" ]
                 , p [ Attr.class "f7 silver" ] [ text "Eight branches will respond to your mouse movement" ]
-                , p [ Attr.class "f7 silver" ] [ text "Click on any branch to navigate to that section" ]
+                , p [ Attr.class "f7 silver" ] [ text "Click on any branch to open content in an expanding square" ]
+                , p [ Attr.class "f7 hot-pink fw7" ] [ text "NEW: Content opens in morphing container!" ]
                 ]
             ]
         ]
+
+
+
+-- Browser UI (only show when not in content mode)
+
+
+viewBrowserUI : Model -> Html Msg
+viewBrowserUI model =
+    case model.transitionState of
+        ShowingContent _ _ ->
+            text ""
+
+        _ ->
+            div []
+                [ viewHeader model
+                , viewBrowserBar model
+                , viewNavBar model
+                ]
 
 
 
@@ -191,11 +414,12 @@ viewDebugInfo model =
                        )
                 )
             ]
+        , div [] [ text ("Transition: " ++ transitionStateToString model.transitionState) ]
         ]
 
 
 
--- Convert page to string for debug
+-- Helper functions
 
 
 pageToString : Page -> String
@@ -214,6 +438,22 @@ pageToString page =
             "CONTACT"
 
 
+transitionStateToString : TransitionState -> String
+transitionStateToString state =
+    case state of
+        NoTransition ->
+            "NONE"
+
+        TransitioningOut progress _ ->
+            "OUT " ++ (String.fromFloat progress |> String.left 4)
+
+        ShowingContent _ time ->
+            "CONTENT " ++ (String.fromFloat time |> String.left 4)
+
+        TransitioningIn progress _ ->
+            "IN " ++ (String.fromFloat progress |> String.left 4)
+
+
 
 -- SUBSCRIPTIONS
 
@@ -221,29 +461,20 @@ pageToString page =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ -- Animation frame for smooth updates
-          Browser.Events.onAnimationFrameDelta Tick
-        , -- Mouse movement tracking
-          Browser.Events.onMouseMove
+        [ Browser.Events.onAnimationFrameDelta Tick
+        , Browser.Events.onMouseMove
             (Decode.map2 MouseMove
                 (Decode.field "clientX" Decode.float)
                 (Decode.field "clientY" Decode.float)
             )
-        , -- Window resize handling
-          Browser.Events.onResize WindowResize
-        , -- Mouse clicks for goop navigation
-          Browser.Events.onClick
+        , Browser.Events.onResize WindowResize
+        , Browser.Events.onClick
             (Decode.map2 MouseClick
                 (Decode.field "clientX" Decode.float)
                 (Decode.field "clientY" Decode.float)
             )
-        , -- Keyboard controls (optional)
-          Browser.Events.onKeyPress keyDecoder
+        , Browser.Events.onKeyPress keyDecoder
         ]
-
-
-
--- Keyboard decoder for additional controls
 
 
 keyDecoder : Decode.Decoder Msg
@@ -257,7 +488,6 @@ toKey key =
         " " ->
             ToggleGoopNav
 
-        -- Spacebar toggles goop nav
         "h" ->
             ChangePage Home
 
@@ -270,9 +500,8 @@ toKey key =
         "c" ->
             ChangePage Contact
 
+        "Escape" ->
+            CloseContent
+
         _ ->
             Tick 0
-
-
-
--- No-op for other keys

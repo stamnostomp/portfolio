@@ -1,11 +1,12 @@
--- Simplified src/Update.elm (no HTTP dependencies)
+-- src/Update.elm - Enhanced with transition logic
 
 
 module Update exposing (update)
 
 import Math.Vector2 as Vec2
-import Model exposing (Model, Msg(..))
+import Model exposing (Model, Msg(..), TransitionState(..))
 import Navigation.GoopNav as GoopNav
+import Types exposing (Page(..))
 
 
 
@@ -27,15 +28,73 @@ update msg model =
                             model.goopNavState
                     in
                     { goopState | animationTime = newTime }
+
+                -- Handle transition state updates
+                updatedTransitionState =
+                    updateTransitionState delta model.transitionState model.transitionSpeed
             in
-            ( { model
-                | time = newTime
-                , goopNavState = updatedGoopState
-              }
-            , Cmd.none
-            )
+            case updatedTransitionState of
+                TransitioningOut progress targetPage ->
+                    if progress >= 1.0 then
+                        -- Transition completed, switch to showing content
+                        ( { model
+                            | time = newTime
+                            , goopNavState = updatedGoopState
+                            , transitionState = ShowingContent targetPage 0.0
+                            , currentPage = targetPage
+                          }
+                        , Cmd.none
+                        )
+
+                    else
+                        ( { model
+                            | time = newTime
+                            , goopNavState = updatedGoopState
+                            , transitionState = updatedTransitionState
+                          }
+                        , Cmd.none
+                        )
+
+                TransitioningIn progress fromPage ->
+                    if progress >= 1.0 then
+                        -- Transition back to goop nav completed
+                        ( { model
+                            | time = newTime
+                            , goopNavState = updatedGoopState
+                            , transitionState = NoTransition
+                          }
+                        , Cmd.none
+                        )
+
+                    else
+                        ( { model
+                            | time = newTime
+                            , goopNavState = updatedGoopState
+                            , transitionState = updatedTransitionState
+                          }
+                        , Cmd.none
+                        )
+
+                ShowingContent page contentTime ->
+                    ( { model
+                        | time = newTime
+                        , goopNavState = updatedGoopState
+                        , transitionState = ShowingContent page (contentTime + delta * 0.001)
+                      }
+                    , Cmd.none
+                    )
+
+                NoTransition ->
+                    ( { model
+                        | time = newTime
+                        , goopNavState = updatedGoopState
+                        , transitionState = updatedTransitionState
+                      }
+                    , Cmd.none
+                    )
 
         ChangePage page ->
+            -- Direct page changes (from menu, etc.)
             ( { model | currentPage = page, menuOpen = False }, Cmd.none )
 
         ToggleMenu ->
@@ -90,7 +149,7 @@ update msg model =
             , Cmd.none
             )
 
-        -- New goop navigation messages
+        -- Goop navigation messages
         ToggleGoopNav ->
             ( { model | showGoopNav = not model.showGoopNav }, Cmd.none )
 
@@ -99,7 +158,8 @@ update msg model =
                 targetPage =
                     GoopNav.getBranchPage branch
             in
-            ( { model | currentPage = targetPage }, Cmd.none )
+            -- Start transition instead of immediate page change
+            update (StartTransition targetPage) model
 
         MouseClick x y ->
             let
@@ -126,4 +186,71 @@ update msg model =
                     update (ClickBranch branch) model
 
                 Nothing ->
+                    -- Check if we're in content mode and should close
+                    case model.transitionState of
+                        ShowingContent _ _ ->
+                            update CloseContent model
+
+                        _ ->
+                            ( model, Cmd.none )
+
+        -- NEW: Transition messages
+        StartTransition targetPage ->
+            -- Only start transition if we're not already transitioning
+            case model.transitionState of
+                NoTransition ->
+                    ( { model | transitionState = TransitioningOut 0.0 targetPage }, Cmd.none )
+
+                _ ->
                     ( model, Cmd.none )
+
+        CompleteTransitionOut ->
+            -- This message can be sent manually if needed
+            case model.transitionState of
+                TransitioningOut _ targetPage ->
+                    ( { model
+                        | transitionState = ShowingContent targetPage 0.0
+                        , currentPage = targetPage
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        CompleteTransitionIn ->
+            -- This message can be sent manually if needed
+            ( { model | transitionState = NoTransition }, Cmd.none )
+
+        CloseContent ->
+            -- Start transition back to goop nav
+            case model.transitionState of
+                ShowingContent fromPage _ ->
+                    ( { model | transitionState = TransitioningIn 0.0 fromPage }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+
+-- Helper function to update transition state
+
+
+updateTransitionState : Float -> TransitionState -> Float -> TransitionState
+updateTransitionState delta transitionState speed =
+    let
+        progressIncrement =
+            delta * 0.001 * speed
+    in
+    case transitionState of
+        TransitioningOut progress targetPage ->
+            TransitioningOut (min 1.0 (progress + progressIncrement)) targetPage
+
+        TransitioningIn progress fromPage ->
+            TransitioningIn (min 1.0 (progress + progressIncrement)) fromPage
+
+        ShowingContent page contentTime ->
+            ShowingContent page contentTime
+
+        NoTransition ->
+            NoTransition
