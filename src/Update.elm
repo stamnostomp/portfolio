@@ -1,29 +1,36 @@
--- Updated src/Update.elm
-module Update exposing (update, errorToString)
+-- Simplified src/Update.elm (no HTTP dependencies)
 
-import Http
+
+module Update exposing (update)
+
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..))
 import Navigation.GoopNav as GoopNav
 
+
+
 -- UPDATE
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick delta ->
             let
-                newTime = model.time + delta * 0.001
+                newTime =
+                    model.time + delta * 0.001
 
                 -- Update goop navigation animation time
                 updatedGoopState =
-                    { goopNavState | animationTime = newTime }
-                    |> (\state -> { state | animationTime = newTime })
-                    where goopNavState = model.goopNavState
+                    let
+                        goopState =
+                            model.goopNavState
+                    in
+                    { goopState | animationTime = newTime }
             in
             ( { model
-              | time = newTime
-              , goopNavState = updatedGoopState
+                | time = newTime
+                , goopNavState = updatedGoopState
               }
             , Cmd.none
             )
@@ -46,10 +53,7 @@ update msg model =
                 | loadingProgress = newProgress
                 , isLoading = not isComplete
               }
-            , if isComplete then
-                Cmd.none
-              else
-                Cmd.none
+            , Cmd.none
             )
 
         FinishLoading ->
@@ -70,25 +74,18 @@ update msg model =
             , Cmd.none
             )
 
-        GotGitHubCommits result ->
-            case result of
-                Ok commits ->
-                    ( { model | gitHubCommits = commits, gitHubLoading = False, gitHubError = Nothing }, Cmd.none )
-
-                Err httpError ->
-                    ( { model | gitHubError = Just (errorToString httpError), gitHubLoading = False }, Cmd.none )
-
         WindowResize width height ->
             let
-                newResolution = Vec2.vec2 (toFloat width) (toFloat height)
+                newResolution =
+                    Vec2.vec2 (toFloat width) (toFloat height)
 
                 -- Update goop navigation for new screen size
                 updatedGoopState =
                     GoopNav.updateGoopNav model.mouseX model.mouseY newResolution model.goopNavState
             in
             ( { model
-              | resolution = newResolution
-              , goopNavState = updatedGoopState
+                | resolution = newResolution
+                , goopNavState = updatedGoopState
               }
             , Cmd.none
             )
@@ -99,7 +96,8 @@ update msg model =
 
         ClickBranch branch ->
             let
-                targetPage = GoopNav.getBranchPage branch
+                targetPage =
+                    GoopNav.getBranchPage branch
             in
             ( { model | currentPage = targetPage }, Cmd.none )
 
@@ -111,14 +109,17 @@ update msg model =
                         ((x / Vec2.getX model.resolution) * 2.0 - 1.0)
                         (1.0 - (y / Vec2.getY model.resolution) * 2.0)
 
-                aspectRatio = Vec2.getX model.resolution / Vec2.getY model.resolution
+                aspectRatio =
+                    Vec2.getX model.resolution / Vec2.getY model.resolution
+
                 adjustedMouse =
                     Vec2.vec2
                         (Vec2.getX normalizedMouse * aspectRatio)
                         (Vec2.getY normalizedMouse)
 
                 -- Check if any branch was clicked
-                clickedBranch = GoopNav.detectHoveredBranch adjustedMouse model.goopNavState.centerPosition
+                clickedBranch =
+                    GoopNav.detectHoveredBranch adjustedMouse model.goopNavState.centerPosition
             in
             case clickedBranch of
                 Just branch ->
@@ -126,21 +127,3 @@ update msg model =
 
                 Nothing ->
                     ( model, Cmd.none )
-
-errorToString : Http.Error -> String
-errorToString error =
-    case error of
-        Http.BadUrl url ->
-            "Bad URL: " ++ url
-
-        Http.Timeout ->
-            "Request timed out"
-
-        Http.NetworkError ->
-            "Network error"
-
-        Http.BadStatus code ->
-            "Bad status: " ++ String.fromInt code
-
-        Http.BadBody message ->
-            "Bad body: " ++ message

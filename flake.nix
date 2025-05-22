@@ -1,6 +1,6 @@
-# flake.nix
+# flake.nix - Fixed version with SSL certificates
 {
-  description = "Y2K Retro WebGL Portfolio with Elm";
+  description = "Y2K Retro WebGL Portfolio with Elm - SSL Fixed";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -27,84 +27,144 @@
             pkgs.elmPackages.elm-format
             pkgs.elmPackages.elm-test
             pkgs.nodejs
-            pkgs.uglify-js # For optimizing the JS
+            pkgs.uglify-js
+
+            # Essential networking tools
+            pkgs.cacert
+            pkgs.curl
+            pkgs.openssl
           ];
 
           shellHook = ''
-            echo "Y2K Retro WebGL Portfolio Development Environment"
-            echo "Run 'reset-env' to clean all Elm files and caches"
-            echo "Run 'start-dev-offline' to start the Elm development server in offline mode"
+                        # CRITICAL: Fix SSL certificates for Elm networking
+                        export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+                        export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+                        export CURL_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
 
-            # Reset environment function
-            reset-env() {
-              echo "Resetting Elm environment..."
+                        # Additional SSL environment variables for some tools
+                        export REQUESTS_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+                        export SSL_CERT_DIR="${pkgs.cacert}/etc/ssl/certs"
 
-              # Remove project-specific generated files
-              rm -rf elm-stuff
-              rm -f elm.js elm.min.js
+                        echo "🔒 SSL certificates configured"
+                        echo "📦 Certificate bundle: $SSL_CERT_FILE"
+                        echo ""
 
-              # Optionally clean Elm home directory
-              read -p "Clean ~/.elm directory? This will remove all installed packages. (y/N) " confirm
-              if [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]; then
-                rm -rf ~/.elm
-                echo "~/.elm directory removed"
-              fi
+                        # Test connectivity
+                        echo "🌐 Testing connectivity to Elm package registry..."
+                        if curl -s --max-time 5 https://package.elm-lang.org/all-packages > /dev/null; then
+                            echo "✅ Elm package registry reachable"
+                        else
+                            echo "❌ Cannot reach Elm package registry"
+                            echo "   This might be a firewall or network issue"
+                        fi
+                        echo ""
 
-              echo "Environment reset complete."
+                        echo "🎯 Y2K Retro WebGL Portfolio Development Environment"
+                        echo "Available commands:"
+                        echo "  test-networking  - Run network diagnostics"
+                        echo "  setup-elm       - Create basic Elm project"
+                        echo "  start-dev       - Start development server"
+                        echo "  manual-elm      - Create elm.json manually (offline)"
+
+                        # Network testing function
+                        test-networking() {
+                            echo "🔍 Running network diagnostics..."
+                            echo "SSL_CERT_FILE: $SSL_CERT_FILE"
+                            echo "Testing HTTPS connection:"
+                            curl -v --max-time 10 https://package.elm-lang.org/all-packages 2>&1 | head -15
+                        }
+
+                        # Setup Elm project
+                        setup-elm() {
+                            echo "🛠️  Setting up Elm project..."
+                            mkdir -p src
+
+                            # Try elm init first
+                            if elm init; then
+                                echo "✅ elm init successful!"
+                            else
+                                echo "❌ elm init failed, creating manually..."
+                                manual-elm
+                            fi
+                        }
+
+                        # Manual elm.json creation
+                        manual-elm() {
+                            echo "📝 Creating elm.json manually..."
+                            cat > elm.json << 'ELMJSON'
+            {
+                "type": "application",
+                "source-directories": ["src"],
+                "elm-version": "0.19.1",
+                "dependencies": {
+                    "direct": {
+                        "elm/browser": "1.0.2",
+                        "elm/core": "1.0.5",
+                        "elm/html": "1.0.0",
+                        "elm/json": "1.1.3",
+                        "elm/time": "1.0.0"
+                    },
+                    "indirect": {
+                        "elm/url": "1.0.0",
+                        "elm/virtual-dom": "1.0.3"
+                    }
+                },
+                "test-dependencies": {"direct": {}, "indirect": {}}
             }
+            ELMJSON
 
-            # Start development server in offline mode
-            start-dev-offline() {
-              echo "Starting Elm development server in offline mode..."
-              elm make src/Main.elm --output=elm.js --offline
-              elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js --offline
-            }
+                            mkdir -p src
 
-            # Standard development server
-            start-dev() {
-              elm make src/Main.elm --output=elm.js
-              elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js
-            }
+                            # Create basic Main.elm if it doesn't exist
+                            if [ ! -f "src/Main.elm" ]; then
+                                cat > src/Main.elm << 'MAINELM'
+            module Main exposing (main)
 
-            # Development server with debug in offline mode
-            start-dev-debug-offline() {
-              echo "Starting with debug output in offline mode..."
-              elm make src/Main.elm --output=elm.js --debug --offline
-              elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js --debug --offline
-            }
+            import Browser
+            import Html exposing (..)
+            import Html.Attributes exposing (..)
 
-            # Standard development server with debug
-            start-dev-debug() {
-              echo "Starting with debug output..."
-              elm make src/Main.elm --output=elm.js --debug
-              elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js --debug
-            }
+            type alias Model = {}
+            type Msg = NoOp
 
-            # Production build in offline mode
-            build-offline() {
-              elm make src/Main.elm --optimize --output=elm.js --offline
-              echo "Minifying..."
-              uglifyjs elm.js --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output elm.min.js
-            }
+            init : () -> ( Model, Cmd Msg )
+            init _ = ( {}, Cmd.none )
 
-            # Standard production build
-            build() {
-              elm make src/Main.elm --optimize --output=elm.js
-              echo "Minifying..."
-              uglifyjs elm.js --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output elm.min.js
-            }
+            update : Msg -> Model -> ( Model, Cmd Msg )
+            update msg model = ( model, Cmd.none )
 
-            # Manually fix elm.json if HTTP is missing
-            fix-elm-json() {
-              if ! grep -q '"elm/http"' elm.json; then
-                echo "Adding elm/http to elm.json..."
-                cp elm.json elm.json.bak
-                sed -i 's/"direct": {/"direct": {\n            "elm\/http": "2.0.0",/' elm.json
-                echo "elm.json has been updated to include elm/http"
-              else
-                echo "elm/http is already in elm.json"
-              fi
-            }
+            view : Model -> Html Msg
+            view model =
+                div [ style "padding" "20px", style "font-family" "monospace" ]
+                    [ h1 [] [ text "🌊 Elm + Nix Working!" ]
+                    , p [] [ text "Ready to add goop ball navigation..." ]
+                    ]
+
+            main : Program () Model Msg
+            main =
+                Browser.element
+                    { init = init
+                    , view = view
+                    , update = update
+                    , subscriptions = \_ -> Sub.none
+                    }
+            MAINELM
+                            fi
+
+                            echo "✅ Created elm.json and basic Main.elm manually"
+                            echo "🚀 Try: elm make src/Main.elm --output=elm.js"
+                        }
+
+                        start-dev() {
+                            if [ ! -f "elm.json" ]; then
+                                echo "No elm.json found. Setting up project first..."
+                                setup-elm
+                            fi
+
+                            echo "🚀 Starting development server..."
+                            elm make src/Main.elm --output=elm.js
+                            elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js
+                        }
           '';
         };
       }

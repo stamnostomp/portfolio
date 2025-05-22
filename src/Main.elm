@@ -1,4 +1,4 @@
--- Simplified src/Main.elm (no HTTP dependencies)
+-- src/Main.elm
 
 
 module Main exposing (main)
@@ -7,17 +7,52 @@ import Browser
 import Browser.Events
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (..)
 import Json.Decode as Decode
-import Model exposing (Model, Msg(..), Page(..), init)
 import Time
-import Update exposing (update)
-import View.About
-import View.Common exposing (viewBrowserBar, viewHeader, viewNavBar, viewNavigationItem, viewNoise, viewScanlines)
-import View.Contact
-import View.GoopNavigation exposing (viewGoopNavigation, viewGoopToggle)
-import View.Home
-import View.Projects
+
+
+
+-- MODEL
+
+
+type alias Model =
+    { time : Float
+    , mouseX : Float
+    , mouseY : Float
+    }
+
+
+type Msg
+    = Tick Float
+    | MouseMove Float Float
+
+
+
+-- INIT
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( { time = 0
+      , mouseX = 0
+      , mouseY = 0
+      }
+    , Cmd.none
+    )
+
+
+
+-- UPDATE
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        Tick delta ->
+            ( { model | time = model.time + delta * 0.001 }, Cmd.none )
+
+        MouseMove x y ->
+            ( { model | mouseX = x, mouseY = y }, Cmd.none )
 
 
 
@@ -26,73 +61,23 @@ import View.Projects
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ if model.isLoading then
-            viewLoading model
-
-          else
-            viewMain model
-        ]
-
-
-viewLoading : Model -> Html Msg
-viewLoading model =
-    div [ class "fixed top-0 left-0 w-100 h-100 bg-black white code flex flex-column justify-center items-center z-999" ]
-        [ h2 [ class "mb4 tracked-tight glitch" ] [ text "INITIALIZING GOOP SYSTEM" ]
-        , div [ class "w-50 h1 ba b--white mv3 relative overflow-hidden" ]
-            [ div
-                [ class "h-100 bg-white absolute top-0 left-0 transition-all"
-                , style "width" (String.fromFloat model.loadingProgress ++ "%")
-                ]
-                []
-            ]
-        , p [ class "mt3 blink" ] [ text "Please wait... " ]
-        , div [ class "mt3 f7 o-50" ]
-            [ text ("Loading " ++ String.fromInt (floor model.loadingProgress) ++ "% complete")
-            ]
-        , div [ class "absolute bottom-1 left-1 f7 o-50 code" ]
-            [ text "GOOP NAV v.1.0 | © 2025 DUNEDIN"
-            ]
-        ]
-
-
-viewMain : Model -> Html Msg
-viewMain model =
     div
-        [ class "w-100 min-vh-100 bg-black white code relative overflow-hidden goop-navigation-container"
+        [ class "w-100 min-vh-100 bg-black white code flex items-center justify-center"
+        , style "font-family" "Courier New, monospace"
         ]
-        [ viewHeader model
-        , viewBrowserBar model
-        , viewNavBar model
-        , viewContent model
-        , viewNoise
-        , viewScanlines
-
-        -- Add the goop navigation overlay
-        , viewGoopNavigation model
-        , viewGoopToggle model
-        ]
-
-
-viewContent : Model -> Html Msg
-viewContent model =
-    div [ class "pa3 flex flex-column relative z-1" ]
-        [ div [ class "w-100 bt bb b--gray pv2 mb3 flex items-center overflow-x-auto" ]
-            (List.map viewNavigationItem
-                [ "What's New?", "What's Cool?", "Handbook", "Net Search", "Net Directory", "Newsgroups" ]
-            )
-        , case model.currentPage of
-            Home ->
-                View.Home.view model
-
-            Projects ->
-                View.Projects.view model
-
-            About ->
-                View.About.view model
-
-            Contact ->
-                View.Contact.view model
+        [ div [ class "tc" ]
+            [ h1 [ class "f1 mb4" ] [ text "🌊 GOOP NAVIGATION" ]
+            , h2 [ class "f3 mb3" ] [ text "Y2K RETRO PORTFOLIO" ]
+            , p [ class "f4 mb2" ] [ text ("Time: " ++ String.fromFloat model.time) ]
+            , p [ class "f5 mb4" ]
+                [ text ("Mouse: " ++ String.fromInt (round model.mouseX) ++ ", " ++ String.fromInt (round model.mouseY)) ]
+            , div [ class "f6 silver" ]
+                [ p [] [ text "✨ Basic Elm app is working!" ]
+                , p [] [ text "🔄 Animation loop running" ]
+                , p [] [ text "🎯 Mouse tracking active" ]
+                , p [] [ text "Next: Add WebGL goop ball..." ]
+                ]
+            ]
         ]
 
 
@@ -104,24 +89,8 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Browser.Events.onAnimationFrameDelta Tick
-        , if model.isLoading && model.loadingProgress < 100 then
-            Time.every 100 (\_ -> IncrementLoading (5 + model.loadingProgress / 20))
-
-          else if model.isLoading && model.loadingProgress >= 100 then
-            Time.every 500 (\_ -> FinishLoading)
-
-          else
-            Sub.none
         , Browser.Events.onMouseMove
             (Decode.map2 MouseMove
-                (Decode.field "clientX" Decode.float)
-                (Decode.field "clientY" Decode.float)
-            )
-        , Browser.Events.onResize WindowResize
-
-        -- Add click event for goop navigation
-        , Browser.Events.onClick
-            (Decode.map2 MouseClick
                 (Decode.field "clientX" Decode.float)
                 (Decode.field "clientY" Decode.float)
             )
@@ -132,7 +101,7 @@ subscriptions model =
 -- MAIN
 
 
-main : Program { width : Int, height : Int } Model Msg
+main : Program () Model Msg
 main =
     Browser.element
         { init = init

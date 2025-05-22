@@ -1,4 +1,4 @@
--- Updated src/Model.elm
+-- Simplified src/Model.elm (no HTTP dependencies)
 
 
 module Model exposing
@@ -9,8 +9,6 @@ module Model exposing
     )
 
 import Browser
-import GitHub
-import Http
 import Math.Vector2 as Vec2
 import Navigation.GoopNav as GoopNav
 
@@ -27,9 +25,6 @@ type alias Model =
     , isLoading : Bool
     , mouseX : Float
     , mouseY : Float
-    , gitHubCommits : List GitHub.Commit
-    , gitHubError : Maybe String
-    , gitHubLoading : Bool
     , resolution : Vec2.Vec2
     , mousePosition : Vec2.Vec2
 
@@ -57,7 +52,6 @@ type Msg
     | IncrementLoading Float
     | FinishLoading
     | MouseMove Float Float
-    | GotGitHubCommits (Result Http.Error (List GitHub.Commit))
     | WindowResize Int Int
       -- Add goop navigation messages
     | ToggleGoopNav
@@ -82,9 +76,6 @@ init flags =
       , isLoading = True
       , mouseX = 0
       , mouseY = 0
-      , gitHubCommits = []
-      , gitHubError = Nothing
-      , gitHubLoading = True
       , resolution = resolution
       , mousePosition = Vec2.vec2 0 0
 
@@ -92,5 +83,6 @@ init flags =
       , goopNavState = GoopNav.initGoopNav resolution
       , showGoopNav = True -- Show by default, can be toggled
       }
-    , GitHub.fetchCommits GotGitHubCommits
+    , Cmd.none
+      -- No HTTP commands needed
     )
