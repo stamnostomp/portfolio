@@ -1,4 +1,4 @@
--- src/Main.elm - Enhanced with content square display
+-- src/Main.elm - Simplified for goop navigation only
 
 
 module Main exposing (main)
@@ -12,15 +12,10 @@ import Json.Decode as Decode
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), TransitionState(..), init)
 import Navigation.GoopNav as GoopNav
-import Shaders.Background
+import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
 import Types exposing (Page(..))
 import Update exposing (update)
-import View.About
-import View.Common exposing (..)
-import View.Contact
-import View.GoopNavigation
-import View.Projects
 import WebGL
 
 
@@ -44,28 +39,24 @@ main =
 
 view : Model -> Html Msg
 view model =
-    div [ Attr.class "relative w-100 min-vh-100 overflow-hidden" ]
-        [ -- Background WebGL shader
-          viewBackground model
-        , -- Content based on transition state
-          viewContent model
-        , -- Goop navigation overlay (when not in content mode)
+    div [ Attr.class "relative w-100 min-vh-100 overflow-hidden bg-black" ]
+        [ -- Background
+          viewBackground
+        , -- Goop navigation
           viewGoopNavigation model
-        , -- Loading screen (if needed)
-          viewLoadingScreen model
-        , -- Browser-like UI elements (only when not in content mode)
-          viewBrowserUI model
-        , -- Debug info
+        , -- Content square (when active)
+          viewContentSquare model
+        , -- Debug info (optional)
           viewDebugInfo model
         ]
 
 
 
--- Background WebGL shader
+-- Simple dark background
 
 
-viewBackground : Model -> Html Msg
-viewBackground model =
+viewBackground : Html Msg
+viewBackground =
     div
         [ Attr.style "position" "fixed"
         , Attr.style "top" "0"
@@ -80,326 +71,358 @@ viewBackground model =
 
 
 
--- Enhanced goop navigation view with transition support
+-- Goop navigation WebGL
 
 
 viewGoopNavigation : Model -> Html Msg
 viewGoopNavigation model =
-    if not model.showGoopNav then
-        text ""
+    let
+        -- Calculate transition parameters
+        ( transitionProgress, transitionType ) =
+            case model.transitionState of
+                TransitioningOut progress _ ->
+                    ( progress, 1.0 )
 
-    else
-        let
-            -- Calculate transition parameters
-            ( transitionProgress, transitionType ) =
-                case model.transitionState of
-                    TransitioningOut progress _ ->
-                        ( progress, 1.0 )
+                TransitioningIn progress _ ->
+                    ( progress, -1.0 )
 
-                    TransitioningIn progress _ ->
-                        ( progress, -1.0 )
+                ShowingContent _ _ ->
+                    ( 1.0, 1.0 )
 
-                    ShowingContent _ _ ->
-                        ( 1.0, 1.0 )
-
-                    NoTransition ->
-                        ( 0.0, 0.0 )
-        in
-        div
-            [ Attr.class "fixed top-0 left-0 w-100 h-100 pointer-events-none z-2"
-            , Attr.style "z-index" "2"
+                NoTransition ->
+                    ( 0.0, 0.0 )
+    in
+    div
+        [ Attr.class "fixed top-0 left-0 w-100 h-100 z-2"
+        , Attr.style "z-index" "2"
+        ]
+        [ -- WebGL Canvas for the goop effect
+          WebGL.toHtml
+            [ Attr.width (floor (Vec2.getX model.resolution))
+            , Attr.height (floor (Vec2.getY model.resolution))
+            , Attr.style "position" "absolute"
+            , Attr.style "top" "0"
+            , Attr.style "left" "0"
+            , Attr.style "cursor" "crosshair"
             ]
-            [ -- WebGL Canvas for the goop effect
-              WebGL.toHtml
-                [ Attr.width (floor (Vec2.getX model.resolution))
-                , Attr.height (floor (Vec2.getY model.resolution))
-                , Attr.style "position" "absolute"
-                , Attr.style "top" "0"
-                , Attr.style "left" "0"
-                , Attr.style "pointer-events" "auto"
-                , Attr.style "cursor" "crosshair"
-                , Attr.class "goop-navigation-container"
-                ]
-                [ WebGL.entity
-                    View.GoopNavigation.vertexShader
-                    View.GoopNavigation.fragmentShader
-                    fullscreenMesh
-                    { time = model.time
-                    , resolution = model.resolution
-                    , mousePosition = model.mousePosition
-                    , hoveredBranch = GoopNav.getHoveredBranch model.goopNavState
-                    , centerPosition = model.goopNavState.centerPosition
-                    , transitionProgress = transitionProgress
-                    , transitionType = transitionType
-                    }
-                ]
-            , -- Overlay for hover labels (only when not transitioning)
-              if transitionProgress < 0.3 then
-                View.GoopNavigation.viewHoverLabels model
-
-              else
-                text ""
-            , -- Toggle button for debugging
-              View.GoopNavigation.viewGoopToggle model
+            [ WebGL.entity
+                Shaders.GoopBall.vertexShader
+                Shaders.GoopBall.fragmentShader
+                fullscreenMesh
+                { time = model.time
+                , resolution = model.resolution
+                , mousePosition = model.mousePosition
+                , hoveredBranch = GoopNav.getHoveredBranch model.goopNavState
+                , centerPosition = model.goopNavState.centerPosition
+                , transitionProgress = transitionProgress
+                , transitionType = transitionType
+                }
             ]
+        , -- Hover labels (only when not transitioning)
+          if transitionProgress < 0.3 then
+            viewHoverLabels model
+
+          else
+            text ""
+        ]
 
 
 
--- Content display based on transition state
+-- Hover labels for branches
 
 
-viewContent : Model -> Html Msg
-viewContent model =
+viewHoverLabels : Model -> Html Msg
+viewHoverLabels model =
+    case model.goopNavState.hoveredBranch of
+        Nothing ->
+            text ""
+
+        Just branch ->
+            let
+                labelPosition =
+                    getBranchLabelPosition branch model.resolution model.goopNavState.centerPosition model.time
+
+                label =
+                    GoopNav.getBranchLabel branch
+            in
+            div
+                [ Attr.class "fixed pointer-events-none z-3"
+                , Attr.style "left" (String.fromFloat (Tuple.first labelPosition) ++ "px")
+                , Attr.style "top" (String.fromFloat (Tuple.second labelPosition) ++ "px")
+                , Attr.style "transform" "translate(-50%, -50%)"
+                , Attr.style "z-index" "3"
+                , Attr.style "font-family" "monospace"
+                ]
+                [ div
+                    [ Attr.style "padding" "8px 12px"
+                    , Attr.style "border-radius" "4px"
+                    , Attr.style "font-size" "14px"
+                    , Attr.style "background" "linear-gradient(135deg, rgba(0, 20, 40, 0.9), rgba(0, 40, 60, 0.8))"
+                    , Attr.style "border" "1px solid rgba(0, 150, 200, 0.6)"
+                    , Attr.style "box-shadow" "0 0 12px rgba(0, 150, 200, 0.4)"
+                    , Attr.style "backdrop-filter" "blur(4px)"
+                    , Attr.style "color" "white"
+                    , Attr.style "text-shadow" "0 0 8px rgba(0, 200, 255, 0.6)"
+                    , Attr.style "font-weight" "600"
+                    ]
+                    [ div [] [ text label ]
+                    , div
+                        [ Attr.style "font-size" "11px"
+                        , Attr.style "opacity" "0.7"
+                        , Attr.style "margin-top" "4px"
+                        ]
+                        [ text "◦ CLICK TO EXPAND ◦" ]
+                    ]
+                ]
+
+
+
+-- Calculate screen position for branch labels
+
+
+getBranchLabelPosition : GoopNav.NavBranch -> Vec2.Vec2 -> Vec2.Vec2 -> Float -> ( Float, Float )
+getBranchLabelPosition branch resolution center time =
+    let
+        branchPositions =
+            GoopNav.getBranchPositions center time
+
+        branchIndex =
+            GoopNav.branchToIndex branch
+
+        branchPos =
+            branchPositions
+                |> List.drop branchIndex
+                |> List.head
+                |> Maybe.withDefault center
+
+        aspectRatio =
+            Vec2.getX resolution / Vec2.getY resolution
+
+        adjustedX =
+            Vec2.getX branchPos / aspectRatio
+
+        screenX =
+            (adjustedX + 1.0) * Vec2.getX resolution / 2.0
+
+        screenY =
+            (1.0 - Vec2.getY branchPos) * Vec2.getY resolution / 2.0
+
+        offsetX =
+            if Vec2.getX branchPos > 0 then
+                30
+
+            else
+                -30
+
+        offsetY =
+            if Vec2.getY branchPos > 0 then
+                30
+
+            else
+                -30
+    in
+    ( screenX + offsetX, screenY + offsetY )
+
+
+
+-- Content square display
+
+
+viewContentSquare : Model -> Html Msg
+viewContentSquare model =
     case model.transitionState of
         ShowingContent page _ ->
-            viewContentSquare model page
+            let
+                centerX =
+                    Vec2.getX model.resolution / 2
+
+                centerY =
+                    Vec2.getY model.resolution / 2
+
+                squareSize =
+                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.8
+
+                leftPos =
+                    centerX - squareSize / 2
+
+                topPos =
+                    centerY - squareSize / 2
+            in
+            div
+                [ Attr.class "fixed z-3"
+                , Attr.style "left" (String.fromFloat leftPos ++ "px")
+                , Attr.style "top" (String.fromFloat topPos ++ "px")
+                , Attr.style "width" (String.fromFloat squareSize ++ "px")
+                , Attr.style "height" (String.fromFloat squareSize ++ "px")
+                , Attr.style "z-index" "3"
+                , Attr.style "overflow" "auto"
+                , Attr.style "background" "rgba(10, 10, 15, 0.95)"
+                , Attr.style "border" "2px solid rgba(0, 200, 255, 0.8)"
+                , Attr.style "border-radius" "8px"
+                , Attr.style "backdrop-filter" "blur(10px)"
+                , Attr.style "box-shadow" "0 0 30px rgba(0, 200, 255, 0.3)"
+                , Attr.style "font-family" "monospace"
+                , Attr.style "color" "white"
+                ]
+                [ -- Close button
+                  button
+                    [ Attr.style "position" "absolute"
+                    , Attr.style "top" "8px"
+                    , Attr.style "right" "8px"
+                    , Attr.style "background" "transparent"
+                    , Attr.style "color" "white"
+                    , Attr.style "padding" "8px 12px"
+                    , Attr.style "border" "1px solid rgba(255, 255, 255, 0.3)"
+                    , Attr.style "border-radius" "4px"
+                    , Attr.style "cursor" "pointer"
+                    , Attr.style "font-size" "12px"
+                    , Attr.style "font-family" "monospace"
+                    , Attr.style "z-index" "4"
+                    , onClick CloseContent
+                    ]
+                    [ text "✕ CLOSE" ]
+                , -- Content
+                  div
+                    [ Attr.style "padding" "32px"
+                    , Attr.style "height" "100%"
+                    , Attr.style "overflow" "auto"
+                    ]
+                    [ viewPageContent page model ]
+                ]
 
         TransitioningOut progress page ->
             if progress > 0.7 then
-                viewContentSquare model page
+                viewContentSquare { model | transitionState = ShowingContent page 0.0 }
 
             else
-                viewMainContent model
-
-        TransitioningIn _ _ ->
-            text ""
-
-        NoTransition ->
-            viewMainContent model
-
-
-
--- Content displayed inside the expanded square
-
-
-viewContentSquare : Model -> Page -> Html Msg
-viewContentSquare model page =
-    let
-        -- Calculate the square's screen position and size
-        centerX =
-            Vec2.getX model.resolution / 2
-
-        centerY =
-            Vec2.getY model.resolution / 2
-
-        -- Size of the content square (80% of the smaller dimension)
-        squareSize =
-            min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.8
-
-        leftPos =
-            centerX - squareSize / 2
-
-        topPos =
-            centerY - squareSize / 2
-    in
-    div
-        [ Attr.class "fixed z-3 pointer-events-auto"
-        , Attr.style "left" (String.fromFloat leftPos ++ "px")
-        , Attr.style "top" (String.fromFloat topPos ++ "px")
-        , Attr.style "width" (String.fromFloat squareSize ++ "px")
-        , Attr.style "height" (String.fromFloat squareSize ++ "px")
-        , Attr.style "z-index" "3"
-        , Attr.style "overflow" "auto"
-        , Attr.style "background" "rgba(10, 10, 15, 0.95)"
-        , Attr.style "border" "2px solid rgba(0, 200, 255, 0.8)"
-        , Attr.style "border-radius" "8px"
-        , Attr.style "backdrop-filter" "blur(10px)"
-        , Attr.style "box-shadow" "0 0 30px rgba(0, 200, 255, 0.3)"
-        , Attr.class "transition-all"
-        ]
-        [ -- Close button
-          button
-            [ Attr.class "absolute top-2 right-2 bg-transparent white pa2 br2 pointer f6 z-4"
-            , Attr.style "border" "1px solid rgba(255, 255, 255, 0.3)"
-            , Attr.style "z-index" "4"
-            , onClick CloseContent
-            ]
-            [ text "✕ CLOSE" ]
-        , -- Content
-          div [ Attr.class "pa4 white h-100 overflow-auto" ]
-            [ case page of
-                Home ->
-                    viewHomeContent model
-
-                Projects ->
-                    div []
-                        [ h1 [ Attr.class "f2 mb3 light-blue" ] [ text "PROJECTS" ]
-                        , View.Projects.view model
-                        ]
-
-                About ->
-                    div []
-                        [ h1 [ Attr.class "f2 mb3 light-blue" ] [ text "ABOUT" ]
-                        , View.About.view model
-                        ]
-
-                Contact ->
-                    div []
-                        [ h1 [ Attr.class "f2 mb3 light-blue" ] [ text "CONTACT" ]
-                        , View.Contact.view model
-                        ]
-            ]
-        ]
-
-
-
--- Home content for the square
-
-
-viewHomeContent : Model -> Html Msg
-viewHomeContent model =
-    div [ Attr.class "tc" ]
-        [ h1 [ Attr.class "f1 mb4 cycle-colors" ] [ text "VIRTUAL DELIGHT" ]
-        , h2 [ Attr.class "f3 mb3 silver" ] [ text "Y2K RETRO PORTFOLIO" ]
-        , p [ Attr.class "f4 mb4 light-blue measure center lh-copy" ]
-            [ text "Welcome to the digital realm where organic interfaces meet cyberpunk aesthetics. Navigate through this interactive space using the goop navigation system." ]
-        , div [ Attr.class "flex flex-wrap justify-center gap-3 mb4" ]
-            [ viewContentCard "🎯" "Interactive Navigation" "Goop-based UI with organic responses"
-            , viewContentCard "🌊" "WebGL Shaders" "Real-time visual effects and animations"
-            , viewContentCard "⚡" "Reactive Design" "Mouse-driven interface transformations"
-            , viewContentCard "🔮" "Y2K Aesthetic" "Retro-futuristic visual styling"
-            ]
-        , div [ Attr.class "mt4 pa3 br2 bg-dark-gray" ]
-            [ h3 [ Attr.class "f4 mb2 hot-pink" ] [ text "SYSTEM STATUS" ]
-            , div [ Attr.class "f6 silver" ]
-                [ div [] [ text ("Time: " ++ (String.fromFloat model.time |> String.left 6)) ]
-                , div [] [ text ("Mouse: " ++ (String.fromFloat model.mouseX |> String.left 4) ++ ", " ++ (String.fromFloat model.mouseY |> String.left 4)) ]
-                , div [] [ text "Status: GOOP NAVIGATION ACTIVE" ]
-                ]
-            ]
-        ]
-
-
-
--- Content card helper
-
-
-viewContentCard : String -> String -> String -> Html Msg
-viewContentCard icon title description =
-    div
-        [ Attr.class "w5 pa3 br2 bg-navy white ma2"
-        , Attr.style "border" "1px solid rgba(0, 150, 200, 0.3)"
-        ]
-        [ div [ Attr.class "f2 tc mb2" ] [ text icon ]
-        , h4 [ Attr.class "f5 fw7 mb2 light-blue tc" ] [ text title ]
-        , p [ Attr.class "f7 silver tc lh-copy" ] [ text description ]
-        ]
-
-
-
--- Main content area (when not in content square mode)
-
-
-viewMainContent : Model -> Html Msg
-viewMainContent model =
-    div
-        [ Attr.class "relative z-1 pa4 mt5"
-        , Attr.style "min-height" "calc(100vh - 200px)"
-        ]
-        [ case model.currentPage of
-            Home ->
-                viewHomePage model
-
-            Projects ->
-                View.Projects.view model
-
-            About ->
-                View.About.view model
-
-            Contact ->
-                View.Contact.view model
-        ]
-
-
-
--- Home page content (original)
-
-
-viewHomePage : Model -> Html Msg
-viewHomePage model =
-    div [ Attr.class "flex flex-wrap items-center justify-center min-vh-50" ]
-        [ div [ Attr.class "w-100 w-60-ns tc pa4" ]
-            [ h1
-                [ Attr.class "f1 mb4 glitch cycle-colors"
-                , Attr.attribute "data-text" "VIRTUAL DELIGHT"
-                ]
-                [ text "VIRTUAL DELIGHT" ]
-            , h2 [ Attr.class "f3 mb3 silver" ] [ text "Y2K RETRO PORTFOLIO" ]
-            , p [ Attr.class "f4 mb4 light-blue measure center" ]
-                [ text "Navigate through cyberspace using the interactive goop navigation. Click on the metallic branches to explore different sections." ]
-            , div [ Attr.class "f6 silver mb4" ]
-                [ p [] [ text "✨ WebGL goop navigation active" ]
-                , p [] [ text "🎯 Mouse tracking enabled" ]
-                , p [] [ text "🌊 Organic UI elements" ]
-                , p [] [ text "⚡ Real-time shader effects" ]
-                ]
-            , div [ Attr.class "pa3 br2 bg-dark-gray white mb3 tc" ]
-                [ h3 [ Attr.class "mt0 mb2 f5 hot-pink" ] [ text "NAVIGATION INSTRUCTIONS" ]
-                , p [ Attr.class "f7 silver" ] [ text "Hover over the metallic goop ball in the center" ]
-                , p [ Attr.class "f7 silver" ] [ text "Eight branches will respond to your mouse movement" ]
-                , p [ Attr.class "f7 silver" ] [ text "Click on any branch to open content in an expanding square" ]
-                , p [ Attr.class "f7 hot-pink fw7" ] [ text "NEW: Content opens in morphing container!" ]
-                ]
-            ]
-        ]
-
-
-
--- Browser UI (only show when not in content mode)
-
-
-viewBrowserUI : Model -> Html Msg
-viewBrowserUI model =
-    case model.transitionState of
-        ShowingContent _ _ ->
-            text ""
+                text ""
 
         _ ->
-            div []
-                [ viewHeader model
-                , viewBrowserBar model
-                , viewNavBar model
-                ]
+            text ""
 
 
 
--- Loading screen
+-- Simple content for each page
 
 
-viewLoadingScreen : Model -> Html Msg
-viewLoadingScreen model =
-    if not model.isLoading then
-        text ""
-
-    else
-        div
-            [ Attr.class "fixed top-0 left-0 w-100 h-100 bg-black flex items-center justify-center z-999"
-            , Attr.style "z-index" "999"
-            ]
-            [ div [ Attr.class "tc" ]
-                [ div [ Attr.class "f2 mb4 glitch", Attr.attribute "data-text" "LOADING..." ]
-                    [ text "LOADING..." ]
-                , div [ Attr.class "w5 h1 bg-dark-gray br2 overflow-hidden" ]
-                    [ div
-                        [ Attr.class "loading-progress h-100"
-                        , Attr.style "width" (String.fromFloat model.loadingProgress ++ "%")
-                        ]
-                        []
+viewPageContent : Page -> Model -> Html Msg
+viewPageContent page model =
+    case page of
+        Home ->
+            div [ Attr.style "text-align" "center" ]
+                [ h1
+                    [ Attr.style "font-size" "48px"
+                    , Attr.style "margin-bottom" "16px"
+                    , Attr.style "background" "linear-gradient(90deg, #ff00ea, #00c3ff, #ffe700)"
+                    , Attr.style "background-size" "300% auto"
+                    , Attr.style "color" "transparent"
+                    , Attr.style "-webkit-background-clip" "text"
+                    , Attr.style "background-clip" "text"
+                    , Attr.style "animation" "cycle 4s linear infinite"
                     ]
-                , div [ Attr.class "f7 silver mt2" ]
-                    [ text (String.fromFloat model.loadingProgress ++ "% COMPLETE") ]
+                    [ text "VIRTUAL DELIGHT" ]
+                , h2
+                    [ Attr.style "font-size" "24px"
+                    , Attr.style "margin-bottom" "24px"
+                    , Attr.style "color" "#888"
+                    ]
+                    [ text "Y2K RETRO PORTFOLIO" ]
+                , p
+                    [ Attr.style "font-size" "16px"
+                    , Attr.style "line-height" "1.6"
+                    , Attr.style "color" "#00c3ff"
+                    , Attr.style "max-width" "400px"
+                    , Attr.style "margin" "0 auto 32px"
+                    ]
+                    [ text "Welcome to the organic navigation system. Each branch represents a different section of the portfolio." ]
+                , div
+                    [ Attr.style "display" "grid"
+                    , Attr.style "grid-template-columns" "repeat(2, 1fr)"
+                    , Attr.style "gap" "16px"
+                    , Attr.style "max-width" "500px"
+                    , Attr.style "margin" "0 auto"
+                    ]
+                    [ viewInfoCard "🎯" "Interactive" "Mouse-driven organic UI"
+                    , viewInfoCard "🌊" "WebGL" "Real-time shader effects"
+                    , viewInfoCard "⚡" "Reactive" "Dynamic transformations"
+                    , viewInfoCard "🔮" "Y2K Style" "Retro-futuristic design"
+                    ]
                 ]
-            ]
+
+        Projects ->
+            div []
+                [ h1 [ Attr.style "font-size" "36px", Attr.style "margin-bottom" "24px", Attr.style "color" "#00c3ff" ] [ text "PROJECTS" ]
+                , p [ Attr.style "font-size" "16px", Attr.style "line-height" "1.6", Attr.style "margin-bottom" "24px" ]
+                    [ text "Here you can showcase your projects, portfolio pieces, and creative works." ]
+                , div [ Attr.style "padding" "24px", Attr.style "background" "rgba(0, 50, 100, 0.2)", Attr.style "border-radius" "8px" ]
+                    [ h3 [ Attr.style "color" "#ff00ea", Attr.style "margin-bottom" "16px" ] [ text "Featured Project" ]
+                    , p [ Attr.style "color" "#ccc" ] [ text "This goop navigation system itself is a project! An organic, WebGL-powered interface that morphs and responds to user interaction." ]
+                    ]
+                ]
+
+        About ->
+            div []
+                [ h1 [ Attr.style "font-size" "36px", Attr.style "margin-bottom" "24px", Attr.style "color" "#00c3ff" ] [ text "ABOUT" ]
+                , p [ Attr.style "font-size" "16px", Attr.style "line-height" "1.6", Attr.style "margin-bottom" "24px" ]
+                    [ text "This is where you can tell your story, share your background, and connect with visitors." ]
+                , div [ Attr.style "padding" "24px", Attr.style "background" "rgba(100, 0, 50, 0.2)", Attr.style "border-radius" "8px" ]
+                    [ h3 [ Attr.style "color" "#ffe700", Attr.style "margin-bottom" "16px" ] [ text "Developer" ]
+                    , p [ Attr.style "color" "#ccc" ] [ text "Passionate about creating unique user experiences through code. This portfolio demonstrates organic UI design with WebGL shaders and Elm." ]
+                    ]
+                ]
+
+        Contact ->
+            div []
+                [ h1 [ Attr.style "font-size" "36px", Attr.style "margin-bottom" "24px", Attr.style "color" "#00c3ff" ] [ text "CONTACT" ]
+                , p [ Attr.style "font-size" "16px", Attr.style "line-height" "1.6", Attr.style "margin-bottom" "24px" ]
+                    [ text "Get in touch for collaborations, opportunities, or just to say hello!" ]
+                , div [ Attr.style "padding" "24px", Attr.style "background" "rgba(0, 100, 50, 0.2)", Attr.style "border-radius" "8px" ]
+                    [ h3 [ Attr.style "color" "#00ff00", Attr.style "margin-bottom" "16px" ] [ text "Connect" ]
+                    , p [ Attr.style "color" "#ccc", Attr.style "margin-bottom" "8px" ] [ text "Email: your@email.com" ]
+                    , p [ Attr.style "color" "#ccc", Attr.style "margin-bottom" "8px" ] [ text "GitHub: @yourusername" ]
+                    , p [ Attr.style "color" "#ccc" ] [ text "Twitter: @yourusername" ]
+                    ]
+                ]
 
 
 
--- Debug information
+-- Info card helper
+
+
+viewInfoCard : String -> String -> String -> Html Msg
+viewInfoCard icon title description =
+    div
+        [ Attr.style "padding" "16px"
+        , Attr.style "background" "rgba(0, 50, 100, 0.3)"
+        , Attr.style "border" "1px solid rgba(0, 150, 200, 0.3)"
+        , Attr.style "border-radius" "8px"
+        , Attr.style "text-align" "center"
+        ]
+        [ div [ Attr.style "font-size" "32px", Attr.style "margin-bottom" "8px" ] [ text icon ]
+        , h4 [ Attr.style "font-size" "16px", Attr.style "font-weight" "bold", Attr.style "margin-bottom" "8px", Attr.style "color" "#00c3ff" ] [ text title ]
+        , p [ Attr.style "font-size" "12px", Attr.style "color" "#888", Attr.style "line-height" "1.4" ] [ text description ]
+        ]
+
+
+
+-- Debug information (optional)
 
 
 viewDebugInfo : Model -> Html Msg
 viewDebugInfo model =
-    div [ Attr.class "fixed bottom-2 left-2 f7 silver z-3" ]
-        [ div [] [ text ("FPS: " ++ String.fromFloat (1000 / max 1 (model.time * 1000)) |> String.left 5) ]
+    div
+        [ Attr.style "position" "fixed"
+        , Attr.style "bottom" "8px"
+        , Attr.style "left" "8px"
+        , Attr.style "font-size" "12px"
+        , Attr.style "color" "#888"
+        , Attr.style "z-index" "3"
+        , Attr.style "font-family" "monospace"
+        , Attr.style "background" "rgba(0, 0, 0, 0.5)"
+        , Attr.style "padding" "8px"
+        , Attr.style "border-radius" "4px"
+        ]
+        [ div [] [ text ("FPS: " ++ (String.fromFloat (1000 / max 1 (model.time * 1000)) |> String.left 5)) ]
         , div [] [ text ("Mouse: " ++ (String.fromFloat model.mouseX |> String.left 5) ++ ", " ++ (String.fromFloat model.mouseY |> String.left 5)) ]
         , div [] [ text ("Page: " ++ pageToString model.currentPage) ]
         , div []
@@ -485,21 +508,6 @@ keyDecoder =
 toKey : String -> Msg
 toKey key =
     case key of
-        " " ->
-            ToggleGoopNav
-
-        "h" ->
-            ChangePage Home
-
-        "p" ->
-            ChangePage Projects
-
-        "a" ->
-            ChangePage About
-
-        "c" ->
-            ChangePage Contact
-
         "Escape" ->
             CloseContent
 
