@@ -14,6 +14,11 @@ vertexShader : WebGL.Shader { position : Vec3.Vec3 } Uniforms { vUV : Vec2.Vec2 
 vertexShader =
     [glsl|
         attribute vec3 position;
+        uniform float time;
+        uniform vec2 resolution;
+        uniform vec2 mousePosition;
+        uniform float hoveredBranch;
+        uniform vec2 centerPosition;
         varying vec2 vUV;
 
         void main() {

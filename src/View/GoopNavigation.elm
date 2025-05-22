@@ -71,9 +71,9 @@ viewHoverLabels model =
 
         Just branch ->
             let
-                -- Calculate label position based on branch
+                -- Calculate label position based on branch using CURRENT TIME
                 labelPosition =
-                    getBranchLabelPosition branch model.resolution model.goopNavState.centerPosition
+                    getBranchLabelPosition branch model.resolution model.goopNavState.centerPosition model.time
 
                 label =
                     GoopNav.getBranchLabel branch
@@ -86,27 +86,31 @@ viewHoverLabels model =
                 , style "z-index" "3"
                 ]
                 [ div
-                    [ class "bg-dark-gray near-white pa2 br2 f6 glow-hover cyber-label"
-                    , style "border" "1px solid #00ffff"
-                    , style "box-shadow" "0 0 10px rgba(0, 255, 255, 0.5)"
-                    , style "backdrop-filter" "blur(2px)"
+                    [ class "pa2 br2 f6 glow-hover"
+                    , style "background" "linear-gradient(135deg, rgba(0, 20, 40, 0.9), rgba(0, 40, 60, 0.8), rgba(0, 20, 40, 0.9))"
+                    , style "border" "1px solid rgba(0, 150, 200, 0.6)"
+                    , style "box-shadow" "0 0 12px rgba(0, 150, 200, 0.4), inset 0 0 8px rgba(0, 100, 150, 0.3)"
+                    , style "backdrop-filter" "blur(4px)"
+                    , style "color" "white !important"
+                    , style "text-shadow" "2px 2px 4px rgba(0, 0, 0, 1), -1px -1px 2px rgba(0, 0, 0, 1), 0 0 8px rgba(0, 200, 255, 0.6)"
+                    , style "font-weight" "600"
                     ]
-                    [ div [ class "f6 fw7" ] [ text label ]
-                    , div [ class "f7 o-70 mt1" ] [ text "◦ CLICK TO NAVIGATE ◦" ]
+                    [ div [ class "f6 fw7", style "color" "white !important" ] [ text label ]
+                    , div [ class "f7 o-70 mt1", style "color" "rgba(255, 255, 255, 0.8) !important" ] [ text "◦ CLICK TO NAVIGATE ◦" ]
                     ]
                 ]
 
 
 
--- Calculate screen position for branch labels
+-- Calculate screen position for branch labels using DYNAMIC POSITIONS
 
 
-getBranchLabelPosition : GoopNav.NavBranch -> Vec2.Vec2 -> Vec2.Vec2 -> ( Float, Float )
-getBranchLabelPosition branch resolution center =
+getBranchLabelPosition : GoopNav.NavBranch -> Vec2.Vec2 -> Vec2.Vec2 -> Float -> ( Float, Float )
+getBranchLabelPosition branch resolution center time =
     let
-        -- Get branch position in normalized coordinates
+        -- Get branch position in normalized coordinates using current time
         branchPositions =
-            GoopNav.getBranchPositions center
+            GoopNav.getBranchPositions center time
 
         branchIndex =
             GoopNav.branchToIndex branch

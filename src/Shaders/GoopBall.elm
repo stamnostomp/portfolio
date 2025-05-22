@@ -1,4 +1,4 @@
--- src/Shaders/GoopBall.elm - Updated to use unified Uniforms
+-- src/Shaders/GoopBall.elm - Working version with full goop ball
 
 
 module Shaders.GoopBall exposing (GoopAttributes, fragmentShader, vertexShader)
@@ -9,22 +9,19 @@ import Shaders.Types exposing (Uniforms)
 import WebGL
 
 
-
--- Types for the goop navigation
-
-
 type alias GoopAttributes =
     { position : Vec3.Vec3
     }
 
 
 
--- Vertex shader - Uses unified Uniforms type
+-- Working vertex shader
 
 
 vertexShader : WebGL.Shader GoopAttributes Uniforms { vUV : Vec2.Vec2 }
 vertexShader =
     [glsl|
+        precision mediump float;
         attribute vec3 position;
         uniform float time;
         uniform vec2 resolution;
@@ -41,7 +38,7 @@ vertexShader =
 
 
 
--- Fragment shader - Uses unified Uniforms type
+-- Working fragment shader with full goop ball
 
 
 fragmentShader : WebGL.Shader {} Uniforms { vUV : Vec2.Vec2 }
@@ -57,7 +54,7 @@ fragmentShader =
 
         // Smooth minimum function for organic blending
         float smin(float a, float b, float k) {
-            float h = max(k - abs(a - b), 0.0) / k;
+            float h = clamp(k - abs(a - b), 0.0, k) / k;
             return min(a, b) - h * h * h * k * (1.0 / 6.0);
         }
 
@@ -76,21 +73,32 @@ fragmentShader =
 
         // Create the goop ball and branches
         float goopSDF(vec2 p) {
-            vec2 center = centerPosition;
+            vec2 center = vec2(0.0, 0.0); // Use center of screen
 
-            // Main goop ball
-            float mainBall = circle(p, center, 0.08);
+            // Main goop ball - MADE BIGGER
+            float mainBall = circle(p, center, 0.15);
 
-            // Branch positions (8 directions)
+            // Branch positions (8 directions) - WITH ORGANIC MOVEMENT RESTORED
             vec2 branches[8];
-            branches[0] = center + vec2(0.0, -0.15);      // Top
-            branches[1] = center + vec2(0.12, -0.1);      // Top Right
-            branches[2] = center + vec2(0.18, 0.0);       // Right
-            branches[3] = center + vec2(0.12, 0.15);      // Bottom Right
-            branches[4] = center + vec2(0.0, 0.18);       // Bottom
-            branches[5] = center + vec2(-0.12, 0.15);     // Bottom Left
-            branches[6] = center + vec2(-0.18, 0.0);      // Left
-            branches[7] = center + vec2(-0.12, -0.1);     // Top Left
+
+            // Add organic variation to branch lengths - RESTORED BEAUTIFUL MOVEMENT
+            float var1 = 0.025 * sin(time * 0.8 + 0.0);
+            float var2 = 0.020 * sin(time * 1.2 + 2.1);
+            float var3 = 0.030 * sin(time * 0.6 + 4.2);
+            float var4 = 0.018 * sin(time * 1.0 + 6.3);
+            float var5 = 0.025 * sin(time * 0.9 + 1.5);
+            float var6 = 0.022 * sin(time * 1.1 + 3.6);
+            float var7 = 0.028 * sin(time * 0.7 + 5.7);
+            float var8 = 0.024 * sin(time * 0.8 + 0.9);
+
+            branches[0] = center + vec2(0.0, -0.25 + var1);           // Top
+            branches[1] = center + vec2(0.18 + var2, -0.16 + var2*0.4); // Top Right
+            branches[2] = center + vec2(0.28 + var3, 0.0);            // Right
+            branches[3] = center + vec2(0.18 + var4, 0.25 + var4*0.5); // Bottom Right
+            branches[4] = center + vec2(0.0, 0.28 + var5);            // Bottom
+            branches[5] = center + vec2(-0.18 - var6, 0.25 + var6*0.4); // Bottom Left
+            branches[6] = center + vec2(-0.28 - var7, 0.0);           // Left
+            branches[7] = center + vec2(-0.18 - var8, -0.16 + var8*0.3); // Top Left
 
             float result = mainBall;
 
@@ -98,62 +106,62 @@ fragmentShader =
             for (int i = 0; i < 8; i++) {
                 float fi = float(i);
 
-                // Branch size varies based on hover
-                float branchSize = 0.025;
-                if (hoveredBranch == fi) {
-                    branchSize = 0.035 + 0.01 * sin(time * 8.0);
+                // Branch size varies based on hover - SLOWED DOWN ANIMATION
+                float branchSize = 0.04;
+                if (abs(hoveredBranch - fi) < 0.5) {
+                    branchSize = 0.06 + 0.015 * sin(time * 2.5); // Reduced from 6.0 to 2.5 for slower pulse
                 }
 
                 // Create branch end
                 float branchBall = circle(p, branches[i], branchSize);
 
-                // Create organic connection to center
-                float connection = capsule(p, center, branches[i], 0.015);
+                // Create organic connection to center - MADE THICKER
+                float connection = capsule(p, center, branches[i], 0.025);
 
-                // Smooth blend everything together
-                result = smin(result, branchBall, 0.02);
-                result = smin(result, connection, 0.015);
+                // Smooth blend everything together - INCREASED BLENDING
+                result = smin(result, branchBall, 0.03);
+                result = smin(result, connection, 0.02);
             }
 
             return result;
         }
 
-        // Generate metallic color based on position and SDF
+        // Generate metallic color
         vec3 getMetallicColor(vec2 p, float sdf) {
-            // Base colors: black to silver gradient
-            vec3 silver = vec3(0.8, 0.85, 0.9);
-            vec3 darkGray = vec3(0.15, 0.15, 0.18);
-            vec3 black = vec3(0.05, 0.05, 0.08);
+            // Base metallic colors
+            vec3 silver = vec3(0.7, 0.75, 0.8);
+            vec3 darkGray = vec3(0.2, 0.2, 0.25);
+            vec3 black = vec3(0.08, 0.08, 0.1);
 
             // Distance-based coloring
-            float t = 1.0 - smoothstep(0.0, 0.02, abs(sdf));
+            float t = 1.0 - smoothstep(0.0, 0.015, abs(sdf));
 
-            // Add some metallic reflection based on position
-            vec2 center = centerPosition;
-            vec2 toCenter = normalize(p - center);
-            float reflection = 0.5 + 0.5 * dot(toCenter, vec2(0.3, 0.7));
+            // Add metallic reflection
+            float reflection = 0.5 + 0.5 * sin(p.x * 8.0 + time * 1.5);
 
-            // Animate the metallic sheen
-            float sheen = 0.5 + 0.5 * sin(time * 2.0 + p.x * 10.0 + p.y * 15.0);
+            // Animate metallic sheen
+            float sheen = 0.5 + 0.5 * cos(time * 2.0 + p.y * 6.0);
 
-            // Mix colors based on reflection and sheen
-            vec3 baseColor = mix(black, darkGray, reflection);
-            vec3 highlightColor = mix(darkGray, silver, sheen * 0.3);
+            // Mix colors
+            vec3 baseColor = mix(black, darkGray, reflection * 0.7);
+            vec3 highlightColor = mix(darkGray, silver, sheen * 0.5);
 
-            return mix(baseColor, highlightColor, t * reflection);
+            return mix(baseColor, highlightColor, t * 0.8);
         }
 
         void main() {
             // Convert to shader coordinates
             vec2 uv = vUV;
             vec2 p = (uv - 0.5) * 2.0;
-            p.x *= resolution.x / resolution.y;  // Maintain aspect ratio
+
+            // Maintain aspect ratio
+            p.x *= resolution.x / resolution.y;
 
             // Get distance to goop shape
             float sdf = goopSDF(p);
 
             // Create the goop
-            float goop = smoothstep(0.01, 0.0, sdf);
+            float goop = smoothstep(0.008, 0.0, sdf);
 
             // Get metallic color
             vec3 color = getMetallicColor(p, sdf);
@@ -161,14 +169,16 @@ fragmentShader =
             // Add glow effect for hovered branches
             float glow = 0.0;
             if (hoveredBranch >= 0.0) {
-                glow = 0.3 * exp(-sdf * 50.0);
-                color += vec3(0.0, 0.5, 1.0) * glow;
+                glow = 0.2 * exp(-abs(sdf) * 30.0);
+                color += vec3(0.0, 0.4, 0.8) * glow;
             }
 
-            // Combine with your existing background
-            vec3 bgColor = vec3(0.08, 0.09, 0.11);  // From your Background.elm
+            // Dark background
+            vec3 bgColor = vec3(0.05, 0.06, 0.08);
             vec3 finalColor = mix(bgColor, color, goop);
-            finalColor += vec3(glow * 0.1);
+
+            // Add subtle glow around the edges
+            finalColor += vec3(glow * 0.05);
 
             gl_FragColor = vec4(finalColor, 1.0);
         }

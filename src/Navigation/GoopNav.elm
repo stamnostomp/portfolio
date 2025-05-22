@@ -6,6 +6,7 @@ module Navigation.GoopNav exposing
     , NavBranch(..)
     , branchToIndex
     , detectHoveredBranch
+    , detectHoveredBranchWithTime
     , getBranchLabel
     , getBranchPage
     , getBranchPositions
@@ -62,7 +63,7 @@ initGoopNav resolution =
 
 
 
--- Update the goop navigation state
+-- Update the goop navigation state - NOW WITH TIME-BASED POSITION TRACKING
 
 
 updateGoopNav : Float -> Float -> Vec2.Vec2 -> GoopNavState -> GoopNavState
@@ -83,9 +84,9 @@ updateGoopNav mouseX mouseY resolution state =
                 (Vec2.getX normalizedMouse * aspectRatio)
                 (Vec2.getY normalizedMouse)
 
-        -- Check which branch (if any) is being hovered
+        -- Check which branch (if any) is being hovered using CURRENT TIME
         hoveredBranch =
-            detectHoveredBranch adjustedMouse state.centerPosition
+            detectHoveredBranchWithTime adjustedMouse state.centerPosition state.animationTime
     in
     { state
         | mousePosition = adjustedMouse
@@ -94,35 +95,60 @@ updateGoopNav mouseX mouseY resolution state =
 
 
 
--- Branch positions relative to center (same as in shader)
+-- Branch positions relative to center - NOW WITH DYNAMIC ANIMATION MATCHING SHADER
 
 
-getBranchPositions : Vec2.Vec2 -> List Vec2.Vec2
-getBranchPositions center =
+getBranchPositions : Vec2.Vec2 -> Float -> List Vec2.Vec2
+getBranchPositions center time =
     let
         centerX =
             Vec2.getX center
 
         centerY =
             Vec2.getY center
+
+        -- Calculate the same animation variations as in the shader
+        var1 =
+            0.025 * sin (time * 0.8 + 0.0)
+
+        var2 =
+            0.02 * sin (time * 1.2 + 2.1)
+
+        var3 =
+            0.03 * sin (time * 0.6 + 4.2)
+
+        var4 =
+            0.018 * sin (time * 1.0 + 6.3)
+
+        var5 =
+            0.025 * sin (time * 0.9 + 1.5)
+
+        var6 =
+            0.022 * sin (time * 1.1 + 3.6)
+
+        var7 =
+            0.028 * sin (time * 0.7 + 5.7)
+
+        var8 =
+            0.024 * sin (time * 0.8 + 0.9)
     in
-    [ Vec2.vec2 centerX (centerY - 0.15) -- Top (About)
-    , Vec2.vec2 (centerX + 0.12) (centerY - 0.1) -- Top Right (Projects)
-    , Vec2.vec2 (centerX + 0.18) centerY -- Right (Portfolio)
-    , Vec2.vec2 (centerX + 0.12) (centerY + 0.15) -- Bottom Right (Blog)
-    , Vec2.vec2 centerX (centerY + 0.18) -- Bottom (Contact)
-    , Vec2.vec2 (centerX - 0.12) (centerY + 0.15) -- Bottom Left (Gallery)
-    , Vec2.vec2 (centerX - 0.18) centerY -- Left (Services)
-    , Vec2.vec2 (centerX - 0.12) (centerY - 0.1) -- Top Left (News)
+    [ Vec2.vec2 centerX (centerY - 0.25 + var1) -- Top
+    , Vec2.vec2 (centerX + 0.18 + var2) (centerY - 0.16 + var2 * 0.4) -- Top Right
+    , Vec2.vec2 (centerX + 0.28 + var3) centerY -- Right
+    , Vec2.vec2 (centerX + 0.18 + var4) (centerY + 0.25 + var4 * 0.5) -- Bottom Right
+    , Vec2.vec2 centerX (centerY + 0.28 + var5) -- Bottom
+    , Vec2.vec2 (centerX - 0.18 - var6) (centerY + 0.25 + var6 * 0.4) -- Bottom Left
+    , Vec2.vec2 (centerX - 0.28 - var7) centerY -- Left
+    , Vec2.vec2 (centerX - 0.18 - var8) (centerY - 0.16 + var8 * 0.3) -- Top Left
     ]
 
 
 
--- Detect which branch is being hovered
+-- Detect which branch is being hovered using current time for accurate position tracking
 
 
-detectHoveredBranch : Vec2.Vec2 -> Vec2.Vec2 -> Maybe NavBranch
-detectHoveredBranch mousePos center =
+detectHoveredBranchWithTime : Vec2.Vec2 -> Vec2.Vec2 -> Float -> Maybe NavBranch
+detectHoveredBranchWithTime mousePos center time =
     let
         branches =
             [ BranchAbout
@@ -135,14 +161,15 @@ detectHoveredBranch mousePos center =
             , BranchNews
             ]
 
+        -- Get current animated branch positions using actual time
         branchPositions =
-            getBranchPositions center
+            getBranchPositions center time
 
-        -- Check if mouse is within hover distance of any branch
+        -- Reasonable hit area since we're tracking actual positions
         isNearBranch pos =
-            Vec2.distance mousePos pos < 0.06
+            Vec2.distance mousePos pos < 0.08
 
-        -- Slightly larger hit area
+        -- Nice tight detection
         findHoveredBranch positions branchList =
             case ( positions, branchList ) of
                 ( pos :: restPos, branch :: restBranch ) ->
@@ -159,14 +186,24 @@ detectHoveredBranch mousePos center =
 
 
 
--- Check if a point is within a branch's hit area
+-- Detect which branch is being hovered - NOW USING DYNAMIC POSITIONS
 
 
-isPointInBranch : Vec2.Vec2 -> NavBranch -> Vec2.Vec2 -> Bool
-isPointInBranch point branch center =
+detectHoveredBranch : Vec2.Vec2 -> Vec2.Vec2 -> Maybe NavBranch
+detectHoveredBranch mousePos center =
+    -- Fallback function that uses time = 0.0 for compatibility
+    detectHoveredBranchWithTime mousePos center 0.0
+
+
+
+-- Check if a point is within a branch's hit area - NOW WITH TIME PARAMETER
+
+
+isPointInBranch : Vec2.Vec2 -> NavBranch -> Vec2.Vec2 -> Float -> Bool
+isPointInBranch point branch center time =
     let
         branchPositions =
-            getBranchPositions center
+            getBranchPositions center time
 
         branchIndex =
             branchToIndex branch
@@ -177,10 +214,11 @@ isPointInBranch point branch center =
                 |> List.head
                 |> Maybe.withDefault center
     in
-    Vec2.distance point branchPos < 0.06
+    Vec2.distance point branchPos < 0.15
 
 
 
+-- Increased from 0.10 to 0.15 for more forgiving interaction
 -- Get the hovered branch as a float for the shader
 
 

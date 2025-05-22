@@ -1,5 +1,6 @@
 module Shaders.Background exposing (fragmentShader)
 
+import Math.Vector2 as Vec2
 import Shaders.Types exposing (Uniforms)
 import WebGL
 

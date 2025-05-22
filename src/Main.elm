@@ -12,6 +12,8 @@ import Json.Decode as Decode
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), init)
 import Navigation.GoopNav as GoopNav
+import Shaders.Background
+import Shaders.Mesh exposing (fullscreenMesh)
 import Types exposing (Page(..))
 import Update exposing (update)
 import View.About
@@ -61,23 +63,22 @@ view model =
 
 
 
--- Background WebGL shader
+-- Background WebGL shader - TEMPORARILY DISABLED FOR DEBUGGING
 
 
 viewBackground : Model -> Html Msg
 viewBackground model =
-    WebGL.toHtml
-        [ Attr.width (floor (Vec2.getX model.resolution))
-        , Attr.height (floor (Vec2.getY model.resolution))
-        , Attr.style "position" "fixed"
+    div
+        [ Attr.style "position" "fixed"
         , Attr.style "top" "0"
         , Attr.style "left" "0"
+        , Attr.style "width" "100%"
+        , Attr.style "height" "100%"
+        , Attr.style "background" "linear-gradient(45deg, #0a0a0a, #1a1a1a)"
         , Attr.style "z-index" "0"
         , Attr.class "pointer-events-none"
         ]
-        [-- You can add your background shader here if you have one
-         -- For now, we'll use CSS background
-        ]
+        []
 
 
 
