@@ -1,4 +1,4 @@
--- src/Model.elm - Enhanced with transition state
+-- src/Model.elm - Enhanced with organic transition settings
 
 
 module Model exposing
@@ -15,7 +15,7 @@ import Types exposing (Page(..))
 
 
 
--- TRANSITION STATE
+-- ENHANCED TRANSITION STATE
 
 
 type TransitionState
@@ -26,7 +26,7 @@ type TransitionState
 
 
 
--- MODEL
+-- ENHANCED MODEL WITH ORGANIC SETTINGS
 
 
 type alias Model =
@@ -44,9 +44,11 @@ type alias Model =
     , goopNavState : GoopNav.GoopNavState
     , showGoopNav : Bool
 
-    -- NEW: Transition state
+    -- Enhanced transition state
     , transitionState : TransitionState
     , transitionSpeed : Float -- How fast transitions happen
+    , transitionEasing : String -- Type of easing to use
+    , organicVariation : Float -- Amount of organic variation in transitions
     }
 
 
@@ -66,15 +68,18 @@ type Msg
     | ToggleGoopNav
     | ClickBranch GoopNav.NavBranch
     | MouseClick Float Float
-      -- NEW: Transition messages
+      -- Enhanced transition messages
     | StartTransition Page
     | CompleteTransitionOut
     | CompleteTransitionIn
     | CloseContent
+      -- New organic transition controls
+    | SetTransitionSpeed Float
+    | SetOrganicVariation Float
 
 
 
--- INIT
+-- ENHANCED INIT WITH ORGANIC SETTINGS
 
 
 init : { width : Int, height : Int } -> ( Model, Cmd Msg )
@@ -97,9 +102,11 @@ init flags =
       , goopNavState = GoopNav.initGoopNav resolution
       , showGoopNav = True -- Show goop nav by default
 
-      -- NEW: Initialize transition state
+      -- Enhanced organic transition settings
       , transitionState = NoTransition
-      , transitionSpeed = 1.5 -- Transitions take ~0.67 seconds
+      , transitionSpeed = 0.8 -- Slower, more organic transitions (~1.25 seconds)
+      , transitionEasing = "organic" -- Use organic easing
+      , organicVariation = 0.15 -- 15% organic variation in timing
       }
     , Cmd.none
     )

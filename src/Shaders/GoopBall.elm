@@ -1,4 +1,4 @@
--- src/Shaders/GoopBall.elm - Enhanced with square transition
+-- src/Shaders/GoopBall.elm - Original structure with smooth transitions added
 
 
 module Shaders.GoopBall exposing (GoopAttributes, fragmentShader, vertexShader)
@@ -12,10 +12,6 @@ import WebGL
 type alias GoopAttributes =
     { position : Vec3.Vec3
     }
-
-
-
--- Working vertex shader
 
 
 vertexShader : WebGL.Shader GoopAttributes Uniforms { vUV : Vec2.Vec2 }
@@ -37,10 +33,6 @@ vertexShader =
             vUV = position.xy * 0.5 + 0.5;
         }
     |]
-
-
-
--- Enhanced fragment shader with square transition
 
 
 fragmentShader : WebGL.Shader {} Uniforms { vUV : Vec2.Vec2 }
@@ -67,13 +59,33 @@ fragmentShader =
             return length(p - center) - radius;
         }
 
-        // Distance to a rounded rectangle
-        float roundedBox(vec2 p, vec2 center, vec2 size, float radius) {
-            vec2 offset = abs(p - center) - size;
-            return length(max(offset, 0.0)) + min(max(offset.x, offset.y), 0.0) - radius;
+        // Deformable rectangle with organic variations (like the circle)
+        float deformableRectangle(vec2 p, vec2 center, vec2 size, float cornerRadius) {
+            vec2 offset = p - center;
+
+            // Apply same organic deformations as the circle
+            float angle = atan(offset.y, offset.x);
+
+            // Subtle organic edge deformation
+            float deform1 = 0.003 * sin(angle * 3.0 + time * 0.2);
+            float deform2 = 0.002 * sin(angle * 5.0 - time * 0.15);
+
+            // Gentle breathing effect
+            float breathing = 0.004 * sin(time * 0.3);
+
+            // Apply deformations to the rectangle size
+            vec2 deformedSize = size + vec2(deform1 + breathing, deform2 + breathing);
+
+            // Add subtle edge waves
+            float edgeWave1 = 0.002 * sin(p.x * 12.0 + time * 0.4);
+            float edgeWave2 = 0.001 * sin(p.y * 15.0 - time * 0.3);
+
+            vec2 finalOffset = abs(offset) - deformedSize + vec2(edgeWave1, edgeWave2);
+
+            return length(max(finalOffset, 0.0)) + min(max(finalOffset.x, finalOffset.y), 0.0) - cornerRadius;
         }
 
-        // Subtle deformable circle - nearly perfect circle with minimal variation
+        // Original subtle deformable circle
         float deformableCircle(vec2 p, vec2 center, float baseRadius) {
             vec2 offset = p - center;
             float angle = atan(offset.y, offset.x);
@@ -106,7 +118,7 @@ fragmentShader =
             return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
         }
 
-        // Create the morphing goop ball
+        // Create the morphing goop ball with nodes-to-center animation
         float goopSDF(vec2 p) {
             // Very subtle floating center with minimal movement
             vec2 floatOffset = vec2(
@@ -120,84 +132,156 @@ fragmentShader =
             float progress = transitionProgress;
             float easedProgress = smootherstep(0.0, 1.0, progress);
 
-            // Calculate size scaling during transition
             float baseRadius = 0.15;
-            float targetSize = 0.8; // How big the square gets
-            float currentSize = mix(baseRadius, targetSize, easedProgress);
-
-            // Morphing between circle and square
-            float circleShape, squareShape;
 
             if (transitionType > 0.5) {
-                // Transitioning out (circle to square)
-                circleShape = deformableCircle(p, center, currentSize);
-                squareShape = roundedBox(p, center, vec2(currentSize), 0.02);
+                // Transitioning out: nodes move to center, then center grows into organic rectangle
 
-                // Smooth transition between shapes
-                float morphProgress = smootherstep(0.3, 1.0, easedProgress);
-                float mainShape = mix(circleShape, squareShape, morphProgress);
+                // Stage 1: Branches move toward center (0.0 to 0.6)
+                // Stage 2: Center morphs and grows to organic rectangle (0.4 to 1.0)
 
-                // Fade out branches during transition
-                float branchOpacity = 1.0 - smootherstep(0.0, 0.6, progress);
+                float branchInwardProgress = smootherstep(0.0, 0.6, progress);
+                float centerGrowProgress = smootherstep(0.4, 1.0, progress);
+                float morphProgress = smootherstep(0.5, 1.0, progress);
+
+                // Original branch positions
+                vec2 branches[8];
+                float var1 = 0.025 * sin(time * 0.3 + 0.0);
+                float var2 = 0.020 * sin(time * 0.4 + 2.1);
+                float var3 = 0.030 * sin(time * 0.25 + 4.2);
+                float var4 = 0.018 * sin(time * 0.35 + 6.3);
+                float var5 = 0.025 * sin(time * 0.32 + 1.5);
+                float var6 = 0.022 * sin(time * 0.38 + 3.6);
+                float var7 = 0.028 * sin(time * 0.28 + 5.7);
+                float var8 = 0.024 * sin(time * 0.33 + 0.9);
+
+                vec2 originalPositions[8];
+                originalPositions[0] = center + vec2(0.0, -0.25 + var1);
+                originalPositions[1] = center + vec2(0.18 + var2, -0.16 + var2*0.4);
+                originalPositions[2] = center + vec2(0.28 + var3, 0.0);
+                originalPositions[3] = center + vec2(0.18 + var4, 0.25 + var4*0.5);
+                originalPositions[4] = center + vec2(0.0, 0.28 + var5);
+                originalPositions[5] = center + vec2(-0.18 - var6, 0.25 + var6*0.4);
+                originalPositions[6] = center + vec2(-0.28 - var7, 0.0);
+                originalPositions[7] = center + vec2(-0.18 - var8, -0.16 + var8*0.3);
+
+                // Animate branch positions moving toward center
+                for (int i = 0; i < 8; i++) {
+                    branches[i] = mix(originalPositions[i], center, branchInwardProgress);
+                }
+
+                // Calculate shapes - morph from circle to organic rectangle
+                float currentCenterRadius = baseRadius + centerGrowProgress * 0.2; // Slight circle growth
+                vec2 rectSize = vec2(0.7, 0.5) * centerGrowProgress; // Rectangle target size
+
+                float circleShape = deformableCircle(p, center, currentCenterRadius);
+                float rectangleShape = deformableRectangle(p, center, rectSize, 0.05);
+
+                // Blend between circle and organic rectangle
+                float mainShape = mix(circleShape, rectangleShape, morphProgress);
+
+                float result = mainShape;
+
+                // Branch opacity - fade out as they approach center
+                float branchOpacity = 1.0 - smootherstep(0.2, 0.8, branchInwardProgress);
 
                 if (branchOpacity > 0.01) {
-                    // Branch positions with organic movement
-                    vec2 branches[8];
-                    float var1 = 0.025 * sin(time * 0.3 + 0.0);
-                    float var2 = 0.020 * sin(time * 0.4 + 2.1);
-                    float var3 = 0.030 * sin(time * 0.25 + 4.2);
-                    float var4 = 0.018 * sin(time * 0.35 + 6.3);
-                    float var5 = 0.025 * sin(time * 0.32 + 1.5);
-                    float var6 = 0.022 * sin(time * 0.38 + 3.6);
-                    float var7 = 0.028 * sin(time * 0.28 + 5.7);
-                    float var8 = 0.024 * sin(time * 0.33 + 0.9);
-
-                    branches[0] = center + vec2(0.0, -0.25 + var1);
-                    branches[1] = center + vec2(0.18 + var2, -0.16 + var2*0.4);
-                    branches[2] = center + vec2(0.28 + var3, 0.0);
-                    branches[3] = center + vec2(0.18 + var4, 0.25 + var4*0.5);
-                    branches[4] = center + vec2(0.0, 0.28 + var5);
-                    branches[5] = center + vec2(-0.18 - var6, 0.25 + var6*0.4);
-                    branches[6] = center + vec2(-0.28 - var7, 0.0);
-                    branches[7] = center + vec2(-0.18 - var8, -0.16 + var8*0.3);
-
-                    float result = mainShape;
-
-                    // Add fading branches
                     for (int i = 0; i < 8; i++) {
                         float fi = float(i);
-                        float branchSize = 0.04;
-                        float breathing = 0.005 * sin(time * 0.4 + fi * 1.2);
+                        float branchSize = 0.04 * branchOpacity;
+                        float breathing = 0.005 * sin(time * 0.4 + fi * 1.2) * branchOpacity;
                         branchSize += breathing;
 
                         if (abs(hoveredBranch - fi) < 0.5) {
-                            branchSize = 0.05 + 0.01 * sin(time * 1.2) + breathing;
+                            branchSize = (0.05 + 0.01 * sin(time * 1.2)) * branchOpacity + breathing;
                         }
 
-                        // Scale down branches as transition progresses
-                        branchSize *= branchOpacity;
-
                         float branchBall = circle(p, branches[i], branchSize);
+
+                        // Connection opacity also fades
                         float connectionThickness = 0.025 * branchOpacity;
                         float connection = capsule(p, center, branches[i], connectionThickness);
 
                         result = smin(result, branchBall, 0.03);
                         result = smin(result, connection, 0.02);
                     }
-
-                    return result;
-                } else {
-                    return mainShape;
                 }
-            } else if (transitionType < -0.5) {
-                // Transitioning in (square to circle)
-                circleShape = deformableCircle(p, center, mix(targetSize, baseRadius, easedProgress));
-                squareShape = roundedBox(p, center, vec2(mix(targetSize, baseRadius, easedProgress)), 0.02);
 
-                float morphProgress = smootherstep(0.0, 0.7, easedProgress);
-                return mix(squareShape, circleShape, morphProgress);
+                return result;
+
+            } else if (transitionType < -0.5) {
+                // Transitioning in: organic rectangle shrinks and morphs to circle, then nodes move back out
+
+                float morphProgress = smootherstep(0.0, 0.5, progress);
+                float centerShrinkProgress = smootherstep(0.0, 0.6, progress);
+                float branchOutwardProgress = smootherstep(0.4, 1.0, progress);
+
+                // Start with organic rectangle, morph to circle, then shrink
+                vec2 rectSize = vec2(0.7, 0.5) * (1.0 - centerShrinkProgress);
+                float rectangleShape = deformableRectangle(p, center, rectSize, 0.05);
+
+                float currentCenterRadius = mix(baseRadius + 0.2, baseRadius, centerShrinkProgress);
+                float circleShape = deformableCircle(p, center, currentCenterRadius);
+
+                // Morph from rectangle back to circle
+                float mainShape = mix(rectangleShape, circleShape, morphProgress);
+
+                // Original branch positions
+                vec2 branches[8];
+                float var1 = 0.025 * sin(time * 0.3 + 0.0);
+                float var2 = 0.020 * sin(time * 0.4 + 2.1);
+                float var3 = 0.030 * sin(time * 0.25 + 4.2);
+                float var4 = 0.018 * sin(time * 0.35 + 6.3);
+                float var5 = 0.025 * sin(time * 0.32 + 1.5);
+                float var6 = 0.022 * sin(time * 0.38 + 3.6);
+                float var7 = 0.028 * sin(time * 0.28 + 5.7);
+                float var8 = 0.024 * sin(time * 0.33 + 0.9);
+
+                vec2 originalPositions[8];
+                originalPositions[0] = center + vec2(0.0, -0.25 + var1);
+                originalPositions[1] = center + vec2(0.18 + var2, -0.16 + var2*0.4);
+                originalPositions[2] = center + vec2(0.28 + var3, 0.0);
+                originalPositions[3] = center + vec2(0.18 + var4, 0.25 + var4*0.5);
+                originalPositions[4] = center + vec2(0.0, 0.28 + var5);
+                originalPositions[5] = center + vec2(-0.18 - var6, 0.25 + var6*0.4);
+                originalPositions[6] = center + vec2(-0.28 - var7, 0.0);
+                originalPositions[7] = center + vec2(-0.18 - var8, -0.16 + var8*0.3);
+
+                // Animate branch positions moving back out from center
+                for (int i = 0; i < 8; i++) {
+                    branches[i] = mix(center, originalPositions[i], branchOutwardProgress);
+                }
+
+                float result = mainShape;
+
+                // Branch opacity - fade in as they move out from center
+                float branchOpacity = smootherstep(0.2, 0.8, branchOutwardProgress);
+
+                if (branchOpacity > 0.01) {
+                    for (int i = 0; i < 8; i++) {
+                        float fi = float(i);
+                        float branchSize = 0.04 * branchOpacity;
+                        float breathing = 0.005 * sin(time * 0.4 + fi * 1.2) * branchOpacity;
+                        branchSize += breathing;
+
+                        if (abs(hoveredBranch - fi) < 0.5) {
+                            branchSize = (0.05 + 0.01 * sin(time * 1.2)) * branchOpacity + breathing;
+                        }
+
+                        float branchBall = circle(p, branches[i], branchSize);
+
+                        float connectionThickness = 0.025 * branchOpacity;
+                        float connection = capsule(p, center, branches[i], connectionThickness);
+
+                        result = smin(result, branchBall, 0.03);
+                        result = smin(result, connection, 0.02);
+                    }
+                }
+
+                return result;
+
             } else {
-                // Normal goop ball with all branches
+                // Normal goop ball with all branches - ORIGINAL STRUCTURE
                 float mainBall = deformableCircle(p, center, baseRadius);
 
                 vec2 branches[8];

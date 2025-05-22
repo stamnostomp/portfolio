@@ -1,4 +1,4 @@
--- src/Update.elm - Enhanced with transition logic
+-- src/Update.elm - Enhanced with organic easing and smoother transitions
 
 
 module Update exposing (update)
@@ -10,7 +10,118 @@ import Types exposing (Page(..))
 
 
 
--- UPDATE
+-- ORGANIC EASING FUNCTIONS
+-- Organic ease-in-out with natural variation
+
+
+organicEaseInOut : Float -> Float -> Float -> Float
+organicEaseInOut t variation time =
+    let
+        -- Base smooth step
+        baseEase =
+            t * t * (3.0 - 2.0 * t)
+
+        -- Add organic variation based on time
+        organicWave =
+            sin (time * 0.5 + t * 6.28) * variation * (1.0 - t) * t * 4.0
+
+        -- Combine and clamp
+        result =
+            baseEase + organicWave
+    in
+    Basics.max 0.0 (Basics.min 1.0 result)
+
+
+
+-- Elastic ease out with organic feel
+
+
+organicElasticOut : Float -> Float -> Float
+organicElasticOut t variation =
+    if t <= 0.0 then
+        0.0
+
+    else if t >= 1.0 then
+        1.0
+
+    else
+        let
+            -- Elastic parameters
+            p =
+                0.3
+
+            s =
+                p / 4.0
+
+            -- Base elastic calculation
+            baseElastic =
+                (2.0 ^ (-10.0 * t)) * sin ((t - s) * (2.0 * pi) / p) + 1.0
+
+            -- Add organic smoothing
+            organicSmoothing =
+                1.0 - ((1.0 - t) ^ 3.0) * variation
+        in
+        baseElastic * organicSmoothing
+
+
+
+-- Bounce ease out with organic damping
+
+
+organicBounceOut : Float -> Float -> Float
+organicBounceOut t variation =
+    let
+        dampening =
+            1.0 - variation * 0.3
+    in
+    if t < (1.0 / 2.75) then
+        (7.5625 * t * t) * dampening
+
+    else if t < (2.0 / 2.75) then
+        let
+            adjusted =
+                t - (1.5 / 2.75)
+        in
+        (7.5625 * adjusted * adjusted + 0.75) * dampening
+
+    else if t < (2.5 / 2.75) then
+        let
+            adjusted =
+                t - (2.25 / 2.75)
+        in
+        (7.5625 * adjusted * adjusted + 0.9375) * dampening
+
+    else
+        let
+            adjusted =
+                t - (2.625 / 2.75)
+        in
+        (7.5625 * adjusted * adjusted + 0.984375) * dampening
+
+
+
+-- Main organic easing function
+
+
+applyOrganicEasing : Float -> Float -> Float -> String -> Float
+applyOrganicEasing progress variation time easingType =
+    case easingType of
+        "organic" ->
+            organicEaseInOut progress variation time
+
+        "elastic" ->
+            organicElasticOut progress variation
+
+        "bounce" ->
+            organicBounceOut progress variation
+
+        _ ->
+            -- Default smooth step
+            progress * progress * (3.0 - 2.0 * progress)
+
+
+
+-- ENHANCED UPDATE FUNCTION
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -29,9 +140,9 @@ update msg model =
                     in
                     { goopState | animationTime = newTime }
 
-                -- Handle transition state updates
+                -- Handle transition state updates with organic easing
                 updatedTransitionState =
-                    updateTransitionState delta model.transitionState model.transitionSpeed
+                    updateTransitionStateOrganic delta model.transitionState model.transitionSpeed model.organicVariation newTime
             in
             case updatedTransitionState of
                 TransitioningOut progress targetPage ->
@@ -177,9 +288,9 @@ update msg model =
                         (Vec2.getX normalizedMouse * aspectRatio)
                         (Vec2.getY normalizedMouse)
 
-                -- Check if any branch was clicked
+                -- Check if any branch was clicked using floating center and time
                 clickedBranch =
-                    GoopNav.detectHoveredBranch adjustedMouse model.goopNavState.centerPosition
+                    GoopNav.detectHoveredBranchWithTime adjustedMouse model.goopNavState.centerPosition model.time
             in
             case clickedBranch of
                 Just branch ->
@@ -194,7 +305,7 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-        -- NEW: Transition messages
+        -- Enhanced transition messages
         StartTransition targetPage ->
             -- Only start transition if we're not already transitioning
             case model.transitionState of
@@ -231,26 +342,78 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        -- New organic transition controls
+        SetTransitionSpeed speed ->
+            ( { model | transitionSpeed = Basics.max 0.1 (Basics.min 3.0 speed) }, Cmd.none )
+
+        SetOrganicVariation variation ->
+            ( { model | organicVariation = Basics.max 0.0 (Basics.min 0.5 variation) }, Cmd.none )
 
 
--- Helper function to update transition state
+
+-- Enhanced helper function to update transition state with organic easing
 
 
-updateTransitionState : Float -> TransitionState -> Float -> TransitionState
-updateTransitionState delta transitionState speed =
+updateTransitionStateOrganic : Float -> TransitionState -> Float -> Float -> Float -> TransitionState
+updateTransitionStateOrganic delta transitionState speed organicVariation time =
     let
-        progressIncrement =
+        -- Base progress increment
+        baseProgressIncrement =
             delta * 0.001 * speed
+
+        -- Add organic timing variation
+        organicTimingVariation =
+            sin (time * 0.3) * organicVariation * baseProgressIncrement
+
+        -- Final progress increment with organic variation
+        progressIncrement =
+            baseProgressIncrement + organicTimingVariation
     in
     case transitionState of
         TransitioningOut progress targetPage ->
-            TransitioningOut (min 1.0 (progress + progressIncrement)) targetPage
+            let
+                newProgress =
+                    Basics.min 1.0 (progress + progressIncrement)
+
+                -- Apply organic easing to the progress
+                easedProgress =
+                    applyOrganicEasing newProgress organicVariation time "organic"
+            in
+            TransitioningOut newProgress targetPage
 
         TransitioningIn progress fromPage ->
-            TransitioningIn (min 1.0 (progress + progressIncrement)) fromPage
+            let
+                newProgress =
+                    Basics.min 1.0 (progress + progressIncrement)
+
+                -- Apply organic easing to the progress
+                easedProgress =
+                    applyOrganicEasing newProgress organicVariation time "organic"
+            in
+            TransitioningIn newProgress fromPage
 
         ShowingContent page contentTime ->
             ShowingContent page contentTime
 
         NoTransition ->
             NoTransition
+
+
+
+-- Helper function to get eased progress for use in shaders
+
+
+getEasedTransitionProgress : TransitionState -> Float -> Float -> String -> Float
+getEasedTransitionProgress transitionState organicVariation time easingType =
+    case transitionState of
+        TransitioningOut progress _ ->
+            applyOrganicEasing progress organicVariation time easingType
+
+        TransitioningIn progress _ ->
+            applyOrganicEasing progress organicVariation time easingType
+
+        ShowingContent _ _ ->
+            1.0
+
+        NoTransition ->
+            0.0

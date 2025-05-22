@@ -1,4 +1,4 @@
--- src/Main.elm - Simplified for goop navigation only
+-- src/Main.elm - Original structure with smooth transitions
 
 
 module Main exposing (main)
@@ -48,6 +48,15 @@ view model =
           viewContentSquare model
         , -- Debug info (optional)
           viewDebugInfo model
+        , -- Add CSS for the cycle animation
+          node "style"
+            []
+            [ text """
+            @keyframes cycle {
+                0% { background-position: 0% 50%; }
+                100% { background-position: 300% 50%; }
+            }
+            """ ]
         ]
 
 
@@ -240,20 +249,27 @@ viewContentSquare model =
                     Vec2.getY model.resolution / 2
 
                 squareSize =
-                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.8
+                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.75
+
+                -- Make it more rectangular to match the shader
+                squareWidth =
+                    squareSize * 1.2
+
+                squareHeight =
+                    squareSize * 0.85
 
                 leftPos =
-                    centerX - squareSize / 2
+                    centerX - squareWidth / 2
 
                 topPos =
-                    centerY - squareSize / 2
+                    centerY - squareHeight / 2
             in
             div
                 [ Attr.class "fixed z-3"
                 , Attr.style "left" (String.fromFloat leftPos ++ "px")
                 , Attr.style "top" (String.fromFloat topPos ++ "px")
-                , Attr.style "width" (String.fromFloat squareSize ++ "px")
-                , Attr.style "height" (String.fromFloat squareSize ++ "px")
+                , Attr.style "width" (String.fromFloat squareWidth ++ "px")
+                , Attr.style "height" (String.fromFloat squareHeight ++ "px")
                 , Attr.style "z-index" "3"
                 , Attr.style "overflow" "auto"
                 , Attr.style "background" "rgba(10, 10, 15, 0.95)"
