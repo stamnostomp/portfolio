@@ -1,4 +1,4 @@
--- src/Main.elm - Updated to use the new Contact page module
+-- src/Main.elm - Updated with Tachyons CSS and complete goop styling
 
 
 module Main exposing (main)
@@ -47,23 +47,128 @@ view model =
           viewContentSquare model
         , -- Debug info (optional)
           viewDebugInfo model
-        , -- Add CSS for the cycle animation and button hover
+        , -- Enhanced CSS with goop effects and Tachyons
           node "style"
             []
             [ text """
-            @keyframes cycle {
-                0% { background-position: 0% 50%; }
-                100% { background-position: 300% 50%; }
-            }
+                /* Cycle animation for gradient text */
+                @keyframes cycle {
+                    0% { background-position: 0% 50%; }
+                    100% { background-position: 300% 50%; }
+                }
 
-            /* Close button hover effect */
-            button:hover {
-                border-color: rgba(0, 150, 255, 0.5) !important;
-                color: rgba(200, 230, 255, 0.9) !important;
-                box-shadow: 0 0 15px rgba(0, 150, 255, 0.2),
-                            inset 0 0 10px rgba(0, 100, 200, 0.1);
-                background: rgba(20, 40, 60, 0.3) !important;
-            }
+                .cycle-colors {
+                    background-image: linear-gradient(90deg, #ff00ea, #00c3ff, #ffe700, #ff00ea);
+                    background-size: 300% auto;
+                    color: transparent;
+                    -webkit-background-clip: text;
+                    background-clip: text;
+                    animation: cycle 4s linear infinite;
+                }
+
+                /* Goop close button effects - enhanced visibility */
+                .goop-close-button {
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.15) 0%,
+                        rgba(64, 64, 64, 0.1) 50%,
+                        rgba(0, 0, 0, 0.1) 100%) !important;
+                    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    backdrop-filter: blur(2px);
+                    animation: close-button-float 3s ease-in-out infinite;
+                    border: 1px solid rgba(192, 192, 192, 0.4) !important;
+                    color: rgba(192, 192, 192, 0.9) !important;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                }
+
+                .goop-close-button::before {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: conic-gradient(
+                        from 0deg at 50% 50%,
+                        transparent 0deg,
+                        rgba(192, 192, 192, 0.1) 90deg,
+                        transparent 180deg,
+                        rgba(192, 192, 192, 0.05) 270deg,
+                        transparent 360deg
+                    );
+                    animation: close-button-rotate 6s linear infinite;
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                }
+
+                .goop-close-button:hover::before {
+                    opacity: 1;
+                }
+
+                .goop-close-button:hover {
+                    transform: translateY(-2px) scale(1.05);
+                    border-color: rgba(192, 192, 192, 0.8) !important;
+                    color: rgba(255, 255, 255, 0.95) !important;
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.25) 0%,
+                        rgba(64, 64, 64, 0.15) 50%,
+                        rgba(0, 0, 0, 0.1) 100%) !important;
+                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3),
+                                0 0 20px rgba(192, 192, 192, 0.2),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                    text-shadow: 0 0 10px rgba(192, 192, 192, 0.4);
+                }
+
+                @keyframes close-button-float {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(-1px); }
+                }
+
+                @keyframes close-button-rotate {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+
+                /* Info card hover effects */
+                .info-card {
+                    background: rgba(0, 50, 100, 0.3);
+                    border: 1px solid rgba(0, 150, 200, 0.3);
+                    transition: all 0.3s ease;
+                }
+
+                .info-card:hover {
+                    background: rgba(0, 70, 140, 0.4);
+                    border-color: rgba(0, 150, 200, 0.6);
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                }
+
+                /* Project section styling */
+                .project-section {
+                    background: rgba(0, 50, 100, 0.2);
+                    transition: all 0.3s ease;
+                }
+
+                .project-section:hover {
+                    background: rgba(0, 70, 140, 0.3);
+                }
+
+                /* About section styling */
+                .about-section {
+                    background: rgba(100, 0, 50, 0.2);
+                    transition: all 0.3s ease;
+                }
+
+                .about-section:hover {
+                    background: rgba(120, 0, 60, 0.3);
+                }
+
+                /* Grid utility for Tachyons */
+                .grid-2 {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 1rem;
+                }
             """ ]
         ]
 
@@ -90,17 +195,12 @@ viewGoopNavigation model =
                 NoTransition ->
                     ( 0.0, 0.0 )
     in
-    div
-        [ Attr.class "fixed top-0 left-0 w-100 h-100 z-2"
-        , Attr.style "z-index" "2"
-        ]
+    div [ Attr.class "fixed top-0 left-0 w-100 h-100 z-2" ]
         [ -- WebGL Canvas for the goop effect
           WebGL.toHtml
             [ Attr.width (floor (Vec2.getX model.resolution))
             , Attr.height (floor (Vec2.getY model.resolution))
-            , Attr.style "position" "absolute"
-            , Attr.style "top" "0"
-            , Attr.style "left" "0"
+            , Attr.class "absolute top-0 left-0"
             , Attr.style "cursor" "crosshair"
             ]
             [ WebGL.entity
@@ -144,31 +244,21 @@ viewHoverLabels model =
                     GoopNav.getBranchLabel branch
             in
             div
-                [ Attr.class "fixed pointer-events-none z-3"
+                [ Attr.class "fixed pointer-events-none z-3 monospace"
                 , Attr.style "left" (String.fromFloat (Tuple.first labelPosition) ++ "px")
                 , Attr.style "top" (String.fromFloat (Tuple.second labelPosition) ++ "px")
                 , Attr.style "transform" "translate(-50%, -50%)"
-                , Attr.style "z-index" "3"
-                , Attr.style "font-family" "monospace"
                 ]
                 [ div
-                    [ Attr.style "padding" "8px 12px"
-                    , Attr.style "border-radius" "4px"
-                    , Attr.style "font-size" "14px"
+                    [ Attr.class "pa2 ph3 f6 fw6 white"
                     , Attr.style "background" "linear-gradient(135deg, rgba(0, 20, 40, 0.9), rgba(0, 40, 60, 0.8))"
                     , Attr.style "border" "1px solid rgba(0, 150, 200, 0.6)"
                     , Attr.style "box-shadow" "0 0 12px rgba(0, 150, 200, 0.4)"
                     , Attr.style "backdrop-filter" "blur(4px)"
-                    , Attr.style "color" "white"
                     , Attr.style "text-shadow" "0 0 8px rgba(0, 200, 255, 0.6)"
-                    , Attr.style "font-weight" "600"
                     ]
                     [ div [] [ text label ]
-                    , div
-                        [ Attr.style "font-size" "11px"
-                        , Attr.style "opacity" "0.7"
-                        , Attr.style "margin-top" "4px"
-                        ]
+                    , div [ Attr.class "f7 o-70 mt1" ]
                         [ text "◦ CLICK TO EXPAND ◦" ]
                     ]
                 ]
@@ -254,45 +344,14 @@ viewContentSquare model =
                     centerY - squareHeight / 2
             in
             div
-                [ Attr.class "fixed z-3"
+                [ Attr.class "fixed z-3 overflow-auto monospace white"
                 , Attr.style "left" (String.fromFloat leftPos ++ "px")
                 , Attr.style "top" (String.fromFloat topPos ++ "px")
                 , Attr.style "width" (String.fromFloat squareWidth ++ "px")
                 , Attr.style "height" (String.fromFloat squareHeight ++ "px")
-                , Attr.style "z-index" "3"
-                , Attr.style "overflow" "auto"
-                , Attr.style "background" "rgba(20, 20, 25, 0.7)"
-                , Attr.style "border" "1px solid rgba(70, 70, 75, 0.4)"
-                , Attr.style "border-radius" "8px"
-                , Attr.style "backdrop-filter" "blur(8px)"
-                , Attr.style "box-shadow" "0 0 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(80, 80, 85, 0.2)"
-                , Attr.style "font-family" "monospace"
-                , Attr.style "color" "white"
                 ]
-                [ -- Close button
-                  button
-                    [ Attr.style "position" "absolute"
-                    , Attr.style "top" "8px"
-                    , Attr.style "right" "8px"
-                    , Attr.style "background" "transparent"
-                    , Attr.style "color" "#999"
-                    , Attr.style "padding" "8px 12px"
-                    , Attr.style "border" "1px solid rgba(80, 80, 80, 0.3)"
-                    , Attr.style "border-radius" "4px"
-                    , Attr.style "cursor" "pointer"
-                    , Attr.style "font-size" "12px"
-                    , Attr.style "font-family" "monospace"
-                    , Attr.style "z-index" "4"
-                    , Attr.style "transition" "all 0.3s"
-                    , onClick CloseContent
-                    ]
-                    [ text "✕ CLOSE" ]
-                , -- Content
-                  div
-                    [ Attr.style "padding" "32px"
-                    , Attr.style "height" "100%"
-                    , Attr.style "overflow" "auto"
-                    ]
+                [ -- Content without close button (now handled in Contact page)
+                  div [ Attr.class "pa4 h-100 overflow-auto" ]
                     [ viewPageContent page model ]
                 ]
 
@@ -315,39 +374,14 @@ viewPageContent : Page -> Model -> Html Msg
 viewPageContent page model =
     case page of
         Home ->
-            div [ Attr.style "text-align" "center" ]
-                [ h1
-                    [ Attr.style "font-size" "48px"
-                    , Attr.style "margin-bottom" "16px"
-                    , Attr.style "background" "linear-gradient(90deg, #ff00ea, #00c3ff, #ffe700)"
-                    , Attr.style "background-size" "300% auto"
-                    , Attr.style "color" "transparent"
-                    , Attr.style "-webkit-background-clip" "text"
-                    , Attr.style "background-clip" "text"
-                    , Attr.style "animation" "cycle 4s linear infinite"
-                    ]
+            div [ Attr.class "tc" ]
+                [ h1 [ Attr.class "f1 mb3 cycle-colors" ]
                     [ text "VIRTUAL DELIGHT" ]
-                , h2
-                    [ Attr.style "font-size" "24px"
-                    , Attr.style "margin-bottom" "24px"
-                    , Attr.style "color" "#888"
-                    ]
+                , h2 [ Attr.class "f3 mb4 gray" ]
                     [ text "Y2K RETRO PORTFOLIO" ]
-                , p
-                    [ Attr.style "font-size" "16px"
-                    , Attr.style "line-height" "1.6"
-                    , Attr.style "color" "#00c3ff"
-                    , Attr.style "max-width" "400px"
-                    , Attr.style "margin" "0 auto 32px"
-                    ]
+                , p [ Attr.class "f5 lh-copy mb4 mw6 center" ]
                     [ text "Welcome to the organic navigation system. Each branch represents a different section of the portfolio." ]
-                , div
-                    [ Attr.style "display" "grid"
-                    , Attr.style "grid-template-columns" "repeat(2, 1fr)"
-                    , Attr.style "gap" "16px"
-                    , Attr.style "max-width" "500px"
-                    , Attr.style "margin" "0 auto"
-                    ]
+                , div [ Attr.class "grid-2 mw7 center" ]
                     [ viewInfoCard "🎯" "Interactive" "Mouse-driven organic UI"
                     , viewInfoCard "🌊" "WebGL" "Real-time shader effects"
                     , viewInfoCard "⚡" "Reactive" "Dynamic transformations"
@@ -357,23 +391,29 @@ viewPageContent page model =
 
         Projects ->
             div []
-                [ h1 [ Attr.style "font-size" "36px", Attr.style "margin-bottom" "24px", Attr.style "color" "#00c3ff" ] [ text "PROJECTS" ]
-                , p [ Attr.style "font-size" "16px", Attr.style "line-height" "1.6", Attr.style "margin-bottom" "24px" ]
+                [ h1 [ Attr.class "f2 mb4" ]
+                    [ text "PROJECTS" ]
+                , p [ Attr.class "f5 lh-copy mb4" ]
                     [ text "Here you can showcase your projects, portfolio pieces, and creative works." ]
-                , div [ Attr.style "padding" "24px", Attr.style "background" "rgba(0, 50, 100, 0.2)", Attr.style "border-radius" "8px" ]
-                    [ h3 [ Attr.style "color" "#ff00ea", Attr.style "margin-bottom" "16px" ] [ text "Featured Project" ]
-                    , p [ Attr.style "color" "#ccc" ] [ text "This goop navigation system itself is a project! An organic, WebGL-powered interface that morphs and responds to user interaction." ]
+                , div [ Attr.class "pa4 project-section" ]
+                    [ h3 [ Attr.class "mb3" ]
+                        [ text "Featured Project" ]
+                    , p []
+                        [ text "This goop navigation system itself is a project! An organic, WebGL-powered interface that morphs and responds to user interaction." ]
                     ]
                 ]
 
         About ->
             div []
-                [ h1 [ Attr.style "font-size" "36px", Attr.style "margin-bottom" "24px", Attr.style "color" "#00c3ff" ] [ text "ABOUT" ]
-                , p [ Attr.style "font-size" "16px", Attr.style "line-height" "1.6", Attr.style "margin-bottom" "24px" ]
+                [ h1 [ Attr.class "f2 mb4" ]
+                    [ text "ABOUT" ]
+                , p [ Attr.class "f5 lh-copy mb4" ]
                     [ text "This is where you can tell your story, share your background, and connect with visitors." ]
-                , div [ Attr.style "padding" "24px", Attr.style "background" "rgba(100, 0, 50, 0.2)", Attr.style "border-radius" "8px" ]
-                    [ h3 [ Attr.style "color" "#ffe700", Attr.style "margin-bottom" "16px" ] [ text "Developer" ]
-                    , p [ Attr.style "color" "#ccc" ] [ text "Passionate about creating unique user experiences through code. This portfolio demonstrates organic UI design with WebGL shaders and Elm." ]
+                , div [ Attr.class "pa4 about-section" ]
+                    [ h3 [ Attr.class "mb3" ]
+                        [ text "Developer" ]
+                    , p []
+                        [ text "Passionate about creating unique user experiences through code. This portfolio demonstrates organic UI design with WebGL shaders and Elm." ]
                     ]
                 ]
 
@@ -388,16 +428,10 @@ viewPageContent page model =
 
 viewInfoCard : String -> String -> String -> Html Msg
 viewInfoCard icon title description =
-    div
-        [ Attr.style "padding" "16px"
-        , Attr.style "background" "rgba(0, 50, 100, 0.3)"
-        , Attr.style "border" "1px solid rgba(0, 150, 200, 0.3)"
-        , Attr.style "border-radius" "8px"
-        , Attr.style "text-align" "center"
-        ]
-        [ div [ Attr.style "font-size" "32px", Attr.style "margin-bottom" "8px" ] [ text icon ]
-        , h4 [ Attr.style "font-size" "16px", Attr.style "font-weight" "bold", Attr.style "margin-bottom" "8px", Attr.style "color" "#00c3ff" ] [ text title ]
-        , p [ Attr.style "font-size" "12px", Attr.style "color" "#888", Attr.style "line-height" "1.4" ] [ text description ]
+    div [ Attr.class "pa3 tc info-card" ]
+        [ div [ Attr.class "f1 mb2" ] [ text icon ]
+        , h4 [ Attr.class "f5 fw6 mb2" ] [ text title ]
+        , p [ Attr.class "f6 lh-title" ] [ text description ]
         ]
 
 
@@ -408,15 +442,9 @@ viewInfoCard icon title description =
 viewDebugInfo : Model -> Html Msg
 viewDebugInfo model =
     div
-        [ Attr.style "position" "fixed"
-        , Attr.style "bottom" "8px"
-        , Attr.style "left" "8px"
-        , Attr.style "font-size" "12px"
+        [ Attr.class "fixed bottom-2 left-2 f7 z-3 monospace pa2"
         , Attr.style "color" "#888"
-        , Attr.style "z-index" "3"
-        , Attr.style "font-family" "monospace"
         , Attr.style "background" "rgba(0, 0, 0, 0.5)"
-        , Attr.style "padding" "8px"
         , Attr.style "border-radius" "4px"
         ]
         [ div [] [ text ("FPS: " ++ (String.fromFloat (1000 / max 1 (model.time * 1000)) |> String.left 5)) ]

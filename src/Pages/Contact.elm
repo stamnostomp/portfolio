@@ -3,312 +3,396 @@ module Pages.Contact exposing (view)
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput)
+import Json.Decode as Decode
 
 
 
--- Contact page view matching the goop aesthetic
+-- Compact goop-themed contact page with Tachyons CSS
 
 
 view : Html msg
 view =
     div
-        [ Attr.style "position" "relative"
-        , Attr.style "width" "100%"
-        , Attr.style "height" "100vh"
-        , Attr.style "margin" "0"
-        , Attr.style "padding" "0"
-        , Attr.style "overflow" "hidden"
+        [ Attr.class "flex flex-column items-center justify-center h-100 pa3 monospace bg-transparent relative"
         ]
-        [ -- OpenGL Canvas
-          canvas
-            [ Attr.style "position" "fixed"
-            , Attr.style "top" "0"
-            , Attr.style "left" "0"
-            , Attr.style "width" "100%"
-            , Attr.style "height" "100%"
-            , Attr.style "z-index" "-1"
-            ]
-            []
+        [ -- Goop-style title with close button positioned with proper spacing
+          div [ Attr.class "relative mb4 w-100 mw6" ]
+            [ h1
+                [ Attr.class "f2 tc tracked goop-title"
+                , Attr.style "color" "transparent"
+                , Attr.style "background" "linear-gradient(135deg, #c0c0c0, #606060, #404040)"
+                , Attr.style "-webkit-background-clip" "text"
+                , Attr.style "background-clip" "text"
+                , Attr.style "text-shadow" "0 0 20px rgba(192, 192, 192, 0.3)"
+                , Attr.style "filter" "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))"
+                ]
+                [ text "CONTACT" ]
 
-        -- Your HTML content
+            -- Close button positioned in top-right with proper spacing
+            , button
+                [ Attr.class "absolute bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
+                , Attr.style "top" "-8px"
+                , Attr.style "right" "0"
+                , Attr.style "min-width" "50px"
+                , Attr.style "height" "24px"
+                ]
+                [ text "✕ CLOSE" ]
+            ]
+
+        -- Contact node grid with Tachyons
         , div
-            [ Attr.style "position" "relative"
-            , Attr.style "z-index" "1"
-            , Attr.style "padding" "20px 40px 40px 40px"
-            , Attr.style "font-family" "monospace"
-            , Attr.style "height" "100%"
-            , Attr.style "overflow-y" "auto"
-            , Attr.style "background-color" "transparent" -- Ensure the content background is transparent
+            [ Attr.class "flex gap3 mb4 flex-wrap justify-center"
             ]
-            [ -- Contact methods grid - 3 elements centered
+            [ goopContactNode "EMAIL" "stamno@stamno.com" "mailto:stamno@stamno.com" "node-1"
+            , goopContactNode "GITHUB" "@stamnostomp" "https://github.com/stamnostomp" "node-2"
+            , goopContactNode "DISCORD" "stamnostomp" "#" "node-3"
+            ]
+
+        -- Message interface with click-blocking container
+        , div
+            [ Attr.class "w-100 mw6 relative transmission-interface"
+            ]
+            [ -- Click-blocking container around form fields
               div
-                [ Attr.style "display" "grid"
-                , Attr.style "grid-template-columns" "repeat(auto-fit, minmax(250px, 1fr))"
-                , Attr.style "gap" "24px"
-                , Attr.style "margin-bottom" "48px"
-                , Attr.style "max-width" "900px"
-                , Attr.style "margin-left" "auto"
-                , Attr.style "margin-right" "auto"
+                [ Attr.class "pa3"
+                , Attr.style "background" "rgba(0, 0, 0, 0.1)"
+                , Attr.style "border" "1px solid rgba(192, 192, 192, 0.1)"
+                , Attr.style "backdrop-filter" "blur(2px)"
                 ]
-                [ contactCard "📡" "EMAIL" "hello@example.com" "mailto:hello@example.com"
-                , contactCard "🌐" "GITHUB" "@stamnostomp" "https://github.com/stamnostomp"
-                , contactCard "💫" "DISCORD" "username#0000" "#"
-                ]
+                [ -- Form fields with proper event handling
+                  goopFormField "NAME" "text" "Your name..." "field-1"
+                , goopFormField "EMAIL" "email" "your@email.com..." "field-2"
+                , goopTextArea "MESSAGE" "Your message..." "field-3"
 
-            -- Organic contact form
-            , div
-                [ Attr.style "max-width" "600px"
-                , Attr.style "margin" "0 auto"
-                , Attr.style "padding" "32px"
-                , Attr.style "background" "rgba(0, 0, 0, 0.2)"
-                , Attr.style "border" "1px solid rgba(50, 50, 50, 0.3)"
-                , Attr.style "border-radius" "8px"
-                , Attr.style "position" "relative"
-                , Attr.style "overflow" "hidden"
-                , Attr.style "backdrop-filter" "blur(4px)"
-                , Attr.class "contact-form"
-                ]
-                [ -- Form fields
-                  formField "NAME" "text" "Your designation..."
-                , formField "EMAIL" "email" "your@email.com..."
-                , formTextArea "MESSAGE" "Compose your message..."
-
-                -- Submit button
-                , div [ Attr.style "text-align" "center", Attr.style "margin-top" "32px" ]
+                -- Send button with proper event handling
+                , div [ Attr.class "tc mt3" ]
                     [ button
-                        [ Attr.style "background" "linear-gradient(135deg, rgba(70, 70, 70, 0.6), rgba(40, 40, 40, 0.7))"
-                        , Attr.style "color" "#cccccc"
-                        , Attr.style "border" "1px solid rgba(80, 80, 80, 0.3)"
-                        , Attr.style "padding" "14px 40px"
-                        , Attr.style "font-size" "16px"
-                        , Attr.style "font-weight" "600"
-                        , Attr.style "font-family" "monospace"
-                        , Attr.style "letter-spacing" "0.1em"
-                        , Attr.style "cursor" "pointer"
-                        , Attr.style "position" "relative"
-                        , Attr.style "overflow" "hidden"
-                        , Attr.style "transition" "all 0.3s"
-                        , Attr.style "text-transform" "uppercase"
-                        , Attr.style "border-radius" "4px"
-                        , Attr.style "backdrop-filter" "blur(4px)"
-                        , Attr.class "submit-button"
+                        [ Attr.class "bg-transparent pa3 ph4 f6 fw6 monospace tracked pointer relative overflow-hidden ttu transition-all transmit-button"
+                        , Attr.style "color" "rgba(192, 192, 192, 0.9)"
+                        , Attr.style "border" "2px solid rgba(192, 192, 192, 0.3)"
                         ]
-                        [ text "TRANSMIT" ]
+                        [ text "SEND" ]
                     ]
                 ]
-
-            -- Status indicators
-            , div
-                [ Attr.style "text-align" "center"
-                , Attr.style "margin-top" "48px"
-                , Attr.style "padding" "12px"
-                , Attr.style "background" "rgba(0, 0, 0, 0.2)"
-                , Attr.style "border" "1px solid rgba(50, 50, 50, 0.2)"
-                , Attr.style "border-radius" "4px"
-                , Attr.style "max-width" "600px"
-                , Attr.style "margin-left" "auto"
-                , Attr.style "margin-right" "auto"
-                , Attr.style "backdrop-filter" "blur(4px)"
-                ]
-                [ span [ Attr.style "color" "#888", Attr.style "margin-right" "16px", Attr.style "font-size" "12px" ] [ text "● NODE ACTIVE" ]
-                , span [ Attr.style "color" "#888", Attr.style "margin-right" "16px", Attr.style "font-size" "12px" ] [ text "◆ SECURE CHANNEL" ]
-                , span [ Attr.style "color" "#888", Attr.style "font-size" "12px" ] [ text "▲ READY" ]
-                ]
-
-            -- Add CSS for metallic effects and blue hover
-            , node "style"
-                []
-                [ text """
-                    /* Metallic contact cards with blue hover */
-                    .contact-card {
-                        background: linear-gradient(135deg, rgba(50, 50, 55, 0.6), rgba(30, 30, 35, 0.5)) !important;
-                        backdrop-filter: blur(6px);
-                        transition: all 0.3s ease !important;
-                        box-shadow: inset 0 1px 0 rgba(100, 100, 110, 0.2),
-                                    0 2px 8px rgba(0, 0, 0, 0.3);
-                    }
-
-                    .contact-card:hover {
-                        transform: translateY(-2px);
-                        border-color: rgba(0, 150, 255, 0.6) !important;
-                        box-shadow: 0 0 20px rgba(0, 150, 255, 0.3),
-                                    0 0 40px rgba(0, 100, 200, 0.2),
-                                    inset 0 0 15px rgba(0, 150, 255, 0.1),
-                                    0 4px 16px rgba(0, 0, 0, 0.4);
-                        background: linear-gradient(135deg, rgba(40, 60, 80, 0.7), rgba(20, 40, 60, 0.6)) !important;
-                    }
-
-                    .contact-card:hover * {
-                        color: rgba(200, 230, 255, 0.9) !important;
-                        text-shadow: 0 0 8px rgba(0, 150, 255, 0.4);
-                    }
-
-                    /* Form styling to match goop */
-                    .contact-form {
-                        box-shadow: inset 0 1px 0 rgba(80, 80, 80, 0.1),
-                                    0 2px 8px rgba(0, 0, 0, 0.3);
-                        background: linear-gradient(135deg, rgba(30, 30, 35, 0.2), rgba(20, 20, 25, 0.15)) !important;
-                    }
-
-                    .contact-form:hover {
-                        border-color: rgba(0, 100, 200, 0.3) !important;
-                        box-shadow: 0 0 15px rgba(0, 100, 200, 0.1),
-                                    inset 0 1px 0 rgba(80, 80, 80, 0.1),
-                                    0 2px 8px rgba(0, 0, 0, 0.3);
-                    }
-
-                    /* Form inputs with metallic style */
-                    input, textarea {
-                        background: rgba(20, 20, 25, 0.4) !important;
-                        border: 1px solid rgba(60, 60, 65, 0.3) !important;
-                        color: #ccc !important;
-                        transition: all 0.3s ease !important;
-                        backdrop-filter: blur(4px);
-                    }
-
-                    input:focus, textarea:focus {
-                        border-color: rgba(0, 150, 255, 0.5) !important;
-                        background: rgba(20, 30, 40, 0.5) !important;
-                        box-shadow: 0 0 15px rgba(0, 150, 255, 0.2),
-                                    inset 0 0 10px rgba(0, 50, 100, 0.1) !important;
-                        color: #fff !important;
-                        outline: none !important;
-                    }
-
-                    /* Submit button with metallic effect */
-                    .submit-button {
-                        background: linear-gradient(135deg, rgba(70, 70, 70, 0.6), rgba(40, 40, 40, 0.7)) !important;
-                        backdrop-filter: blur(4px);
-                        box-shadow: inset 0 1px 0 rgba(120, 120, 130, 0.3),
-                                    0 2px 4px rgba(0, 0, 0, 0.3);
-                    }
-
-                    .submit-button:hover {
-                        background: linear-gradient(135deg, rgba(40, 60, 80, 0.7), rgba(30, 50, 70, 0.6)) !important;
-                        border-color: rgba(0, 150, 255, 0.5) !important;
-                        color: rgba(200, 230, 255, 0.9) !important;
-                        box-shadow: 0 0 20px rgba(0, 150, 255, 0.3),
-                                    inset 0 0 15px rgba(0, 100, 200, 0.2),
-                                    0 2px 8px rgba(0, 0, 0, 0.4);
-                        text-shadow: 0 0 8px rgba(0, 150, 255, 0.4);
-                        transform: translateY(-1px);
-                    }
-
-                    /* Label styling */
-                    label {
-                        color: #999 !important;
-                        font-size: 11px !important;
-                    }
-
-                    /* Status indicators hover */
-                    span:hover {
-                        color: rgba(0, 150, 255, 0.8) !important;
-                        text-shadow: 0 0 6px rgba(0, 150, 255, 0.3);
-                    }
-                """ ]
             ]
+
+        -- Goop CSS effects with close button styling
+        , node "style"
+            []
+            [ text """
+                /* Tachyons gap utility */
+                .gap3 { gap: 1rem; }
+
+                /* Goop close button effects - positioned relative to contact content */
+                .goop-close-button {
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.15) 0%,
+                        rgba(64, 64, 64, 0.1) 50%,
+                        rgba(0, 0, 0, 0.1) 100%) !important;
+                    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    backdrop-filter: blur(2px);
+                    animation: close-button-float 3s ease-in-out infinite;
+                    border: 1px solid rgba(192, 192, 192, 0.4) !important;
+                    color: rgba(192, 192, 192, 0.9) !important;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                }
+
+                .goop-close-button::before {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: conic-gradient(
+                        from 0deg at 50% 50%,
+                        transparent 0deg,
+                        rgba(192, 192, 192, 0.1) 90deg,
+                        transparent 180deg,
+                        rgba(192, 192, 192, 0.05) 270deg,
+                        transparent 360deg
+                    );
+                    animation: close-button-rotate 6s linear infinite;
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                }
+
+                .goop-close-button:hover::before {
+                    opacity: 1;
+                }
+
+                .goop-close-button:hover {
+                    transform: translateY(-2px) scale(1.05);
+                    border-color: rgba(192, 192, 192, 0.8) !important;
+                    color: rgba(255, 255, 255, 0.95) !important;
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.25) 0%,
+                        rgba(64, 64, 64, 0.15) 50%,
+                        rgba(0, 0, 0, 0.1) 100%) !important;
+                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3),
+                                0 0 20px rgba(192, 192, 192, 0.2),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                    text-shadow: 0 0 10px rgba(192, 192, 192, 0.4);
+                }
+
+                @keyframes close-button-float {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(-1px); }
+                }
+
+                @keyframes close-button-rotate {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+
+                /* Goop title animation */
+                .goop-title {
+                    animation: goop-shimmer 4s ease-in-out infinite alternate;
+                }
+
+                @keyframes goop-shimmer {
+                    0% {
+                        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))
+                               drop-shadow(0 0 10px rgba(192, 192, 192, 0.2));
+                    }
+                    100% {
+                        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4))
+                               drop-shadow(0 0 20px rgba(192, 192, 192, 0.4));
+                    }
+                }
+
+                /* Sharp-edged contact nodes */
+                .goop-node {
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.15) 0%,
+                        rgba(64, 64, 64, 0.1) 50%,
+                        transparent 100%);
+                    border: 1px solid rgba(192, 192, 192, 0.2);
+                    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    backdrop-filter: blur(2px);
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .goop-node::before {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: conic-gradient(
+                        from 0deg at 50% 50%,
+                        transparent 0deg,
+                        rgba(192, 192, 192, 0.1) 60deg,
+                        transparent 120deg,
+                        rgba(192, 192, 192, 0.05) 180deg,
+                        transparent 240deg,
+                        rgba(192, 192, 192, 0.1) 300deg,
+                        transparent 360deg
+                    );
+                    animation: node-rotate 8s linear infinite;
+                    opacity: 0;
+                    transition: opacity 0.4s;
+                }
+
+                .goop-node:hover::before {
+                    opacity: 1;
+                }
+
+                @keyframes node-rotate {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+
+                .goop-node:hover {
+                    transform: translateY(-2px) scale(1.02);
+                    border-color: rgba(192, 192, 192, 0.6);
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.25) 0%,
+                        rgba(64, 64, 64, 0.15) 50%,
+                        rgba(0, 0, 0, 0.1) 100%);
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
+                                0 0 20px rgba(192, 192, 192, 0.1);
+                }
+
+                .goop-node:hover * {
+                    color: rgba(255, 255, 255, 0.95) !important;
+                    text-shadow: 0 0 8px rgba(192, 192, 192, 0.4);
+                }
+
+                /* Sharp-edged form fields */
+                .goop-field {
+                    background: transparent;
+                    border: 1px solid rgba(192, 192, 192, 0.25);
+                    color: rgba(192, 192, 192, 0.9);
+                    transition: all 0.4s ease;
+                    backdrop-filter: blur(1px);
+                    position: relative;
+                }
+
+                .goop-field:focus {
+                    outline: none;
+                    border-color: rgba(192, 192, 192, 0.6);
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.05) 0%,
+                        transparent 70%);
+                    box-shadow: 0 0 0 1px rgba(192, 192, 192, 0.1),
+                                inset 0 0 20px rgba(192, 192, 192, 0.02);
+                    color: rgba(255, 255, 255, 0.95);
+                }
+
+                .goop-field::placeholder {
+                    color: rgba(192, 192, 192, 0.4);
+                    font-style: italic;
+                }
+
+                /* Send button effects */
+                .transmit-button {
+                    background: linear-gradient(135deg,
+                        rgba(192, 192, 192, 0.05) 0%,
+                        rgba(64, 64, 64, 0.1) 50%,
+                        rgba(0, 0, 0, 0.05) 100%) !important;
+                }
+
+                .transmit-button::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: -100%;
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(90deg,
+                        transparent 0%,
+                        rgba(192, 192, 192, 0.2) 50%,
+                        transparent 100%);
+                    transition: left 0.6s ease;
+                }
+
+                .transmit-button:hover::before {
+                    left: 100%;
+                }
+
+                .transmit-button:hover {
+                    border-color: rgba(192, 192, 192, 0.8) !important;
+                    color: rgba(255, 255, 255, 0.95) !important;
+                    background: radial-gradient(ellipse at center,
+                        rgba(192, 192, 192, 0.15) 0%,
+                        rgba(64, 64, 64, 0.1) 70%,
+                        transparent 100%) !important;
+                    box-shadow: 0 0 20px rgba(192, 192, 192, 0.2),
+                                inset 0 0 15px rgba(192, 192, 192, 0.05);
+                    text-shadow: 0 0 8px rgba(192, 192, 192, 0.3);
+                    transform: translateY(-1px);
+                }
+
+                /* Form labels */
+                .goop-label {
+                    color: rgba(192, 192, 192, 0.7) !important;
+                    font-size: 10px !important;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                    margin-bottom: 6px;
+                    display: block;
+                    position: relative;
+                }
+
+                .goop-label::after {
+                    content: '';
+                    position: absolute;
+                    bottom: -2px;
+                    left: 0;
+                    width: 16px;
+                    height: 1px;
+                    background: rgba(192, 192, 192, 0.3);
+                }
+
+                /* Breathing animation */
+                .transmission-interface {
+                    animation: interface-breathe 6s ease-in-out infinite;
+                }
+
+                @keyframes interface-breathe {
+                    0%, 100% { opacity: 0.95; }
+                    50% { opacity: 1; }
+                }
+
+                /* Transition utility for Tachyons */
+                .transition-all {
+                    transition: all 0.4s ease;
+                }
+            """ ]
         ]
 
 
 
--- Contact card component with metallic styling
+-- Contact node with Tachyons
 
 
-contactCard : String -> String -> String -> String -> Html msg
-contactCard icon title value link =
+goopContactNode : String -> String -> String -> String -> Html msg
+goopContactNode title value link nodeId =
     a
         [ Attr.href link
-        , Attr.style "display" "block"
-        , Attr.style "padding" "28px"
-        , Attr.style "border" "1px solid rgba(60, 60, 65, 0.3)"
-        , Attr.style "border-radius" "6px"
-        , Attr.style "text-decoration" "none"
-        , Attr.style "color" "inherit"
-        , Attr.style "position" "relative"
-        , Attr.style "overflow" "hidden"
-        , Attr.class "contact-card"
+        , Attr.class "db pa3 ph4 no-underline color-inherit tc goop-node"
+        , Attr.style "min-width" "120px"
+        , Attr.id nodeId
         ]
-        [ -- Icon
-          div
-            [ Attr.style "font-size" "32px"
-            , Attr.style "margin-bottom" "12px"
-            , Attr.style "opacity" "0.7"
-            ]
-            [ text icon ]
-
-        -- Title
-        , h3
-            [ Attr.style "color" "#aaa"
-            , Attr.style "font-size" "13px"
-            , Attr.style "margin-bottom" "8px"
-            , Attr.style "letter-spacing" "0.1em"
-            , Attr.style "font-weight" "normal"
+        [ -- Title
+          h3
+            [ Attr.class "f7 mb2 tracked normal ttu"
+            , Attr.style "color" "rgba(192, 192, 192, 0.8)"
             ]
             [ text title ]
 
         -- Value
         , p
-            [ Attr.style "color" "#ccc"
-            , Attr.style "font-size" "15px"
-            , Attr.style "opacity" "0.8"
+            [ Attr.class "f6 ma0 fw5"
+            , Attr.style "color" "rgba(192, 192, 192, 0.9)"
             ]
             [ text value ]
         ]
 
 
 
--- Form field component with metallic styling
+-- Form field with Tachyons and proper event handling
 
 
-formField : String -> String -> String -> Html msg
-formField labelText inputType placeholder =
-    div [ Attr.style "margin-bottom" "20px" ]
+goopFormField : String -> String -> String -> String -> Html msg
+goopFormField labelText inputType placeholder fieldId =
+    div [ Attr.class "mb3" ]
         [ label
-            [ Attr.style "display" "block"
-            , Attr.style "font-size" "11px"
-            , Attr.style "letter-spacing" "0.1em"
-            , Attr.style "margin-bottom" "6px"
-            , Attr.style "text-transform" "uppercase"
-            , Attr.style "color" "#999"
+            [ Attr.class "goop-label"
+            , Attr.for fieldId
             ]
             [ text labelText ]
         , input
             [ Attr.type_ inputType
             , Attr.placeholder placeholder
-            , Attr.style "width" "100%"
-            , Attr.style "padding" "10px 12px"
-            , Attr.style "border-radius" "4px"
-            , Attr.style "font-family" "monospace"
-            , Attr.style "font-size" "14px"
+            , Attr.id fieldId
+            , Attr.class "w-100 pa3 monospace f6 goop-field"
             ]
             []
         ]
 
 
 
--- Form textarea component with metallic styling
+-- Textarea with Tachyons and proper event handling
 
 
-formTextArea : String -> String -> Html msg
-formTextArea labelText placeholder =
-    div [ Attr.style "margin-bottom" "20px" ]
+goopTextArea : String -> String -> String -> Html msg
+goopTextArea labelText placeholder fieldId =
+    div [ Attr.class "mb3" ]
         [ label
-            [ Attr.style "display" "block"
-            , Attr.style "font-size" "11px"
-            , Attr.style "letter-spacing" "0.1em"
-            , Attr.style "margin-bottom" "6px"
-            , Attr.style "text-transform" "uppercase"
-            , Attr.style "color" "#999"
+            [ Attr.class "goop-label"
+            , Attr.for fieldId
             ]
             [ text labelText ]
         , textarea
             [ Attr.placeholder placeholder
-            , Attr.rows 5
-            , Attr.style "width" "100%"
-            , Attr.style "padding" "10px 12px"
-            , Attr.style "border-radius" "4px"
-            , Attr.style "font-family" "monospace"
-            , Attr.style "font-size" "14px"
+            , Attr.id fieldId
+            , Attr.rows 3
+            , Attr.class "w-100 pa3 monospace f6 goop-field"
             , Attr.style "resize" "vertical"
             ]
             []
