@@ -12,6 +12,7 @@ import Json.Decode as Decode
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), TransitionState(..), init)
 import Navigation.GoopNav as GoopNav
+import Pages.About
 import Pages.Contact
 import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
@@ -404,18 +405,7 @@ viewPageContent page model =
                 ]
 
         About ->
-            div []
-                [ h1 [ Attr.class "f2 mb4" ]
-                    [ text "ABOUT" ]
-                , p [ Attr.class "f5 lh-copy mb4" ]
-                    [ text "This is where you can tell your story, share your background, and connect with visitors." ]
-                , div [ Attr.class "pa4 about-section" ]
-                    [ h3 [ Attr.class "mb3" ]
-                        [ text "Developer" ]
-                    , p []
-                        [ text "Passionate about creating unique user experiences through code. This portfolio demonstrates organic UI design with WebGL shaders and Elm." ]
-                    ]
-                ]
+            Html.map (\_ -> Tick 0) Pages.About.view
 
         Contact ->
             -- Use Html.map to handle the Contact page message conversion

@@ -18,12 +18,12 @@ type AboutMsg
 view : Html AboutMsg
 view =
     div
-        [ Attr.class "flex flex-column items-center justify-center h-100 pa3 monospace bg-transparent relative"
+        [ Attr.class "flex flex-column items-center justify-center h-100 pa2 monospace bg-transparent relative"
         ]
-        [ -- Goop-style title with close button
-          div [ Attr.class "relative mb4 w-100 mw6" ]
+        [ -- Goop-style title with close button (more compact)
+          div [ Attr.class "relative mb3 w-100 mw6" ]
             [ h1
-                [ Attr.class "f2 tc tracked goop-title"
+                [ Attr.class "f3 tc tracked goop-title"
                 , Attr.style "color" "transparent"
                 , Attr.style "background" "linear-gradient(135deg, #c0c0c0, #606060, #404040)"
                 , Attr.style "-webkit-background-clip" "text"
@@ -36,46 +36,48 @@ view =
             -- Close button positioned in top-right
             , button
                 [ Attr.class "absolute bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
-                , Attr.style "top" "-8px"
-                , Attr.style "right" "0"
+                , Attr.style "top" "15px"
+                , Attr.style "right" "-200px"
                 , Attr.style "min-width" "50px"
                 , Attr.style "height" "24px"
                 ]
                 [ text "✕ CLOSE" ]
             ]
 
-        -- Skills/Tech node grid
+        -- Skills/Tech node grid (more compact)
         , div
-            [ Attr.class "flex gap3 mb4 flex-wrap justify-center"
+            [ Attr.class "flex gap2 mb3 flex-wrap justify-center"
             ]
             [ goopInfoNode "FRONTEND" "React, Elm, WebGL" "node-1"
             , goopInfoNode "BACKEND" "Node.js, Elixir" "node-2"
             , goopInfoNode "DESIGN" "UI/UX, Shaders" "node-3"
             ]
 
-        -- Multiple information areas with click-blocking containers
+        -- Compact information areas with scroll
         , div
-            [ Attr.class "w-100 mw7 relative transmission-interface"
+            [ Attr.class "w-100 mw6 relative transmission-interface overflow-auto"
+            , Attr.style "max-height" "60vh"
             ]
-            [ -- Bio section
-              infoSection "BIOGRAPHY" "Developer passionate about creating unique digital experiences. Specialized in organic UI design, WebGL effects, and functional programming."
+            [ -- Bio section (more compact)
+              infoSection "BIO" "Developer passionate about creating unique digital experiences. Specialized in organic UI design, WebGL effects, and functional programming."
 
-            -- Experience section
-            , infoSection "EXPERIENCE" "5+ years crafting interactive web applications. From startups to agencies, building everything from data visualizations to immersive 3D experiences."
+            -- Experience section (more compact)
+            , infoSection "EXPERIENCE" "5+ years crafting interactive web applications. From startups to agencies, building data visualizations to immersive 3D experiences."
 
-            -- Philosophy section
-            , infoSection "PHILOSOPHY" "Code should be both functional and beautiful. Every interaction should feel natural and engaging, blending technology with human-centered design."
+            -- Philosophy section (more compact)
+            , infoSection "PHILOSOPHY" "Code should be both functional and beautiful. Every interaction should feel natural and engaging."
 
-            -- Current section
-            , infoSection "CURRENTLY" "Exploring the boundaries of web technology through experimental interfaces, shader programming, and reactive architectures."
+            -- Current section (more compact)
+            , infoSection "CURRENTLY" "Exploring web technology boundaries through experimental interfaces, shader programming, and reactive architectures."
             ]
 
         -- Goop CSS effects with close button styling
         , node "style"
             []
             [ text """
-                /* Tachyons gap utility */
+                /* Tachyons gap utilities */
                 .gap3 { gap: 1rem; }
+                .gap2 { gap: 0.5rem; }
 
                 /* Goop close button effects */
                 .goop-close-button {
@@ -271,36 +273,36 @@ view =
 goopInfoNode : String -> String -> String -> Html AboutMsg
 goopInfoNode title description nodeId =
     div
-        [ Attr.class "db pa3 ph4 tc goop-info-node"
-        , Attr.style "min-width" "120px"
+        [ Attr.class "db pa2 ph3 tc goop-info-node"
+        , Attr.style "min-width" "100px"
         , Attr.id nodeId
         , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
         ]
         [ -- Title
           h3
-            [ Attr.class "f7 mb2 tracked normal ttu"
+            [ Attr.class "f7 mb1 tracked normal ttu"
             , Attr.style "color" "rgba(192, 192, 192, 0.8)"
             ]
             [ text title ]
 
         -- Description
         , p
-            [ Attr.class "f6 ma0 fw5"
+            [ Attr.class "f7 ma0 fw5"
             , Attr.style "color" "rgba(192, 192, 192, 0.9)"
-            , Attr.style "line-height" "1.3"
+            , Attr.style "line-height" "1.2"
             ]
             [ text description ]
         ]
 
 
 
--- Information section with click blocking
+-- Information section with click blocking (more compact)
 
 
 infoSection : String -> String -> Html AboutMsg
 infoSection title content =
     div
-        [ Attr.class "mb4 pa4 info-section"
+        [ Attr.class "mb3 pa3 info-section"
         , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
         ]
         [ h3
