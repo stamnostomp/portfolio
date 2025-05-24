@@ -418,8 +418,8 @@ viewPageContent page model =
                 ]
 
         Contact ->
-            -- Use the new Contact page module
-            Pages.Contact.view
+            -- Use Html.map to handle the Contact page message conversion
+            Html.map (\_ -> Tick 0) Pages.Contact.view
 
 
 

@@ -2,15 +2,20 @@ module Pages.Contact exposing (view)
 
 import Html exposing (..)
 import Html.Attributes as Attr
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
 
 
 
 -- Compact goop-themed contact page with Tachyons CSS
+-- Define a message type for internal use
 
 
-view : Html msg
+type ContactMsg
+    = NoOp
+
+
+view : Html ContactMsg
 view =
     div
         [ Attr.class "flex flex-column items-center justify-center h-100 pa3 monospace bg-transparent relative"
@@ -64,12 +69,16 @@ view =
                 , goopFormField "EMAIL" "email" "your@email.com..." "field-2"
                 , goopTextArea "MESSAGE" "Your message..." "field-3"
 
-                -- Send button with proper event handling
-                , div [ Attr.class "tc mt3" ]
+                -- Send button with click event blocking
+                , div
+                    [ Attr.class "tc mt3"
+                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                    ]
                     [ button
                         [ Attr.class "bg-transparent pa3 ph4 f6 fw6 monospace tracked pointer relative overflow-hidden ttu transition-all transmit-button"
                         , Attr.style "color" "rgba(192, 192, 192, 0.9)"
                         , Attr.style "border" "2px solid rgba(192, 192, 192, 0.3)"
+                        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
                         ]
                         [ text "SEND" ]
                     ]
@@ -330,7 +339,7 @@ view =
 -- Contact node with Tachyons
 
 
-goopContactNode : String -> String -> String -> String -> Html msg
+goopContactNode : String -> String -> String -> String -> Html ContactMsg
 goopContactNode title value link nodeId =
     a
         [ Attr.href link
@@ -355,12 +364,15 @@ goopContactNode title value link nodeId =
 
 
 
--- Form field with Tachyons and proper event handling
+-- Form field with click event blocking
 
 
-goopFormField : String -> String -> String -> String -> Html msg
+goopFormField : String -> String -> String -> String -> Html ContactMsg
 goopFormField labelText inputType placeholder fieldId =
-    div [ Attr.class "mb3" ]
+    div
+        [ Attr.class "mb3"
+        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        ]
         [ label
             [ Attr.class "goop-label"
             , Attr.for fieldId
@@ -371,18 +383,23 @@ goopFormField labelText inputType placeholder fieldId =
             , Attr.placeholder placeholder
             , Attr.id fieldId
             , Attr.class "w-100 pa3 monospace f6 goop-field"
+            , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+            , stopPropagationOn "focus" (Decode.succeed ( NoOp, True ))
             ]
             []
         ]
 
 
 
--- Textarea with Tachyons and proper event handling
+-- Textarea with click event blocking
 
 
-goopTextArea : String -> String -> String -> Html msg
+goopTextArea : String -> String -> String -> Html ContactMsg
 goopTextArea labelText placeholder fieldId =
-    div [ Attr.class "mb3" ]
+    div
+        [ Attr.class "mb3"
+        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        ]
         [ label
             [ Attr.class "goop-label"
             , Attr.for fieldId
@@ -394,6 +411,8 @@ goopTextArea labelText placeholder fieldId =
             , Attr.rows 3
             , Attr.class "w-100 pa3 monospace f6 goop-field"
             , Attr.style "resize" "vertical"
+            , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+            , stopPropagationOn "focus" (Decode.succeed ( NoOp, True ))
             ]
             []
         ]
