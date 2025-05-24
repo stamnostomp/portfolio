@@ -36,8 +36,8 @@ view =
             -- Close button positioned in top-right with proper spacing
             , button
                 [ Attr.class "absolute bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
-                , Attr.style "top" "-8px"
-                , Attr.style "right" "0"
+                , Attr.style "top" "-32px"
+                , Attr.style "right" "-200px"
                 , Attr.style "min-width" "50px"
                 , Attr.style "height" "24px"
                 ]
