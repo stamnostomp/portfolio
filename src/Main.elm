@@ -14,6 +14,7 @@ import Model exposing (Model, Msg(..), TransitionState(..), init)
 import Navigation.GoopNav as GoopNav
 import Pages.About
 import Pages.Contact
+import Pages.Services
 import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
 import Types exposing (Page(..))
@@ -411,6 +412,10 @@ viewPageContent page model =
             -- Use Html.map to handle the Contact page message conversion
             Html.map (\_ -> Tick 0) Pages.Contact.view
 
+        Services ->
+            -- Use Html.map to handle the Services page message conversion
+            Html.map (\_ -> Tick 0) Pages.Services.view
+
 
 
 -- Info card helper
@@ -474,6 +479,9 @@ pageToString page =
 
         Contact ->
             "CONTACT"
+
+        Services ->
+            "SERVICES"
 
 
 transitionStateToString : TransitionState -> String

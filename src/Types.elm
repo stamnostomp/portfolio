@@ -11,3 +11,4 @@ type Page
     | Projects
     | About
     | Contact
+    | Services

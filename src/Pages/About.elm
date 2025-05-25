@@ -36,7 +36,7 @@ view =
             -- Close button positioned in top-right
             , button
                 [ Attr.class "absolute bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
-                , Attr.style "top" "15px"
+                , Attr.style "top" "-32px"
                 , Attr.style "right" "-200px"
                 , Attr.style "min-width" "50px"
                 , Attr.style "height" "24px"
@@ -49,7 +49,7 @@ view =
             [ Attr.class "flex gap2 mb3 flex-wrap justify-center"
             ]
             [ goopInfoNode "FRONTEND" "React, Elm, WebGL" "node-1"
-            , goopInfoNode "BACKEND" "Node.js, Elixir" "node-2"
+            , goopInfoNode "BACKEND" "Node.js, Elixir, Haskell" "node-2"
             , goopInfoNode "DESIGN" "UI/UX, Shaders" "node-3"
             ]
 
@@ -59,16 +59,16 @@ view =
             , Attr.style "max-height" "60vh"
             ]
             [ -- Bio section (more compact)
-              infoSection "BIO" "Developer passionate about creating unique digital experiences. Specialized in organic UI design, WebGL effects, and functional programming."
+              infoSection "BIO" " I LOVE EATING BUGS"
 
             -- Experience section (more compact)
-            , infoSection "EXPERIENCE" "5+ years crafting interactive web applications. From startups to agencies, building data visualizations to immersive 3D experiences."
+            , infoSection "EXPERIENCE" "I HAVE EAT 5 BUGS"
 
             -- Philosophy section (more compact)
-            , infoSection "PHILOSOPHY" "Code should be both functional and beautiful. Every interaction should feel natural and engaging."
+            , infoSection "PHILOSOPHY" "I THINK BUGS ARE COOL"
 
             -- Current section (more compact)
-            , infoSection "CURRENTLY" "Exploring web technology boundaries through experimental interfaces, shader programming, and reactive architectures."
+            , infoSection "CURRENTLY" "EATING 1 MORE BUG"
             ]
 
         -- Goop CSS effects with close button styling
