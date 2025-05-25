@@ -367,8 +367,8 @@ viewContentSquare model =
                 , Attr.style "height" (String.fromFloat squareHeight ++ "px")
 
                 -- Add border to visualize the content bounds (remove in production)
-                , Attr.style "border" "1px solid rgba(192, 192, 192, 0.3)"
-                , Attr.style "border-radius" "8px" -- Slight rounding to match organic feel
+                --, Attr.style "border" "1px solid rgba(192, 192, 192, 0.3)"
+                --, Attr.style "border-radius" "8px" -- Slight rounding to match organic feel
                 ]
                 [ -- Content container - full height for blog, with padding for others
                   if page == Blog then

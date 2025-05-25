@@ -7,7 +7,7 @@ import Json.Decode as Decode
 
 
 
--- Blog page with full-screen scrolling interface
+-- Blog page with full-screen scrolling interface - FIXED SCROLLING
 -- Define a message type for internal use
 
 
@@ -57,67 +57,79 @@ view =
                 [ text "✕ CLOSE" ]
             ]
 
-        -- Main scrollable content area taking up remaining space within container
+        -- FIXED: Main scrollable content area with explicit height
         , div
-            [ Attr.class "flex-1 relative custom-scroll-container"
-            , Attr.style "margin" "0.1rem"
+            [ Attr.class "w-100 relative custom-scroll-container"
+            , Attr.style "height" "calc(100vh - 60px)"
+            , Attr.style "max-height" "800px"
+            , Attr.style "margin" "0.25rem"
             ]
             [ -- Top fade overlay
               div
                 [ Attr.class "absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
                 []
 
-            -- Scrollable blog content
+            -- FIXED: Scrollable blog content with explicit height and hidden scrollbar
             , div
                 [ Attr.class "custom-scroll-content transmission-interface"
                 , Attr.style "height" "100%"
                 , Attr.style "overflow-y" "auto"
                 , Attr.style "overflow-x" "hidden"
-                , Attr.style "padding" "0.5rem"
-                , Attr.style "padding-right" "0.75rem"
-                , Attr.style "margin-right" "-0.1rem"
+                , Attr.style "padding" "1rem"
+                , Attr.style "padding-right" "2rem"
+                , Attr.style "margin-right" "-1rem"
                 ]
                 [ -- Blog posts with enhanced content (more compact)
                   blogPost
                     "THE ORGANIC WEB: BEYOND STATIC INTERFACES"
                     "2025.03.15"
-                    "Exploring how organic, fluid interfaces can create more intuitive user experiences. This goop navigation system represents a shift away from rigid menu structures toward something more natural and responsive to user interaction..."
+                    "Exploring how organic, fluid interfaces can create more intuitive user experiences. This goop navigation system represents a shift away from rigid menu structures toward something more natural and responsive to user interaction. By embracing fluid, organic forms, we can create interfaces that feel more alive and engaging."
                     [ "WebGL", "UI/UX", "Interactive Design" ]
                 , blogPost
                     "SHADER PROGRAMMING FOR CREATIVE CODING"
                     "2025.03.10"
-                    "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects. From basic color manipulation to complex procedural animations, shaders open up infinite possibilities for web-based art..."
+                    "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects. From basic color manipulation to complex procedural animations, shaders open up infinite possibilities for web-based art. Understanding the GPU pipeline is key to creating performant visual experiences."
                     [ "WebGL", "Shaders", "Creative Coding" ]
                 , blogPost
                     "FUNCTIONAL REACTIVE PROGRAMMING IN ELM"
                     "2025.03.05"
-                    "Why Elm's architecture makes complex state management feel effortless. Moving from imperative to functional thinking changes how we approach user interfaces and application state..."
+                    "Why Elm's architecture makes complex state management feel effortless. Moving from imperative to functional thinking changes how we approach user interfaces and application state. The Elm Architecture provides a robust foundation for building reliable, maintainable applications."
                     [ "Elm", "Functional Programming", "Architecture" ]
                 , blogPost
                     "THE AESTHETICS OF Y2K DESIGN REVIVAL"
                     "2025.02.28"
-                    "Analyzing the return of millennium bug era design principles in modern web interfaces. Chrome effects, organic shapes, and digital mysticism are making a comeback, but with modern technical capabilities..."
+                    "Analyzing the return of millennium bug era design principles in modern web interfaces. Chrome effects, organic shapes, and digital mysticism are making a comeback, but with modern technical capabilities. This revival represents a nostalgic longing for optimistic futurism."
                     [ "Design", "Y2K", "Aesthetics" ]
                 , blogPost
                     "BUILDING RESPONSIVE 3D INTERFACES"
                     "2025.02.20"
-                    "How to create WebGL interfaces that adapt to different screen sizes and input methods. From mobile touch to desktop precision, 3D interfaces need to be as responsive as their 2D counterparts..."
+                    "How to create WebGL interfaces that adapt to different screen sizes and input methods. From mobile touch to desktop precision, 3D interfaces need to be as responsive as their 2D counterparts. Performance considerations become critical when dealing with complex 3D scenes."
                     [ "WebGL", "Responsive Design", "3D" ]
                 , blogPost
                     "PERFORMANCE OPTIMIZATION FOR COMPLEX ANIMATIONS"
                     "2025.02.15"
-                    "Techniques for maintaining 60fps in browser-based animations. GPU acceleration, efficient rendering loops, and smart resource management for smooth interactive experiences..."
+                    "Techniques for maintaining 60fps in browser-based animations. GPU acceleration, efficient rendering loops, and smart resource management for smooth interactive experiences. Understanding browser rendering pipelines is essential for creating fluid animations."
                     [ "Performance", "Animation", "Optimization" ]
                 , blogPost
                     "THE PSYCHOLOGY OF ORGANIC NAVIGATION"
                     "2025.02.10"
-                    "How fluid, organic interfaces can reduce cognitive load and create more intuitive user experiences. Research into spatial navigation and visual hierarchy in non-linear interfaces..."
+                    "How fluid, organic interfaces can reduce cognitive load and create more intuitive user experiences. Research into spatial navigation and visual hierarchy in non-linear interfaces. Users naturally gravitate toward organic, flowing navigation patterns."
                     [ "UX Research", "Psychology", "Navigation" ]
                 , blogPost
                     "CREATIVE CODING WITH MATHEMATICAL BEAUTY"
                     "2025.02.05"
-                    "Exploring the intersection of mathematics and visual art in code. From fractals to fluid dynamics, how mathematical concepts can inspire beautiful, interactive experiences..."
+                    "Exploring the intersection of mathematics and visual art in code. From fractals to fluid dynamics, how mathematical concepts can inspire beautiful, interactive experiences. Mathematics provides the foundation for creating compelling generative art."
                     [ "Mathematics", "Creative Coding", "Generative Art" ]
+                , blogPost
+                    "ADVANCED WEBGL TECHNIQUES"
+                    "2025.01.30"
+                    "Deep dive into advanced WebGL programming techniques including custom shaders, texture manipulation, and performance optimization. Creating complex visual effects requires understanding both the artistic and technical aspects of real-time graphics programming."
+                    [ "WebGL", "Graphics Programming", "Advanced Techniques" ]
+                , blogPost
+                    "THE FUTURE OF WEB INTERFACES"
+                    "2025.01.25"
+                    "Predictions for how web interfaces will evolve over the next decade. Virtual reality, augmented reality, and spatial computing will reshape how we interact with digital content. The web is becoming increasingly immersive and three-dimensional."
+                    [ "Future Tech", "VR/AR", "Web Evolution" ]
                 ]
 
             -- Bottom fade overlay
@@ -126,7 +138,7 @@ view =
                 []
             ]
 
-        -- Enhanced CSS with contained space styling
+        -- FIXED: Enhanced CSS with visible scrollbar like Services page
         , node "style"
             []
             [ text """
@@ -134,46 +146,43 @@ view =
                 .gap2 { gap: 0.5rem; }
                 .gap1 { gap: 0.25rem; }
 
-                /* Custom scroll container - contained within rectangle */
+                /* FIXED: Custom scroll container - same as Services page */
                 .custom-scroll-container {
                     position: relative;
-                    border: 1px solid rgba(192, 192, 192, 0.08);
-                    background: rgba(0, 0, 0, 0.02);
-                    backdrop-filter: blur(1px);
-                    border-radius: 4px;
+                    border: 1px solid rgba(192, 192, 192, 0.1);
+                    background: rgba(0, 0, 0, 0.05);
+                    backdrop-filter: blur(2px);
                 }
 
-                /* Hide default scrollbar completely */
+                /* FIXED: Hide scrollbar completely like Services page */
                 .custom-scroll-content {
-                    scrollbar-width: none;
-                    -ms-overflow-style: none;
+                    scrollbar-width: none; /* Firefox */
+                    -ms-overflow-style: none; /* Internet Explorer 10+ */
                 }
 
                 .custom-scroll-content::-webkit-scrollbar {
-                    display: none;
+                    display: none; /* WebKit */
                 }
 
-                /* Enhanced fade overlays for contained space */
+                /* Enhanced fade overlays for better scroll indication */
                 .fade-overlay-top {
-                    height: 15px;
+                    height: 20px;
                     background: linear-gradient(to bottom,
                         rgba(0, 0, 0, 0.9) 0%,
                         rgba(0, 0, 0, 0.6) 40%,
                         rgba(0, 0, 0, 0.2) 70%,
                         transparent 100%);
                     z-index: 10;
-                    border-radius: 2px 2px 0 0;
                 }
 
                 .fade-overlay-bottom {
-                    height: 15px;
+                    height: 20px;
                     background: linear-gradient(to top,
                         rgba(0, 0, 0, 0.9) 0%,
                         rgba(0, 0, 0, 0.6) 40%,
                         rgba(0, 0, 0, 0.2) 70%,
                         transparent 100%);
                     z-index: 10;
-                    border-radius: 0 0 2px 2px;
                 }
 
                 /* Blog category nodes (smaller, inline) */
@@ -231,7 +240,7 @@ view =
                     text-shadow: 0 0 6px rgba(192, 192, 192, 0.3);
                 }
 
-                /* Blog post styling (more compact) */
+                /* Blog post styling (enhanced for better readability) */
                 .blog-post {
                     background: rgba(0, 0, 0, 0.08);
                     border: 1px solid rgba(192, 192, 192, 0.08);
@@ -262,53 +271,53 @@ view =
                     transform: translateY(-2px);
                 }
 
-                /* Blog post titles (even smaller) */
+                /* Blog post titles */
                 .blog-title {
                     color: rgba(255, 255, 255, 0.9) !important;
-                    font-size: 12px !important;
+                    font-size: 13px !important;
                     letter-spacing: 0.05em;
                     text-transform: uppercase;
-                    margin-bottom: 4px;
+                    margin-bottom: 6px;
                     display: block;
                     position: relative;
                     font-weight: 600;
-                    line-height: 1.2;
+                    line-height: 1.3;
                 }
 
                 .blog-title::after {
                     content: '';
                     position: absolute;
-                    bottom: -2px;
+                    bottom: -3px;
                     left: 0;
-                    width: 20px;
+                    width: 24px;
                     height: 1px;
                     background: linear-gradient(90deg,
                         rgba(192, 192, 192, 0.6) 0%,
                         transparent 100%);
                 }
 
-                /* Blog dates (even smaller) */
+                /* Blog dates */
                 .blog-date {
                     color: rgba(192, 192, 192, 0.6) !important;
-                    font-size: 8px !important;
+                    font-size: 9px !important;
                     letter-spacing: 0.1em;
                     text-transform: uppercase;
-                    margin-bottom: 6px;
+                    margin-bottom: 8px;
                     font-family: monospace;
                 }
 
-                /* Blog content (more compact) */
+                /* Blog content (better readability) */
                 .blog-content {
                     color: rgba(192, 192, 192, 0.85) !important;
-                    line-height: 1.4;
-                    margin-bottom: 8px;
-                    font-size: 11px;
+                    line-height: 1.5;
+                    margin-bottom: 10px;
+                    font-size: 12px;
                 }
 
-                /* Blog tags (even smaller) */
+                /* Blog tags */
                 .blog-tags {
                     display: flex;
-                    gap: 4px;
+                    gap: 6px;
                     flex-wrap: wrap;
                 }
 
@@ -316,11 +325,11 @@ view =
                     background: rgba(192, 192, 192, 0.08);
                     border: 1px solid rgba(192, 192, 192, 0.15);
                     color: rgba(192, 192, 192, 0.8);
-                    padding: 2px 4px;
-                    font-size: 8px;
+                    padding: 3px 6px;
+                    font-size: 9px;
                     text-transform: uppercase;
                     letter-spacing: 0.05em;
-                    border-radius: 1px;
+                    border-radius: 2px;
                     transition: all 0.3s ease;
                 }
 
@@ -330,7 +339,7 @@ view =
                     border-color: rgba(192, 192, 192, 0.3);
                 }
 
-                /* Goop close button effects (smaller) */
+                /* Goop close button effects */
                 .goop-close-button {
                     background: radial-gradient(ellipse at center,
                         rgba(192, 192, 192, 0.15) 0%,
@@ -439,6 +448,8 @@ view =
                 .blog-post:nth-child(6) { animation-delay: 0.35s; }
                 .blog-post:nth-child(7) { animation-delay: 0.4s; }
                 .blog-post:nth-child(8) { animation-delay: 0.45s; }
+                .blog-post:nth-child(9) { animation-delay: 0.5s; }
+                .blog-post:nth-child(10) { animation-delay: 0.55s; }
             """ ]
         ]
 
@@ -464,13 +475,13 @@ goopBlogCategoryNode title nodeId =
 
 
 
--- Blog post component with enhanced styling (very compact)
+-- Blog post component with enhanced styling
 
 
 blogPost : String -> String -> String -> List String -> Html BlogMsg
 blogPost title date content tags =
     article
-        [ Attr.class "mb2 pa2 blog-post"
+        [ Attr.class "mb3 pa3 blog-post"
         , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
         ]
         [ h2
@@ -480,7 +491,7 @@ blogPost title date content tags =
             [ Attr.class "blog-date" ]
             [ text date ]
         , p
-            [ Attr.class "blog-content f7 lh-copy mb1"
+            [ Attr.class "blog-content lh-copy mb2"
             ]
             [ text content ]
         , div
