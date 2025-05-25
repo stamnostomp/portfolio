@@ -7,7 +7,7 @@ import Json.Decode as Decode
 
 
 
--- Services page with multiple service areas - same compact format as About
+-- Services page with internal scrolling and fade effects
 -- Define a message type for internal use
 
 
@@ -18,12 +18,12 @@ type ServicesMsg
 view : Html ServicesMsg
 view =
     div
-        [ Attr.class "flex flex-column items-center justify-center h-100 pa2 monospace bg-transparent relative"
+        [ Attr.class "flex flex-column items-center justify-center h-100 pa3 monospace bg-transparent relative"
         ]
-        [ -- Goop-style title with close button (compact)
-          div [ Attr.class "relative mb3 w-100 mw6" ]
+        [ -- Fixed header with title and close button
+          div [ Attr.class "relative mb3 w-100 mw6 flex justify-between items-center" ]
             [ h1
-                [ Attr.class "f3 tc tracked goop-title"
+                [ Attr.class "f3 tracked goop-title ma0"
                 , Attr.style "color" "transparent"
                 , Attr.style "background" "linear-gradient(135deg, #c0c0c0, #606060, #404040)"
                 , Attr.style "-webkit-background-clip" "text"
@@ -33,54 +33,105 @@ view =
                 ]
                 [ text "SERVICES" ]
 
-            -- Close button positioned in top-right
+            -- Close button positioned to the right
             , button
-                [ Attr.class "absolute bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
-                , Attr.style "top" "-8px"
-                , Attr.style "right" "0"
-                , Attr.style "min-width" "50px"
-                , Attr.style "height" "24px"
+                [ Attr.class "bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
+                , Attr.style "min-width" "70px"
+                , Attr.style "height" "32px"
                 ]
                 [ text "✕ CLOSE" ]
             ]
 
-        -- Service category nodes (compact)
+        -- Service category nodes
         , div
-            [ Attr.class "flex gap2 mb3 flex-wrap justify-center"
+            [ Attr.class "flex gap2 mb3 flex-wrap justify-center mw6"
             ]
             [ goopServiceNode "DEVELOPMENT" "Full-Stack Apps" "node-1"
             , goopServiceNode "DESIGN" "UI/UX & WebGL" "node-2"
             , goopServiceNode "CONSULTATION" "Architecture & Code Review" "node-3"
             ]
 
-        -- Compact service areas with scroll
+        -- Scrollable content container with custom scroll and fade effects
         , div
-            [ Attr.class "w-100 mw6 relative transmission-interface overflow-auto"
-            , Attr.style "max-height" "60vh"
+            [ Attr.class "w-100 mw6 relative custom-scroll-container"
+            , Attr.style "height" "50vh"
+            , Attr.style "max-height" "400px"
             ]
-            [ -- Web Development service
-              serviceSection "WEB DEVELOPMENT" "Custom web applications built with modern frameworks. From interactive dashboards to immersive 3D experiences using WebGL and cutting-edge technologies."
+            [ -- Top fade overlay
+              div
+                [ Attr.class "absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
+                []
 
-            -- UI/UX Design service
-            , serviceSection "UI/UX DESIGN" "User-centered design focused on organic interactions. Creating interfaces that feel natural and engaging while maintaining technical excellence."
+            -- Scrollable content
+            , div
+                [ Attr.class "custom-scroll-content transmission-interface"
+                , Attr.style "height" "100%"
+                , Attr.style "overflow-y" "auto"
+                , Attr.style "overflow-x" "hidden"
+                , Attr.style "padding-right" "20px"
+                , Attr.style "margin-right" "-20px"
+                ]
+                [ -- Service sections
+                  serviceSection "WEB DEVELOPMENT" "Custom web applications built with modern frameworks. From interactive dashboards to immersive 3D experiences using WebGL and cutting-edge technologies."
+                , serviceSection "UI/UX DESIGN" "User-centered design focused on organic interactions. Creating interfaces that feel natural and engaging while maintaining technical excellence."
+                , serviceSection "WEBGL & SHADERS" "Custom shader programming and 3D web experiences. Bringing your ideas to life with real-time graphics and interactive visualizations."
+                , serviceSection "CONSULTATION" "Code architecture reviews, performance optimization, and technical strategy. Helping teams build scalable, maintainable applications."
+                , serviceSection "PROCESS" "Collaborative development approach. From initial concept to deployment, ensuring clear communication and iterative feedback throughout the project lifecycle."
+                , serviceSection "PERFORMANCE OPTIMIZATION" "Analysis and enhancement of existing applications. Identifying bottlenecks and implementing solutions for improved speed and efficiency."
+                , serviceSection "CODE REVIEW & REFACTORING" "Expert evaluation of codebases with detailed recommendations. Modernizing legacy systems while maintaining functionality and reliability."
+                , serviceSection "TECHNICAL ARCHITECTURE" "Designing scalable system architectures that grow with your business. Planning for maintainability, security, and future expansion needs."
+                ]
 
-            -- WebGL & Shaders service
-            , serviceSection "WEBGL & SHADERS" "Custom shader programming and 3D web experiences. Bringing your ideas to life with real-time graphics and interactive visualizations."
-
-            -- Technical Consultation service
-            , serviceSection "CONSULTATION" "Code architecture reviews, performance optimization, and technical strategy. Helping teams build scalable, maintainable applications."
-
-            -- Process section
-            , serviceSection "PROCESS" "Collaborative development approach. From initial concept to deployment, ensuring clear communication and iterative feedback throughout the project lifecycle."
+            -- Bottom fade overlay
+            , div
+                [ Attr.class "absolute bottom-0 left-0 right-0 z-2 pointer-events-none fade-overlay-bottom" ]
+                []
             ]
 
-        -- Goop CSS effects with close button styling
+        -- Enhanced CSS with custom scroll and fade effects
         , node "style"
             []
             [ text """
                 /* Tachyons gap utilities */
                 .gap3 { gap: 1rem; }
                 .gap2 { gap: 0.5rem; }
+
+                /* Custom scroll container */
+                .custom-scroll-container {
+                    position: relative;
+                    border: 1px solid rgba(192, 192, 192, 0.1);
+                    background: rgba(0, 0, 0, 0.05);
+                    backdrop-filter: blur(2px);
+                }
+
+                /* Hide default scrollbar completely */
+                .custom-scroll-content {
+                    scrollbar-width: none; /* Firefox */
+                    -ms-overflow-style: none; /* Internet Explorer 10+ */
+                }
+
+                .custom-scroll-content::-webkit-scrollbar {
+                    display: none; /* WebKit */
+                }
+
+                /* Fade overlays */
+                .fade-overlay-top {
+                    height: 30px;
+                    background: linear-gradient(to bottom,
+                        rgba(0, 0, 0, 0.8) 0%,
+                        rgba(0, 0, 0, 0.4) 50%,
+                        transparent 100%);
+                    z-index: 10;
+                }
+
+                .fade-overlay-bottom {
+                    height: 30px;
+                    background: linear-gradient(to top,
+                        rgba(0, 0, 0, 0.8) 0%,
+                        rgba(0, 0, 0, 0.4) 50%,
+                        transparent 100%);
+                    z-index: 10;
+                }
 
                 /* Goop close button effects */
                 .goop-close-button {
@@ -161,7 +212,7 @@ view =
                     }
                 }
 
-                /* Service nodes (similar to info nodes) */
+                /* Service nodes */
                 .goop-service-node {
                     background: radial-gradient(ellipse at center,
                         rgba(192, 192, 192, 0.15) 0%,
@@ -221,18 +272,32 @@ view =
                     text-shadow: 0 0 8px rgba(192, 192, 192, 0.4);
                 }
 
-                /* Service sections */
+                /* Service sections with scroll fade effects */
                 .service-section {
                     background: rgba(0, 0, 0, 0.1);
                     border: 1px solid rgba(192, 192, 192, 0.1);
                     backdrop-filter: blur(2px);
                     transition: all 0.3s ease;
+                    opacity: 0.8;
+                    animation: section-fade-in 0.6s ease-out forwards;
+                }
+
+                @keyframes section-fade-in {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
                 }
 
                 .service-section:hover {
                     background: rgba(0, 0, 0, 0.15);
                     border-color: rgba(192, 192, 192, 0.2);
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                    opacity: 1;
                 }
 
                 /* Section titles */
@@ -256,7 +321,7 @@ view =
                     background: rgba(192, 192, 192, 0.4);
                 }
 
-                /* Breathing animation */
+                /* Breathing animation for interface */
                 .transmission-interface {
                     animation: interface-breathe 6s ease-in-out infinite;
                 }
@@ -265,6 +330,21 @@ view =
                     0%, 100% { opacity: 0.95; }
                     50% { opacity: 1; }
                 }
+
+                /* Smooth scroll behavior */
+                .custom-scroll-content {
+                    scroll-behavior: smooth;
+                }
+
+                /* Content staggered fade-in animation */
+                .service-section:nth-child(1) { animation-delay: 0.1s; }
+                .service-section:nth-child(2) { animation-delay: 0.2s; }
+                .service-section:nth-child(3) { animation-delay: 0.3s; }
+                .service-section:nth-child(4) { animation-delay: 0.4s; }
+                .service-section:nth-child(5) { animation-delay: 0.5s; }
+                .service-section:nth-child(6) { animation-delay: 0.6s; }
+                .service-section:nth-child(7) { animation-delay: 0.7s; }
+                .service-section:nth-child(8) { animation-delay: 0.8s; }
             """ ]
         ]
 
@@ -299,7 +379,7 @@ goopServiceNode title description nodeId =
 
 
 
--- Service section with click blocking (compact)
+-- Service section with click blocking and fade effects
 
 
 serviceSection : String -> String -> Html ServicesMsg
