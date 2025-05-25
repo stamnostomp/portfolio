@@ -1,4 +1,4 @@
--- src/Types.elm - Shared types to avoid import cycles
+-- src/Types.elm - Shared types to avoid import cycles with Blog page added
 
 
 module Types exposing (Page(..))
@@ -12,3 +12,4 @@ type Page
     | About
     | Contact
     | Services
+    | Blog

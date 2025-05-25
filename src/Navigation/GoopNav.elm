@@ -1,4 +1,4 @@
--- src/Navigation/GoopNav.elm - Enhanced version with floating center support
+-- src/Navigation/GoopNav.elm - Enhanced version with Blog branch
 
 
 module Navigation.GoopNav exposing
@@ -29,7 +29,7 @@ type NavBranch
     = BranchAbout -- 0
     | BranchProjects -- 1
     | BranchPortfolio -- 2
-    | BranchBlog -- 3
+    | BranchBlog -- 3 (Updated to be actual blog instead of placeholder)
     | BranchContact -- 4
     | BranchGallery -- 5
     | BranchServices -- 6
@@ -159,14 +159,14 @@ getBranchPositions baseCenter time =
         var8 =
             0.024 * sin (time * 0.33 + 0.9)
     in
-    [ Vec2.vec2 centerX (centerY - 0.25 + var1) -- Top
-    , Vec2.vec2 (centerX + 0.18 + var2) (centerY - 0.16 + var2 * 0.4) -- Top Right
-    , Vec2.vec2 (centerX + 0.28 + var3) centerY -- Right
-    , Vec2.vec2 (centerX + 0.18 + var4) (centerY + 0.25 + var4 * 0.5) -- Bottom Right
-    , Vec2.vec2 centerX (centerY + 0.28 + var5) -- Bottom
-    , Vec2.vec2 (centerX - 0.18 - var6) (centerY + 0.25 + var6 * 0.4) -- Bottom Left
-    , Vec2.vec2 (centerX - 0.28 - var7) centerY -- Left
-    , Vec2.vec2 (centerX - 0.18 - var8) (centerY - 0.16 + var8 * 0.3) -- Top Left
+    [ Vec2.vec2 centerX (centerY - 0.25 + var1) -- Top (About)
+    , Vec2.vec2 (centerX + 0.18 + var2) (centerY - 0.16 + var2 * 0.4) -- Top Right (Projects)
+    , Vec2.vec2 (centerX + 0.28 + var3) centerY -- Right (Portfolio)
+    , Vec2.vec2 (centerX + 0.18 + var4) (centerY + 0.25 + var4 * 0.5) -- Bottom Right (Blog)
+    , Vec2.vec2 centerX (centerY + 0.28 + var5) -- Bottom (Contact)
+    , Vec2.vec2 (centerX - 0.18 - var6) (centerY + 0.25 + var6 * 0.4) -- Bottom Left (Gallery)
+    , Vec2.vec2 (centerX - 0.28 - var7) centerY -- Left (Services)
+    , Vec2.vec2 (centerX - 0.18 - var8) (centerY - 0.16 + var8 * 0.3) -- Top Left (News)
     ]
 
 
@@ -313,7 +313,7 @@ getBranchPage branch =
             Projects
 
         BranchBlog ->
-            Home
+            Blog
 
         BranchContact ->
             Contact

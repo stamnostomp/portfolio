@@ -1,4 +1,4 @@
--- src/Main.elm - Updated with Tachyons CSS and complete goop styling
+-- src/Main.elm - Updated with Blog page support and Tachyons CSS
 
 
 module Main exposing (main)
@@ -13,6 +13,7 @@ import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), TransitionState(..), init)
 import Navigation.GoopNav as GoopNav
 import Pages.About
+import Pages.Blog
 import Pages.Contact
 import Pages.Services
 import Shaders.GoopBall
@@ -346,15 +347,20 @@ viewContentSquare model =
                     centerY - squareHeight / 2
             in
             div
-                [ Attr.class "fixed z-3 overflow-auto monospace white"
+                [ Attr.class "fixed z-3 overflow-hidden monospace white"
                 , Attr.style "left" (String.fromFloat leftPos ++ "px")
                 , Attr.style "top" (String.fromFloat topPos ++ "px")
                 , Attr.style "width" (String.fromFloat squareWidth ++ "px")
                 , Attr.style "height" (String.fromFloat squareHeight ++ "px")
                 ]
-                [ -- Content without close button (now handled in Contact page)
-                  div [ Attr.class "pa4 h-100 overflow-auto" ]
-                    [ viewPageContent page model ]
+                [ -- Content container - full height for blog, with padding for others
+                  if page == Blog then
+                    div [ Attr.class "h-100 w-100" ]
+                        [ viewPageContent page model ]
+
+                  else
+                    div [ Attr.class "pa4 h-100 overflow-auto" ]
+                        [ viewPageContent page model ]
                 ]
 
         TransitioningOut progress page ->
@@ -415,6 +421,10 @@ viewPageContent page model =
         Services ->
             -- Use Html.map to handle the Services page message conversion
             Html.map (\_ -> Tick 0) Pages.Services.view
+
+        Blog ->
+            -- Use Html.map to handle the Blog page message conversion
+            Html.map (\_ -> Tick 0) Pages.Blog.view
 
 
 
@@ -482,6 +492,9 @@ pageToString page =
 
         Services ->
             "SERVICES"
+
+        Blog ->
+            "BLOG"
 
 
 transitionStateToString : TransitionState -> String
