@@ -322,7 +322,7 @@ getBranchPage branch =
             Projects
 
         BranchServices ->
-            About
+            Services
 
         BranchNews ->
             Home
