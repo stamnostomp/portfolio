@@ -330,16 +330,29 @@ viewContentSquare model =
                 centerY =
                     Vec2.getY model.resolution / 2
 
-                squareSize =
-                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.75
+                -- Match the shader's organic rectangle size more closely
+                -- The shader uses vec2(0.7, 0.5) for the rectangle size
+                baseWidth =
+                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.6
 
-                -- Make it more rectangular to match the shader
+                -- Reduced from 0.75
+                baseHeight =
+                    baseWidth * 0.71
+
+                -- Matches shader ratio (0.5/0.7 ≈ 0.71)
+                -- Apply aspect ratio correction similar to shader
+                aspectRatio =
+                    Vec2.getX model.resolution / Vec2.getY model.resolution
+
+                -- Final dimensions that match the shader's organic rectangle
                 squareWidth =
-                    squareSize * 1.2
+                    baseWidth * 1.0
 
+                -- Reduced multiplier
                 squareHeight =
-                    squareSize * 0.85
+                    baseHeight * 1.0
 
+                -- Reduced multiplier
                 leftPos =
                     centerX - squareWidth / 2
 
@@ -352,6 +365,10 @@ viewContentSquare model =
                 , Attr.style "top" (String.fromFloat topPos ++ "px")
                 , Attr.style "width" (String.fromFloat squareWidth ++ "px")
                 , Attr.style "height" (String.fromFloat squareHeight ++ "px")
+
+                -- Add border to visualize the content bounds (remove in production)
+                -- , Attr.style "border" "1px solid rgba(192, 192, 192, 0.3)"
+                -- , Attr.style "border-radius" "8px" -- Slight rounding to match organic feel
                 ]
                 [ -- Content container - full height for blog, with padding for others
                   if page == Blog then
@@ -359,7 +376,8 @@ viewContentSquare model =
                         [ viewPageContent page model ]
 
                   else
-                    div [ Attr.class "pa4 h-100 overflow-auto" ]
+                    div [ Attr.class "pa3 h-100 overflow-auto" ]
+                        -- Reduced padding from pa4 to pa3
                         [ viewPageContent page model ]
                 ]
 
