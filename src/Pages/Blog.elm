@@ -23,14 +23,16 @@ view =
         [ -- Compact header bar
           div
             [ Attr.class "flex justify-between items-center pa1 ph2"
-            , Attr.style "background" "rgba(0, 0, 0, 0.3)"
+            , Attr.style "background" "rgba(0, 0, 0, 0.2)"
             , Attr.style "backdrop-filter" "blur(4px)"
             , Attr.style "border-bottom" "1px solid rgba(192, 192, 192, 0.1)"
+            , Attr.style "margin" "1.5rem 3rem 0.5rem 3rem"
+            , Attr.style "max-width" "90%"
             ]
             [ -- Left side: Title and blog navigation
               div [ Attr.class "flex items-center gap1" ]
                 [ h1
-                    [ Attr.class "f5 tracked goop-title ma0 mr2"
+                    [ Attr.class "f6 tracked goop-title ma0 mr2"
                     , Attr.style "color" "transparent"
                     , Attr.style "background" "linear-gradient(135deg, #c0c0c0, #606060, #404040)"
                     , Attr.style "-webkit-background-clip" "text"
@@ -60,9 +62,10 @@ view =
         -- FIXED: Main scrollable content area with explicit height
         , div
             [ Attr.class "w-100 relative custom-scroll-container"
-            , Attr.style "height" "calc(100vh - 60px)"
-            , Attr.style "max-height" "800px"
-            , Attr.style "margin" "0.25rem"
+            , Attr.style "height" "calc(100vh - 140px)"
+            , Attr.style "max-height" "620px"
+            , Attr.style "margin" "0 3rem 0.5rem 3rem"
+            , Attr.style "max-width" "90%"
             ]
             [ -- Top fade overlay
               div

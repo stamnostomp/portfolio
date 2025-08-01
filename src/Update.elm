@@ -349,6 +349,13 @@ update msg model =
         SetOrganicVariation variation ->
             ( { model | organicVariation = Basics.max 0.0 (Basics.min 0.5 variation) }, Cmd.none )
 
+        ContentBoundsChanged width height ->
+            let
+                newContentBounds =
+                    Vec2.vec2 (toFloat width) (toFloat height)
+            in
+            ( { model | contentBounds = newContentBounds }, Cmd.none )
+
 
 
 -- Enhanced helper function to update transition state with organic easing

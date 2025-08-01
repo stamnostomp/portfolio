@@ -11,11 +11,13 @@ import Html.Events exposing (..)
 import Json.Decode as Decode
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), TransitionState(..), init)
+import Ports
 import Navigation.GoopNav as GoopNav
 import Pages.About
 import Pages.Blog
 import Pages.Contact
 import Pages.Portfolio
+import Pages.Projects
 import Pages.Services
 import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
@@ -214,7 +216,13 @@ viewGoopNavigation model =
                 { time = model.time
                 , resolution = model.resolution
                 , mousePosition = model.mousePosition
-                , hoveredBranch = GoopNav.getHoveredBranch model.goopNavState
+                , hoveredBranch = 
+                    case GoopNav.getHoveredBranch model.goopNavState of
+                        Just branch ->
+                            toFloat (GoopNav.branchToIndex branch)
+                        
+                        Nothing ->
+                            -1.0
                 , centerPosition = model.goopNavState.centerPosition
                 , transitionProgress = transitionProgress
                 , transitionType = transitionType
@@ -372,8 +380,8 @@ viewContentSquare model =
                 --, Attr.style "border-radius" "8px" -- Slight rounding to match organic feel
                 ]
                 [ -- Content container - full height for blog/portfolio, with padding for others
-                  if page == Blog || page == Portfolio then
-                    div [ Attr.class "h-100 w-100" ]
+                  if page == Blog || page == Portfolio || page == Projects then
+                    div [ Attr.class "h-100 w-100 pa2" ]
                         [ viewPageContent page model ]
 
                   else
@@ -417,18 +425,7 @@ viewPageContent page model =
                 ]
 
         Projects ->
-            div []
-                [ h1 [ Attr.class "f2 mb4" ]
-                    [ text "PROJECTS" ]
-                , p [ Attr.class "f5 lh-copy mb4" ]
-                    [ text "Technical deep-dives into development processes, challenges, and solutions." ]
-                , div [ Attr.class "pa4 project-section" ]
-                    [ h3 [ Attr.class "mb3" ]
-                        [ text "Goop Navigation Development" ]
-                    , p []
-                        [ text "This organic WebGL interface represents months of shader programming, mathematical modeling, and interaction design. Built with Elm's functional architecture for reliability and WebGL for performance." ]
-                    ]
-                ]
+            Html.map (\_ -> Tick 0) Pages.Projects.view
 
         Portfolio ->
             -- Use Html.map to handle the Portfolio page message conversion
@@ -559,6 +556,7 @@ subscriptions model =
                 (Decode.field "clientY" Decode.float)
             )
         , Browser.Events.onKeyPress keyDecoder
+        , Ports.contentBoundsChanged (\bounds -> ContentBoundsChanged bounds.width bounds.height)
         ]
 
 

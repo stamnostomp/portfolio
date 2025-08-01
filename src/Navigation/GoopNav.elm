@@ -5,7 +5,6 @@ module Navigation.GoopNav exposing
     ( GoopNavState
     , NavBranch(..)
     , branchToIndex
-    , detectHoveredBranch
     , detectHoveredBranchWithTime
     , getBranchLabel
     , getBranchPage
@@ -13,7 +12,6 @@ module Navigation.GoopNav exposing
     , getFloatingCenter
     , getHoveredBranch
     , initGoopNav
-    , isPointInBranch
     , updateGoopNav
     )
 
@@ -34,6 +32,107 @@ type NavBranch
     | BranchGallery -- 5
     | BranchServices -- 6
     | BranchNews -- 7
+
+
+-- Convert NavBranch to Page
+
+
+getBranchPage : NavBranch -> Page
+getBranchPage branch =
+    case branch of
+        BranchAbout ->
+            About
+
+        BranchProjects ->
+            Projects
+
+        BranchPortfolio ->
+            Portfolio
+
+        BranchBlog ->
+            Blog
+
+        BranchContact ->
+            Contact
+
+        BranchGallery ->
+            Home
+
+        BranchServices ->
+            Services
+
+        BranchNews ->
+            Home
+
+
+-- Convert NavBranch to index
+
+
+branchToIndex : NavBranch -> Int
+branchToIndex branch =
+    case branch of
+        BranchAbout ->
+            0
+
+        BranchProjects ->
+            1
+
+        BranchPortfolio ->
+            2
+
+        BranchBlog ->
+            3
+
+        BranchContact ->
+            4
+
+        BranchGallery ->
+            5
+
+        BranchServices ->
+            6
+
+        BranchNews ->
+            7
+
+
+-- Get branch label string
+
+
+getBranchLabel : NavBranch -> String
+getBranchLabel branch =
+    case branch of
+        BranchAbout ->
+            "About"
+
+        BranchProjects ->
+            "Projects"
+
+        BranchPortfolio ->
+            "Portfolio"
+
+        BranchBlog ->
+            "Blog"
+
+        BranchContact ->
+            "Contact"
+
+        BranchGallery ->
+            "Gallery"
+
+        BranchServices ->
+            "Services"
+
+        BranchNews ->
+            "News"
+
+
+-- Get the currently hovered branch from state
+
+
+getHoveredBranch : GoopNavState -> Maybe NavBranch
+getHoveredBranch state =
+    state.hoveredBranch
 
 
 

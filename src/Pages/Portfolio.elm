@@ -23,15 +23,17 @@ view =
         ]
         [ -- Header with title and filter nodes
           div
-            [ Attr.class "flex justify-between items-center pa2 ph3"
+            [ Attr.class "flex justify-between items-center pa1 ph2"
             , Attr.style "background" "rgba(0, 0, 0, 0.2)"
             , Attr.style "backdrop-filter" "blur(4px)"
             , Attr.style "border-bottom" "1px solid rgba(192, 192, 192, 0.1)"
+            , Attr.style "margin" "1.5rem 3rem 0.5rem 3rem"
+            , Attr.style "max-width" "90%"
             ]
             [ -- Left side: Title and filter nodes
               div [ Attr.class "flex items-center gap2" ]
                 [ h1
-                    [ Attr.class "f4 tracked goop-title ma0 mr3"
+                    [ Attr.class "f6 tracked goop-title ma0 mr2"
                     , Attr.style "color" "transparent"
                     , Attr.style "background" "linear-gradient(135deg, #c0c0c0, #606060, #404040)"
                     , Attr.style "-webkit-background-clip" "text"
@@ -62,9 +64,10 @@ view =
         -- Main portfolio grid with scroll
         , div
             [ Attr.class "w-100 relative custom-scroll-container"
-            , Attr.style "height" "calc(100vh - 70px)"
-            , Attr.style "max-height" "800px"
-            , Attr.style "margin" "0.5rem"
+            , Attr.style "height" "calc(100vh - 140px)"
+            , Attr.style "max-height" "620px"
+            , Attr.style "margin" "0 3rem 0.5rem 3rem"
+            , Attr.style "max-width" "90%"
             ]
             [ -- Top fade overlay
               div
@@ -91,21 +94,21 @@ view =
                         "2025"
                         "webgl"
                         [ "WebGL", "Elm", "Shaders", "UI/UX" ]
-                        "🌊"
+                        ""
                     , portfolioItem
                         "Y2K RETRO DASHBOARD"
                         "Interactive dashboard with chrome effects and animated graphs"
                         "2025"
                         "ui"
                         [ "React", "D3.js", "CSS3", "Design" ]
-                        "📊"
+                        ""
                     , portfolioItem
                         "FLUID PARTICLE SYSTEM"
                         "Real-time particle physics simulation with WebGL compute shaders"
                         "2024"
                         "webgl"
                         [ "WebGL", "Physics", "Shaders" ]
-                        "⚡"
+                        ""
 
                     -- Row 2
                     , portfolioItem
@@ -114,21 +117,21 @@ view =
                         "2024"
                         "webgl"
                         [ "Three.js", "WebGL", "Generative" ]
-                        "🔮"
+                        ""
                     , portfolioItem
                         "CYBERPUNK CHAT APP"
                         "Real-time messaging with terminal-style interface design"
                         "2024"
                         "apps"
                         [ "Node.js", "Socket.io", "UI/UX" ]
-                        "💬"
+                        ""
                     , portfolioItem
                         "HOLOGRAPHIC MENU SYSTEM"
                         "3D holographic navigation with gesture controls and haptic feedback"
                         "2024"
                         "ui"
                         [ "Three.js", "WebXR", "Gestures" ]
-                        "👁️"
+                        ""
 
                     -- Row 3
                     , portfolioItem
@@ -137,21 +140,21 @@ view =
                         "2023"
                         "ui"
                         [ "D3.js", "Canvas", "Animations" ]
-                        "📈"
+                        ""
                     , portfolioItem
                         "REACTIVE AUDIO VISUALIZER"
                         "Real-time audio analysis with WebGL reactive visuals"
                         "2023"
                         "webgl"
                         [ "Web Audio", "WebGL", "FFT" ]
-                        "🎵"
+                        ""
                     , portfolioItem
                         "CHROME INTERFACE TOOLKIT"
                         "Complete UI component library with metallic Y2K styling"
                         "2023"
                         "ui"
                         [ "React", "Styled Components", "Design System" ]
-                        "🔧"
+                        ""
                     ]
                 ]
 
@@ -168,13 +171,13 @@ view =
                 /* Portfolio grid layout */
                 .portfolio-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                    gap: 1.5rem;
-                    padding-bottom: 2rem;
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 1rem;
+                    padding-bottom: 1rem;
                 }
 
                 /* Responsive adjustments */
-                @media (max-width: 900px) {
+                @media (max-width: 800px) {
                     .portfolio-grid {
                         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                         gap: 1rem;
@@ -232,9 +235,9 @@ view =
                         transparent 0deg,
                         rgba(192, 192, 192, 0.1) 45deg,
                         transparent 90deg,
-                        rgba(0, 255, 255, 0.05) 135deg,
+                        rgba(192, 192, 192, 0.05) 135deg,
                         transparent 180deg,
-                        rgba(255, 0, 255, 0.05) 225deg,
+                        rgba(192, 192, 192, 0.05) 225deg,
                         transparent 270deg,
                         rgba(192, 192, 192, 0.1) 315deg,
                         transparent 360deg
@@ -364,12 +367,12 @@ view =
 
                 .goop-filter-node.active {
                     background: radial-gradient(ellipse at center,
-                        rgba(0, 255, 255, 0.15) 0%,
+                        rgba(192, 192, 192, 0.15) 0%,
                         rgba(64, 64, 64, 0.1) 50%,
                         rgba(0, 0, 0, 0.05) 100%);
-                    border-color: rgba(0, 255, 255, 0.4);
-                    color: rgba(0, 255, 255, 0.9) !important;
-                    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+                    border-color: rgba(192, 192, 192, 0.4);
+                    color: rgba(192, 192, 192, 0.9) !important;
+                    box-shadow: 0 0 15px rgba(192, 192, 192, 0.2);
                 }
 
                 .goop-filter-node:hover {
@@ -509,7 +512,7 @@ goopFilterNode title nodeId isActive =
             [ Attr.class "f8 tracked ttu"
             , Attr.style "color"
                 (if isActive then
-                    "rgba(0, 255, 255, 0.9)"
+                    "rgba(192, 192, 192, 0.9)"
 
                  else
                     "rgba(192, 192, 192, 0.8)"

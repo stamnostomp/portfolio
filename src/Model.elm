@@ -38,6 +38,7 @@ type alias Model =
     , mouseX : Float
     , mouseY : Float
     , resolution : Vec2.Vec2
+    , contentBounds : Vec2.Vec2 -- Actual content dimensions
     , mousePosition : Vec2.Vec2
 
     -- Goop navigation state
@@ -76,6 +77,8 @@ type Msg
       -- New organic transition controls
     | SetTransitionSpeed Float
     | SetOrganicVariation Float
+      -- Content bounds detection
+    | ContentBoundsChanged Int Int
 
 
 
@@ -96,6 +99,7 @@ init flags =
       , mouseX = toFloat flags.width / 2 -- Center mouse initially
       , mouseY = toFloat flags.height / 2
       , resolution = resolution
+      , contentBounds = resolution -- Start with window size, will be updated dynamically
       , mousePosition = Vec2.vec2 (toFloat flags.width / 2) (toFloat flags.height / 2)
 
       -- Initialize goop navigation
