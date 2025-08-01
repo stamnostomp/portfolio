@@ -165,6 +165,12 @@
                             elm make src/Main.elm --output=elm.js
                             elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js
                         }
+
+                        # Export functions to be available in the shell
+                        export -f test-networking
+                        export -f setup-elm
+                        export -f manual-elm
+                        export -f start-dev
           '';
         };
       }

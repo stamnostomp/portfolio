@@ -1,4 +1,4 @@
--- src/Navigation/GoopNav.elm - Enhanced version with Blog branch
+-- src/Navigation/GoopNav.elm - Updated to include Portfolio page
 
 
 module Navigation.GoopNav exposing
@@ -29,7 +29,7 @@ type NavBranch
     = BranchAbout -- 0
     | BranchProjects -- 1
     | BranchPortfolio -- 2
-    | BranchBlog -- 3 (Updated to be actual blog instead of placeholder)
+    | BranchBlog -- 3
     | BranchContact -- 4
     | BranchGallery -- 5
     | BranchServices -- 6
@@ -211,150 +211,3 @@ detectHoveredBranchWithTime mousePos floatingCenter time =
                     Nothing
     in
     findHoveredBranch branchPositions branches
-
-
-
--- Detect which branch is being hovered - NOW USING FLOATING CENTER
-
-
-detectHoveredBranch : Vec2.Vec2 -> Vec2.Vec2 -> Maybe NavBranch
-detectHoveredBranch mousePos center =
-    -- Fallback function that uses time = 0.0 for compatibility
-    detectHoveredBranchWithTime mousePos center 0.0
-
-
-
--- Check if a point is within a branch's hit area - NOW WITH FLOATING CENTER
-
-
-isPointInBranch : Vec2.Vec2 -> NavBranch -> Vec2.Vec2 -> Float -> Bool
-isPointInBranch point branch baseCenter time =
-    let
-        branchPositions =
-            getBranchPositions baseCenter time
-
-        branchIndex =
-            branchToIndex branch
-
-        -- Get floating center for fallback
-        floatingCenter =
-            getFloatingCenter baseCenter time
-
-        branchPos =
-            branchPositions
-                |> List.drop branchIndex
-                |> List.head
-                |> Maybe.withDefault floatingCenter
-    in
-    Vec2.distance point branchPos < 0.15
-
-
-
--- Increased for more forgiving interaction
--- Get the hovered branch as a float for the shader
-
-
-getHoveredBranch : GoopNavState -> Float
-getHoveredBranch state =
-    case state.hoveredBranch of
-        Nothing ->
-            -1.0
-
-        Just branch ->
-            toFloat (branchToIndex branch)
-
-
-
--- Convert branch to index
-
-
-branchToIndex : NavBranch -> Int
-branchToIndex branch =
-    case branch of
-        BranchAbout ->
-            0
-
-        BranchProjects ->
-            1
-
-        BranchPortfolio ->
-            2
-
-        BranchBlog ->
-            3
-
-        BranchContact ->
-            4
-
-        BranchGallery ->
-            5
-
-        BranchServices ->
-            6
-
-        BranchNews ->
-            7
-
-
-
--- Get the page associated with a branch
-
-
-getBranchPage : NavBranch -> Page
-getBranchPage branch =
-    case branch of
-        BranchAbout ->
-            About
-
-        BranchProjects ->
-            Projects
-
-        BranchPortfolio ->
-            Projects
-
-        BranchBlog ->
-            Blog
-
-        BranchContact ->
-            Contact
-
-        BranchGallery ->
-            Projects
-
-        BranchServices ->
-            Services
-
-        BranchNews ->
-            Home
-
-
-
--- Get branch label for UI
-
-
-getBranchLabel : NavBranch -> String
-getBranchLabel branch =
-    case branch of
-        BranchAbout ->
-            "ABOUT"
-
-        BranchProjects ->
-            "PROJECTS"
-
-        BranchPortfolio ->
-            "PORTFOLIO"
-
-        BranchBlog ->
-            "BLOG"
-
-        BranchContact ->
-            "CONTACT"
-
-        BranchGallery ->
-            "GALLERY"
-
-        BranchServices ->
-            "SERVICES"
-
-        BranchNews ->
-            "NEWS"

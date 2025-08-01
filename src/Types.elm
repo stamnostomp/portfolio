@@ -13,3 +13,4 @@ type Page
     | Contact
     | Services
     | Blog
+    | Portfolio

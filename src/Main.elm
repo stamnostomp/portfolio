@@ -1,4 +1,4 @@
--- src/Main.elm - Updated with Blog page support and Tachyons CSS
+-- src/Main.elm - Updated with Portfolio page support and Tachyons CSS
 
 
 module Main exposing (main)
@@ -15,6 +15,7 @@ import Navigation.GoopNav as GoopNav
 import Pages.About
 import Pages.Blog
 import Pages.Contact
+import Pages.Portfolio
 import Pages.Services
 import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
@@ -370,8 +371,8 @@ viewContentSquare model =
                 --, Attr.style "border" "1px solid rgba(192, 192, 192, 0.3)"
                 --, Attr.style "border-radius" "8px" -- Slight rounding to match organic feel
                 ]
-                [ -- Content container - full height for blog, with padding for others
-                  if page == Blog then
+                [ -- Content container - full height for blog/portfolio, with padding for others
+                  if page == Blog || page == Portfolio then
                     div [ Attr.class "h-100 w-100" ]
                         [ viewPageContent page model ]
 
@@ -420,14 +421,18 @@ viewPageContent page model =
                 [ h1 [ Attr.class "f2 mb4" ]
                     [ text "PROJECTS" ]
                 , p [ Attr.class "f5 lh-copy mb4" ]
-                    [ text "Here you can showcase your projects, portfolio pieces, and creative works." ]
+                    [ text "Technical deep-dives into development processes, challenges, and solutions." ]
                 , div [ Attr.class "pa4 project-section" ]
                     [ h3 [ Attr.class "mb3" ]
-                        [ text "Featured Project" ]
+                        [ text "Goop Navigation Development" ]
                     , p []
-                        [ text "This goop navigation system itself is a project! An organic, WebGL-powered interface that morphs and responds to user interaction." ]
+                        [ text "This organic WebGL interface represents months of shader programming, mathematical modeling, and interaction design. Built with Elm's functional architecture for reliability and WebGL for performance." ]
                     ]
                 ]
+
+        Portfolio ->
+            -- Use Html.map to handle the Portfolio page message conversion
+            Html.map (\_ -> Tick 0) Pages.Portfolio.view
 
         About ->
             Html.map (\_ -> Tick 0) Pages.About.view
@@ -501,6 +506,9 @@ pageToString page =
 
         Projects ->
             "PROJECTS"
+
+        Portfolio ->
+            "PORTFOLIO"
 
         About ->
             "ABOUT"
