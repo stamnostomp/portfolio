@@ -233,8 +233,8 @@ textParser =
     succeed Text
         |= getChompedString
             (succeed ()
-                |. chompIf (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[')
-                |. chompWhile (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[')
+                |. chompIf (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[' && c /= '|')
+                |. chompWhile (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[' && c /= '|')
             )
 
 
@@ -326,7 +326,7 @@ tableSeparatorParser : Parser ()
 tableSeparatorParser =
     succeed ()
         |. symbol "|"
-        |. chompWhile (\c -> c == '-' || c == '+' || c == '|')
+        |. chompWhile (\c -> c == '-' || c == '+' || c == '|' || c == ' ')
         |. symbol "\n"
 
 
@@ -344,7 +344,7 @@ tableRowParser =
 tableCellParser : Parser String
 tableCellParser =
     succeed String.trim
-        |= getChompedString (chompUntil "|")
+        |= getChompedString (chompWhile (\c -> c /= '|' && c /= '\n'))
         |. symbol "|"
 
 

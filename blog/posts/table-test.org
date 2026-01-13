@@ -1,0 +1,19 @@
+#+TITLE: Table Test
+#+DATE: 2025-01-13
+#+AUTHOR: Test
+#+TAGS: test
+#+CATEGORIES: tech
+#+SUMMARY: Testing table parsing
+#+SLUG: table-test
+#+DRAFT: false
+
+* Simple Table Test
+
+Here's a simple table:
+
+| Header 1 | Header 2 | Header 3 |
+|----------+----------+----------|
+| Cell A1  | Cell B1  | Cell C1  |
+| Cell A2  | Cell B2  | Cell C2  |
+
+That was the table.
