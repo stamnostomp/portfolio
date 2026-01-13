@@ -597,7 +597,7 @@ view activeFilters currentBlogPost blogPostLoading blogError =
                     line-height: 1.8;
                 }
 
-                /* Headings - soft pastel colors */
+                /* Headings - cycling pastel colors: purple → blue → green → lavender */
                 .blog-heading {
                     font-weight: 600;
                     margin-top: 2.5rem;
@@ -606,6 +606,7 @@ view activeFilters currentBlogPost blogPostLoading blogError =
                     line-height: 1.4;
                 }
 
+                /* Level 1 (* in org) - Soft Purple */
                 .blog-heading-1 {
                     color: rgba(200, 180, 220, 0.95);
                     font-size: 24px;
@@ -617,31 +618,76 @@ view activeFilters currentBlogPost blogPostLoading blogError =
                     text-shadow: 0 0 15px rgba(180, 160, 200, 0.2);
                 }
 
+                /* Level 2 (** in org) - Soft Blue */
                 .blog-heading-2 {
-                    color: rgba(180, 200, 220, 0.9);
+                    color: rgba(160, 190, 220, 0.9);
                     font-size: 20px;
-                    border-bottom: 1px solid rgba(160, 180, 200, 0.25);
+                    border-bottom: 1px solid rgba(140, 170, 200, 0.25);
                     padding-bottom: 0.4rem;
                     margin-top: 2.5rem;
+                    text-shadow: 0 0 12px rgba(160, 190, 220, 0.15);
                 }
 
+                /* Level 3 (*** in org) - Soft Green */
                 .blog-heading-3 {
-                    color: rgba(200, 190, 180, 0.85);
+                    color: rgba(170, 210, 190, 0.85);
                     font-size: 17px;
                     margin-top: 2rem;
+                    text-shadow: 0 0 10px rgba(170, 210, 190, 0.12);
                 }
 
+                /* Level 4 (**** in org) - Soft Lavender (purple cycle) */
                 .blog-heading-4 {
-                    color: rgba(180, 190, 200, 0.8);
+                    color: rgba(190, 180, 210, 0.8);
                     font-size: 15px;
                     margin-top: 1.5rem;
+                    text-shadow: 0 0 8px rgba(190, 180, 210, 0.1);
                 }
 
-                .blog-heading-5,
-                .blog-heading-6 {
-                    color: rgba(190, 190, 190, 0.75);
+                /* Level 5 (***** in org) - Soft Cyan (blue cycle) */
+                .blog-heading-5 {
+                    color: rgba(170, 200, 210, 0.75);
                     font-size: 14px;
                     margin-top: 1.5rem;
+                }
+
+                /* Level 6 (****** in org) - Soft Mint (green cycle) */
+                .blog-heading-6 {
+                    color: rgba(180, 210, 190, 0.7);
+                    font-size: 13px;
+                    margin-top: 1.2rem;
+                }
+
+                /* Level 7 (******* in org) - Soft Mauve (purple cycle) */
+                .blog-heading-7 {
+                    color: rgba(190, 175, 200, 0.65);
+                    font-size: 13px;
+                    margin-top: 1rem;
+                    font-weight: 500;
+                }
+
+                /* Level 8 (******** in org) - Soft Sky (blue cycle) */
+                .blog-heading-8 {
+                    color: rgba(175, 195, 210, 0.6);
+                    font-size: 12px;
+                    margin-top: 0.9rem;
+                    font-weight: 500;
+                }
+
+                /* Level 9 (********* in org) - Soft Sage (green cycle) */
+                .blog-heading-9 {
+                    color: rgba(180, 200, 185, 0.55);
+                    font-size: 12px;
+                    margin-top: 0.8rem;
+                    font-weight: 400;
+                }
+
+                /* Level 10 (********** in org) - Soft Lilac (purple cycle) */
+                .blog-heading-10 {
+                    color: rgba(185, 175, 195, 0.5);
+                    font-size: 11px;
+                    margin-top: 0.7rem;
+                    font-weight: 400;
                 }
 
                 /* Paragraphs */

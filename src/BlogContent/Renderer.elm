@@ -167,11 +167,13 @@ renderContentBlock block =
 renderHeading : Int -> String -> Html msg
 renderHeading level content =
     let
+        -- HTML only supports h1-h6, so cap the element at h6
+        -- but keep the actual level in the class for styling
         headingClass =
-            "blog-heading blog-heading-" ++ String.fromInt level
+            "blog-heading blog-heading-" ++ String.fromInt (min level 10)
 
         headingElement =
-            case level of
+            case min level 6 of
                 1 ->
                     h1
 
@@ -189,9 +191,18 @@ renderHeading level content =
 
                 _ ->
                     h6
+
+        -- Calculate indent for deep headers
+        indent =
+            if level > 6 then
+                String.fromFloat ((toFloat (level - 6)) * 1.5) ++ "rem"
+            else
+                "0"
     in
     headingElement
-        [ Attr.class headingClass ]
+        [ Attr.class headingClass
+        , Attr.style "margin-left" indent
+        ]
         [ text content ]
 
 

@@ -130,7 +130,11 @@ emptyLineParser =
 headingParser : Parser ContentBlock
 headingParser =
     succeed Heading
-        |= (getChompedString (chompWhile ((==) '*'))
+        |= (getChompedString
+                (succeed ()
+                    |. chompIf ((==) '*')
+                    |. chompWhile ((==) '*')
+                )
                 |> andThen (\stars -> succeed (String.length stars))
            )
         |. spaces
