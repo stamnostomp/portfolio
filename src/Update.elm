@@ -4,7 +4,7 @@
 module Update exposing (update)
 
 import Math.Vector2 as Vec2
-import Model exposing (Model, Msg(..), TransitionState(..))
+import Model exposing (Model, Msg(..), TransitionState(..), blogPostIndexListDecoder)
 import Navigation.GoopNav as GoopNav
 import Types exposing (Page(..))
 import Http
@@ -312,7 +312,20 @@ update msg model =
             -- Only start transition if we're not already transitioning
             case model.transitionState of
                 NoTransition ->
-                    ( { model | transitionState = TransitioningOut 0.0 targetPage }, Cmd.none )
+                    let
+                        -- Load blog index if navigating to blog and not loaded yet
+                        loadBlogIndexCmd =
+                            if targetPage == Blog && List.isEmpty model.blogPostIndex && not model.blogIndexLoading then
+                                Http.get
+                                    { url = "/blog/posts.json"
+                                    , expect = Http.expectJson BlogIndexLoaded blogPostIndexListDecoder
+                                    }
+                            else
+                                Cmd.none
+                    in
+                    ( { model | transitionState = TransitioningOut 0.0 targetPage }
+                    , loadBlogIndexCmd
+                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -459,6 +472,31 @@ update msg model =
               }
             , Cmd.none
             )
+
+        -- Blog index loading messages
+        LoadBlogIndex ->
+            ( { model | blogIndexLoading = True }
+            , Http.get
+                { url = "/blog/posts.json"
+                , expect = Http.expectJson BlogIndexLoaded blogPostIndexListDecoder
+                }
+            )
+
+        BlogIndexLoaded result ->
+            case result of
+                Ok posts ->
+                    ( { model
+                        | blogPostIndex = posts
+                        , blogIndexLoading = False
+                      }
+                    , Cmd.none
+                    )
+
+                Err httpError ->
+                    -- Failed to load blog index, keep empty list
+                    ( { model | blogIndexLoading = False }
+                    , Cmd.none
+                    )
 
 
 

@@ -35,61 +35,75 @@
           ];
 
           shellHook = ''
-                        # CRITICAL: Fix SSL certificates for Elm networking
                         export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
                         export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
                         export CURL_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-
-                        # Additional SSL environment variables for some tools
                         export REQUESTS_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
                         export SSL_CERT_DIR="${pkgs.cacert}/etc/ssl/certs"
 
-                        echo "🔒 SSL certificates configured"
-                        echo "📦 Certificate bundle: $SSL_CERT_FILE"
-                        echo ""
-
-                        # Test connectivity
-                        echo "🌐 Testing connectivity to Elm package registry..."
-                        if curl -s --max-time 5 https://package.elm-lang.org/all-packages > /dev/null; then
-                            echo "✅ Elm package registry reachable"
-                        else
-                            echo "❌ Cannot reach Elm package registry"
-                            echo "   This might be a firewall or network issue"
-                        fi
-                        echo ""
-
-                        echo "🎯 Y2K Retro WebGL Portfolio Development Environment"
                         echo "Available commands:"
-                        echo "  test-networking  - Run network diagnostics"
-                        echo "  setup-elm       - Create basic Elm project"
-                        echo "  start-dev       - Start development server"
-                        echo "  manual-elm      - Create elm.json manually (offline)"
+                        echo "  start-dev          - Start development server"
+                        echo "  generate-blog-data - Generate posts.json from .org files"
 
-                        # Network testing function
-                        test-networking() {
-                            echo "🔍 Running network diagnostics..."
-                            echo "SSL_CERT_FILE: $SSL_CERT_FILE"
-                            echo "Testing HTTPS connection:"
-                            curl -v --max-time 10 https://package.elm-lang.org/all-packages 2>&1 | head -15
+                        start-dev() {
+                            elm make src/Main.elm --output=elm.js
+                            elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js
                         }
 
-                        # Setup Elm project
-                        setup-elm() {
-                            echo "🛠️  Setting up Elm project..."
-                            mkdir -p src
+                        generate-blog-data() {
+                            echo "Generating blog/posts.json..."
 
-                            # Try elm init first
-                            if elm init; then
-                                echo "✅ elm init successful!"
-                            else
-                                echo "❌ elm init failed, creating manually..."
-                                manual-elm
+                            POSTS_DIR="blog/posts"
+                            OUTPUT_FILE="blog/posts.json"
+
+                            if [ ! -d "$POSTS_DIR" ]; then
+                                echo "Error: $POSTS_DIR not found"
+                                return 1
                             fi
+
+                            echo "[" > "$OUTPUT_FILE"
+
+                            first=true
+                            for orgfile in "$POSTS_DIR"/*.org; do
+                                [ -f "$orgfile" ] || continue
+
+                                if [ "$first" = false ]; then
+                                    echo "," >> "$OUTPUT_FILE"
+                                fi
+                                first=false
+
+                                title=$(grep "^#+TITLE:" "$orgfile" | sed 's/^#+TITLE: *//' || echo "Untitled")
+                                date=$(grep "^#+DATE:" "$orgfile" | sed 's/^#+DATE: *//' || echo "Unknown")
+                                slug=$(basename "$orgfile" .org)
+                                summary=$(grep "^#+SUMMARY:" "$orgfile" | sed 's/^#+SUMMARY: *//' || echo "")
+                                tags=$(grep "^#+TAGS:" "$orgfile" | sed 's/^#+TAGS: *//' || echo "")
+                                categories=$(grep "^#+CATEGORIES:" "$orgfile" | sed 's/^#+CATEGORIES: *//' || echo "")
+                                author=$(grep "^#+AUTHOR:" "$orgfile" | sed 's/^#+AUTHOR: *//' || echo "")
+
+                                tags_json=$(echo "$tags" | awk -F', *' '{for(i=1;i<=NF;i++) printf "\"%s\"%s", $i, (i<NF?",":"")}')
+                                categories_json=$(echo "$categories" | awk -F', *' '{for(i=1;i<=NF;i++) printf "\"%s\"%s", $i, (i<NF?",":"")}')
+
+                                cat >> "$OUTPUT_FILE" << EOF
+  {
+    "title": "$title",
+    "date": "$date",
+    "slug": "$slug",
+    "summary": "$summary",
+    "tags": [$tags_json],
+    "categories": [$categories_json],
+    "author": $(if [ -n "$author" ]; then echo "\"$author\""; else echo "null"; fi)
+  }
+EOF
+                                echo "  $slug"
+                            done
+
+                            echo "" >> "$OUTPUT_FILE"
+                            echo "]" >> "$OUTPUT_FILE"
+
+                            echo "Generated $OUTPUT_FILE"
                         }
 
-                        # Manual elm.json creation
                         manual-elm() {
-                            echo "📝 Creating elm.json manually..."
                             cat > elm.json << 'ELMJSON'
             {
                 "type": "application",
@@ -111,65 +125,11 @@
                 "test-dependencies": {"direct": {}, "indirect": {}}
             }
             ELMJSON
-
-                            mkdir -p src
-
-                            # Create basic Main.elm if it doesn't exist
-                            if [ ! -f "src/Main.elm" ]; then
-                                cat > src/Main.elm << 'MAINELM'
-            module Main exposing (main)
-
-            import Browser
-            import Html exposing (..)
-            import Html.Attributes exposing (..)
-
-            type alias Model = {}
-            type Msg = NoOp
-
-            init : () -> ( Model, Cmd Msg )
-            init _ = ( {}, Cmd.none )
-
-            update : Msg -> Model -> ( Model, Cmd Msg )
-            update msg model = ( model, Cmd.none )
-
-            view : Model -> Html Msg
-            view model =
-                div [ style "padding" "20px", style "font-family" "monospace" ]
-                    [ h1 [] [ text "🌊 Elm + Nix Working!" ]
-                    , p [] [ text "Ready to add goop ball navigation..." ]
-                    ]
-
-            main : Program () Model Msg
-            main =
-                Browser.element
-                    { init = init
-                    , view = view
-                    , update = update
-                    , subscriptions = \_ -> Sub.none
-                    }
-            MAINELM
-                            fi
-
-                            echo "✅ Created elm.json and basic Main.elm manually"
-                            echo "🚀 Try: elm make src/Main.elm --output=elm.js"
                         }
 
-                        start-dev() {
-                            if [ ! -f "elm.json" ]; then
-                                echo "No elm.json found. Setting up project first..."
-                                setup-elm
-                            fi
-
-                            echo "🚀 Starting development server..."
-                            elm make src/Main.elm --output=elm.js
-                            elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js
-                        }
-
-                        # Export functions to be available in the shell
-                        export -f test-networking
-                        export -f setup-elm
-                        export -f manual-elm
                         export -f start-dev
+                        export -f generate-blog-data
+                        export -f manual-elm
           '';
         };
       }

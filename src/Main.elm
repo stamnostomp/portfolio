@@ -475,7 +475,7 @@ viewPageContent page model =
 
         Blog ->
             -- Use Html.map to handle the Blog page message conversion
-            Html.map blogMsgToMainMsg (Pages.Blog.view model.blogFilters model.currentBlogPost model.blogPostLoading model.blogError)
+            Html.map blogMsgToMainMsg (Pages.Blog.view model.blogFilters model.currentBlogPost model.blogPostLoading model.blogError model.blogPostIndex)
 
         Links ->
             -- Use Html.map to handle the Links page message conversion

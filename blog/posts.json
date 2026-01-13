@@ -1,0 +1,38 @@
+[
+  {
+    "title": "The Organic Web: Beyond Static Interfaces",
+    "date": "2025-03-15",
+    "slug": "organic-web",
+    "summary": "Exploring how organic, fluid interfaces can create more intuitive user experiences.",
+    "tags": ["WebGL", "UI/UX", "Interactive Design"],
+    "categories": ["tech", "design"],
+    "author": "Your Name"
+  },
+  {
+    "title": "Shader Programming for Creative Coding",
+    "date": "2025-03-10",
+    "slug": "shader-programming",
+    "summary": "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects.",
+    "tags": ["WebGL", "Shaders", "Creative Coding"],
+    "categories": ["tech"],
+    "author": "Your Name"
+  },
+  {
+    "title": "Functional Reactive Programming in Elm",
+    "date": "2025-03-05",
+    "slug": "elm-architecture",
+    "summary": "Why Elm's architecture makes complex state management feel effortless.",
+    "tags": ["Elm", "Functional Programming", "Architecture"],
+    "categories": ["tech"],
+    "author": "Your Name"
+  },
+  {
+    "title": "An Ode to tylerSWag420",
+    "date": "2025-01-13",
+    "slug": "tyler-swag",
+    "summary": "The legendary swag master and his dope achievements.",
+    "tags": ["tyler", "swag", "legendary"],
+    "categories": ["thoughts"],
+    "author": "Anonymous"
+  }
+]

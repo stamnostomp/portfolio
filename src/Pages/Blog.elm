@@ -1,12 +1,13 @@
-module Pages.Blog exposing (view, BlogMsg(..))
+module Pages.Blog exposing (BlogMsg(..), view)
 
+import BlogContent.Renderer as Renderer
+import BlogContent.Types as BlogContent
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Types exposing (BlogTag(..))
-import BlogContent.Types as BlogContent
-import BlogContent.Renderer as Renderer
+import Model exposing (BlogPostIndexItem)
 
 
 
@@ -21,46 +22,37 @@ type BlogMsg
     | ClosePost
 
 
--- Blog post index structure - just metadata for listing
+
+-- Convert category string to BlogTag
 
 
-type alias BlogPostIndex =
-    { title : String
-    , date : String
-    , slug : String
-    , summary : String
-    , tags : List String
-    , categories : List BlogTag
+categoryStringToTag : String -> Maybe BlogTag
+categoryStringToTag str =
+    case String.toLower str of
+        "tech" ->
+            Just TechTag
+
+        "design" ->
+            Just DesignTag
+
+        "thoughts" ->
+            Just ThoughtsTag
+
+        _ ->
+            Nothing
+
+
+-- Convert BlogPostIndexItem to our local representation with BlogTag enums
+convertIndexItem : BlogPostIndexItem -> { title : String, date : String, slug : String, summary : String, tags : List String, categories : List BlogTag }
+convertIndexItem item =
+    { title = item.title
+    , date = item.date
+    , slug = item.slug
+    , summary = item.summary
+    , tags = item.tags
+    , categories = List.filterMap categoryStringToTag item.categories
     }
 
-
--- All blog posts with categorization
-
-
-allPosts : List BlogPostIndex
-allPosts =
-    [ { title = "THE ORGANIC WEB: BEYOND STATIC INTERFACES"
-      , date = "2025.03.15"
-      , slug = "organic-web"
-      , summary = "Exploring how organic, fluid interfaces can create more intuitive user experiences. This goop navigation system represents a shift away from rigid menu structures toward something more natural and responsive to user interaction."
-      , tags = [ "WebGL", "UI/UX", "Interactive Design" ]
-      , categories = [ TechTag, DesignTag ]
-      }
-    , { title = "SHADER PROGRAMMING FOR CREATIVE CODING"
-      , date = "2025.03.10"
-      , slug = "shader-programming"
-      , summary = "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects. From basic color manipulation to complex procedural animations, shaders open up infinite possibilities for web-based art."
-      , tags = [ "WebGL", "Shaders", "Creative Coding" ]
-      , categories = [ TechTag ]
-      }
-    , { title = "FUNCTIONAL REACTIVE PROGRAMMING IN ELM"
-      , date = "2025.03.05"
-      , slug = "elm-architecture"
-      , summary = "Why Elm's architecture makes complex state management feel effortless. Moving from imperative to functional thinking changes how we approach user interfaces and application state."
-      , tags = [ "Elm", "Functional Programming", "Architecture" ]
-      , categories = [ TechTag ]
-      }
-    ]
 
 
 -- Helper to check if a tag is in the active filters
@@ -71,16 +63,20 @@ tagIsActive tag activeFilters =
     List.any (\t -> t == tag) activeFilters
 
 
+
 -- Filter posts based on active filters
 
 
-filteredPosts : List BlogTag -> List BlogPostIndex -> List BlogPostIndex
 filteredPosts activeFilters posts =
+    let
+        convertedPosts =
+            List.map convertIndexItem posts
+    in
     if List.isEmpty activeFilters then
-        posts
+        convertedPosts
 
     else
-        posts
+        convertedPosts
             |> List.filter
                 (\post ->
                     post.categories
@@ -88,8 +84,8 @@ filteredPosts activeFilters posts =
                 )
 
 
-view : List BlogTag -> Maybe BlogContent.BlogPost -> Bool -> Maybe String -> Html BlogMsg
-view activeFilters currentBlogPost blogPostLoading blogError =
+view : List BlogTag -> Maybe BlogContent.BlogPost -> Bool -> Maybe String -> List BlogPostIndexItem -> Html BlogMsg
+view activeFilters currentBlogPost blogPostLoading blogError blogPostIndex =
     div
         [ Attr.class "h-100 w-100 flex flex-column monospace bg-transparent relative"
         ]
@@ -179,8 +175,16 @@ view activeFilters currentBlogPost blogPostLoading blogError =
                         [ errorView error ]
 
                     ( Nothing, False, Nothing ) ->
-                        filteredPosts activeFilters allPosts
-                            |> List.map blogPostCard
+                        if List.isEmpty blogPostIndex then
+                            [ div
+                                [ Attr.class "flex items-center justify-center pa4"
+                                , Attr.style "color" "rgba(192, 192, 192, 0.6)"
+                                ]
+                                [ text "No blog posts found. Loading..." ]
+                            ]
+                        else
+                            filteredPosts activeFilters blogPostIndex
+                                |> List.map blogPostCard
                 )
 
             -- Bottom fade overlay
@@ -900,7 +904,7 @@ goopBlogCategoryNode title tag activeFilters =
 -- Blog post card component (summary for list view)
 
 
-blogPostCard : BlogPostIndex -> Html BlogMsg
+blogPostCard : { title : String, date : String, slug : String, summary : String, tags : List String, categories : List BlogTag } -> Html BlogMsg
 blogPostCard post =
     article
         [ Attr.class "mb3 pa3 blog-post"
@@ -924,6 +928,7 @@ blogPostCard post =
         ]
 
 
+
 -- Loading indicator view
 
 
@@ -934,6 +939,7 @@ loadingView =
         , Attr.style "color" "rgba(192, 192, 192, 0.8)"
         ]
         [ text "LOADING POST..." ]
+
 
 
 -- Error view
@@ -959,6 +965,7 @@ errorView error =
             ]
             [ text "Please check that the .org file exists in /blog/posts/" ]
         ]
+
 
 
 -- Full blog post view using the renderer

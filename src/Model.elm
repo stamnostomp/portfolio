@@ -5,6 +5,8 @@ module Model exposing
     ( Model
     , Msg(..)
     , TransitionState(..)
+    , BlogPostIndexItem
+    , blogPostIndexListDecoder
     , init
     )
 
@@ -14,6 +16,7 @@ import Navigation.GoopNav as GoopNav
 import Types exposing (Page(..), BlogTag, LinkFilter)
 import BlogContent.Types exposing (BlogPost)
 import Http
+import Json.Decode as Decode
 
 
 
@@ -62,6 +65,22 @@ type alias Model =
     , blogPostLoading : Bool
     , selectedBlogSlug : Maybe String
     , blogError : Maybe String
+
+    -- Blog index state
+    , blogPostIndex : List BlogPostIndexItem
+    , blogIndexLoading : Bool
+    }
+
+
+-- Blog post index item (metadata only)
+type alias BlogPostIndexItem =
+    { title : String
+    , date : String
+    , slug : String
+    , summary : String
+    , tags : List String
+    , categories : List String
+    , author : Maybe String
     }
 
 
@@ -98,6 +117,9 @@ type Msg
     | LoadBlogPost String
     | BlogPostLoaded (Result Http.Error String)
     | CloseBlogPost
+      -- Blog index loading messages
+    | LoadBlogIndex
+    | BlogIndexLoaded (Result Http.Error (List BlogPostIndexItem))
 
 
 
@@ -140,6 +162,28 @@ init flags =
       , blogPostLoading = False
       , selectedBlogSlug = Nothing
       , blogError = Nothing
+
+      -- Initialize blog index
+      , blogPostIndex = []
+      , blogIndexLoading = False
       }
     , Cmd.none
     )
+
+
+-- JSON Decoder for blog post index
+blogPostIndexDecoder : Decode.Decoder BlogPostIndexItem
+blogPostIndexDecoder =
+    Decode.map7 BlogPostIndexItem
+        (Decode.field "title" Decode.string)
+        (Decode.field "date" Decode.string)
+        (Decode.field "slug" Decode.string)
+        (Decode.field "summary" Decode.string)
+        (Decode.field "tags" (Decode.list Decode.string))
+        (Decode.field "categories" (Decode.list Decode.string))
+        (Decode.maybe (Decode.field "author" Decode.string))
+
+
+blogPostIndexListDecoder : Decode.Decoder (List BlogPostIndexItem)
+blogPostIndexListDecoder =
+    Decode.list blogPostIndexDecoder
