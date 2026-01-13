@@ -16,6 +16,8 @@ import Navigation.GoopNav as GoopNav
 import Pages.About
 import Pages.Blog
 import Pages.Contact
+import Pages.Gallery
+import Pages.Links
 import Pages.Portfolio
 import Pages.Projects
 import Pages.Services
@@ -380,7 +382,7 @@ viewContentSquare model =
                 --, Attr.style "border-radius" "8px" -- Slight rounding to match organic feel
                 ]
                 [ -- Content container - full height for blog/portfolio, with padding for others
-                  if page == Blog || page == Portfolio || page == Projects then
+                  if page == Blog || page == Portfolio || page == Projects || page == Links || page == Gallery then
                     div [ Attr.class "h-100 w-100 pa2" ]
                         [ viewPageContent page model ]
 
@@ -400,6 +402,29 @@ viewContentSquare model =
         _ ->
             text ""
 
+
+
+-- Message conversion functions for page-specific messages
+
+
+blogMsgToMainMsg : Pages.Blog.BlogMsg -> Msg
+blogMsgToMainMsg msg =
+    case msg of
+        Pages.Blog.ToggleFilter tag ->
+            ToggleBlogFilter tag
+
+        Pages.Blog.NoOp ->
+            Tick 0
+
+
+linksMsgToMainMsg : Pages.Links.LinksMsg -> Msg
+linksMsgToMainMsg msg =
+    case msg of
+        Pages.Links.ToggleFilter filter ->
+            ToggleLinkFilter filter
+
+        _ ->
+            Tick 0
 
 
 -- Simple content for each page
@@ -444,7 +469,15 @@ viewPageContent page model =
 
         Blog ->
             -- Use Html.map to handle the Blog page message conversion
-            Html.map (\_ -> Tick 0) Pages.Blog.view
+            Html.map blogMsgToMainMsg (Pages.Blog.view model.blogFilters)
+
+        Links ->
+            -- Use Html.map to handle the Links page message conversion
+            Html.map linksMsgToMainMsg (Pages.Links.view model.linkFilters)
+
+        Gallery ->
+            -- Use Html.map to handle the Gallery page message conversion
+            Html.map (\_ -> Tick 0) Pages.Gallery.view
 
 
 
@@ -518,6 +551,12 @@ pageToString page =
 
         Blog ->
             "BLOG"
+
+        Links ->
+            "LINKS"
+
+        Gallery ->
+            "GALLERY"
 
 
 transitionStateToString : TransitionState -> String

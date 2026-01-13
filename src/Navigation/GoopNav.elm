@@ -56,13 +56,13 @@ getBranchPage branch =
             Contact
 
         BranchGallery ->
-            Home
+            Gallery
 
         BranchServices ->
             Services
 
         BranchNews ->
-            Home
+            Links
 
 
 -- Convert NavBranch to index
@@ -124,7 +124,7 @@ getBranchLabel branch =
             "Services"
 
         BranchNews ->
-            "News"
+            "Links"
 
 
 -- Get the currently hovered branch from state

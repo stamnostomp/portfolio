@@ -356,6 +356,35 @@ update msg model =
             in
             ( { model | contentBounds = newContentBounds }, Cmd.none )
 
+        -- Filter toggle messages
+        ToggleBlogFilter tag ->
+            let
+                isActive =
+                    List.any (\t -> t == tag) model.blogFilters
+
+                newFilters =
+                    if isActive then
+                        List.filter (\t -> t /= tag) model.blogFilters
+
+                    else
+                        tag :: model.blogFilters
+            in
+            ( { model | blogFilters = newFilters }, Cmd.none )
+
+        ToggleLinkFilter filter ->
+            let
+                isActive =
+                    List.any (\f -> f == filter) model.linkFilters
+
+                newFilters =
+                    if isActive then
+                        List.filter (\f -> f /= filter) model.linkFilters
+
+                    else
+                        filter :: model.linkFilters
+            in
+            ( { model | linkFilters = newFilters }, Cmd.none )
+
 
 
 -- Enhanced helper function to update transition state with organic easing

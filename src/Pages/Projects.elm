@@ -358,14 +358,21 @@ view =
                     letter-spacing: 0.05em;
                 }
 
+                /* Active state - matches blog and links pages */
                 .status-indicator.active {
                     background: radial-gradient(ellipse at center,
-                        rgba(192, 192, 192, 0.15) 0%,
-                        rgba(64, 64, 64, 0.1) 50%,
-                        rgba(0, 0, 0, 0.05) 100%);
-                    border-color: rgba(192, 192, 192, 0.4);
-                    color: rgba(192, 192, 192, 0.9) !important;
-                    box-shadow: 0 0 10px rgba(192, 192, 192, 0.2);
+                        rgba(100, 150, 180, 0.15) 0%,
+                        rgba(80, 120, 140, 0.08) 50%,
+                        rgba(60, 100, 120, 0.03) 100%);
+                    border: 2px solid rgba(100, 150, 180, 0.5);
+                    color: rgba(255, 255, 255, 1) !important;
+                    transform: scale(1.1);
+                    box-shadow: 0 0 15px rgba(100, 150, 180, 0.4),
+                                0 0 30px rgba(100, 150, 180, 0.2);
+                }
+
+                .status-indicator.active * {
+                    color: rgba(255, 255, 255, 1) !important;
                 }
 
                 .status-indicator:hover {
@@ -375,6 +382,10 @@ view =
                         rgba(192, 192, 192, 0.2) 0%,
                         rgba(64, 64, 64, 0.1) 50%,
                         rgba(0, 0, 0, 0.05) 100%);
+                }
+
+                .status-indicator.active:hover {
+                    transform: scale(1.12);
                 }
 
                 /* Custom scroll styling - same as other pages */
@@ -467,7 +478,7 @@ view =
 
                 /* Tachyons gap utilities */
                 .gap2 { gap: 0.5rem; }
-                .gap1 { gap: 0.25rem; }
+                .gap1 { gap: 0.75rem; }
             """ ]
         ]
 

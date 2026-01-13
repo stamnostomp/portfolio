@@ -1,9 +1,10 @@
-module Pages.Blog exposing (view)
+module Pages.Blog exposing (view, BlogMsg(..))
 
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
+import Types exposing (BlogTag(..))
 
 
 
@@ -13,10 +14,116 @@ import Json.Decode as Decode
 
 type BlogMsg
     = NoOp
+    | ToggleFilter BlogTag
 
 
-view : Html BlogMsg
-view =
+-- Blog post data structure with categories
+
+
+type alias BlogPost =
+    { title : String
+    , date : String
+    , content : String
+    , tags : List String
+    , categories : List BlogTag
+    }
+
+
+-- All blog posts with categorization
+
+
+allPosts : List BlogPost
+allPosts =
+    [ { title = "THE ORGANIC WEB: BEYOND STATIC INTERFACES"
+      , date = "2025.03.15"
+      , content = "Exploring how organic, fluid interfaces can create more intuitive user experiences. This goop navigation system represents a shift away from rigid menu structures toward something more natural and responsive to user interaction. By embracing fluid, organic forms, we can create interfaces that feel more alive and engaging."
+      , tags = [ "WebGL", "UI/UX", "Interactive Design" ]
+      , categories = [ TechTag, DesignTag ]
+      }
+    , { title = "SHADER PROGRAMMING FOR CREATIVE CODING"
+      , date = "2025.03.10"
+      , content = "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects. From basic color manipulation to complex procedural animations, shaders open up infinite possibilities for web-based art. Understanding the GPU pipeline is key to creating performant visual experiences."
+      , tags = [ "WebGL", "Shaders", "Creative Coding" ]
+      , categories = [ TechTag ]
+      }
+    , { title = "FUNCTIONAL REACTIVE PROGRAMMING IN ELM"
+      , date = "2025.03.05"
+      , content = "Why Elm's architecture makes complex state management feel effortless. Moving from imperative to functional thinking changes how we approach user interfaces and application state. The Elm Architecture provides a robust foundation for building reliable, maintainable applications."
+      , tags = [ "Elm", "Functional Programming", "Architecture" ]
+      , categories = [ TechTag ]
+      }
+    , { title = "THE AESTHETICS OF Y2K DESIGN REVIVAL"
+      , date = "2025.02.28"
+      , content = "Analyzing the return of millennium bug era design principles in modern web interfaces. Chrome effects, organic shapes, and digital mysticism are making a comeback, but with modern technical capabilities. This revival represents a nostalgic longing for optimistic futurism."
+      , tags = [ "Design", "Y2K", "Aesthetics" ]
+      , categories = [ DesignTag, ThoughtsTag ]
+      }
+    , { title = "BUILDING RESPONSIVE 3D INTERFACES"
+      , date = "2025.02.20"
+      , content = "How to create WebGL interfaces that adapt to different screen sizes and input methods. From mobile touch to desktop precision, 3D interfaces need to be as responsive as their 2D counterparts. Performance considerations become critical when dealing with complex 3D scenes."
+      , tags = [ "WebGL", "Responsive Design", "3D" ]
+      , categories = [ TechTag ]
+      }
+    , { title = "PERFORMANCE OPTIMIZATION FOR COMPLEX ANIMATIONS"
+      , date = "2025.02.15"
+      , content = "Techniques for maintaining 60fps in browser-based animations. GPU acceleration, efficient rendering loops, and smart resource management for smooth interactive experiences. Understanding browser rendering pipelines is essential for creating fluid animations."
+      , tags = [ "Performance", "Animation", "Optimization" ]
+      , categories = [ TechTag ]
+      }
+    , { title = "THE PSYCHOLOGY OF ORGANIC NAVIGATION"
+      , date = "2025.02.10"
+      , content = "How fluid, organic interfaces can reduce cognitive load and create more intuitive user experiences. Research into spatial navigation and visual hierarchy in non-linear interfaces. Users naturally gravitate toward organic, flowing navigation patterns."
+      , tags = [ "UX Research", "Psychology", "Navigation" ]
+      , categories = [ ThoughtsTag, DesignTag ]
+      }
+    , { title = "CREATIVE CODING WITH MATHEMATICAL BEAUTY"
+      , date = "2025.02.05"
+      , content = "Exploring the intersection of mathematics and visual art in code. From fractals to fluid dynamics, how mathematical concepts can inspire beautiful, interactive experiences. Mathematics provides the foundation for creating compelling generative art."
+      , tags = [ "Mathematics", "Creative Coding", "Generative Art" ]
+      , categories = [ TechTag, ThoughtsTag ]
+      }
+    , { title = "ADVANCED WEBGL TECHNIQUES"
+      , date = "2025.01.30"
+      , content = "Deep dive into advanced WebGL programming techniques including custom shaders, texture manipulation, and performance optimization. Creating complex visual effects requires understanding both the artistic and technical aspects of real-time graphics programming."
+      , tags = [ "WebGL", "Graphics Programming", "Advanced Techniques" ]
+      , categories = [ TechTag ]
+      }
+    , { title = "THE FUTURE OF WEB INTERFACES"
+      , date = "2025.01.25"
+      , content = "Predictions for how web interfaces will evolve over the next decade. Virtual reality, augmented reality, and spatial computing will reshape how we interact with digital content. The web is becoming increasingly immersive and three-dimensional."
+      , tags = [ "Future Tech", "VR/AR", "Web Evolution" ]
+      , categories = [ ThoughtsTag ]
+      }
+    ]
+
+
+-- Helper to check if a tag is in the active filters
+
+
+tagIsActive : BlogTag -> List BlogTag -> Bool
+tagIsActive tag activeFilters =
+    List.any (\t -> t == tag) activeFilters
+
+
+-- Filter posts based on active filters
+
+
+filteredPosts : List BlogTag -> List BlogPost -> List BlogPost
+filteredPosts activeFilters posts =
+    if List.isEmpty activeFilters then
+        posts
+
+    else
+        posts
+            |> List.filter
+                (\post ->
+                    post.categories
+                        |> List.any (\cat -> tagIsActive cat activeFilters)
+                )
+
+
+view : List BlogTag -> Html BlogMsg
+view activeFilters =
     div
         [ Attr.class "h-100 w-100 flex flex-column monospace bg-transparent relative"
         ]
@@ -44,9 +151,9 @@ view =
 
                 -- Blog category nodes (smaller)
                 , div [ Attr.class "flex gap1" ]
-                    [ goopBlogCategoryNode "TECH" "node-1"
-                    , goopBlogCategoryNode "DESIGN" "node-2"
-                    , goopBlogCategoryNode "THOUGHTS" "node-3"
+                    [ goopBlogCategoryNode "TECH" TechTag activeFilters
+                    , goopBlogCategoryNode "DESIGN" DesignTag activeFilters
+                    , goopBlogCategoryNode "THOUGHTS" ThoughtsTag activeFilters
                     ]
                 ]
 
@@ -82,58 +189,10 @@ view =
                 , Attr.style "padding-right" "2rem"
                 , Attr.style "margin-right" "-1rem"
                 ]
-                [ -- Blog posts with enhanced content (more compact)
-                  blogPost
-                    "THE ORGANIC WEB: BEYOND STATIC INTERFACES"
-                    "2025.03.15"
-                    "Exploring how organic, fluid interfaces can create more intuitive user experiences. This goop navigation system represents a shift away from rigid menu structures toward something more natural and responsive to user interaction. By embracing fluid, organic forms, we can create interfaces that feel more alive and engaging."
-                    [ "WebGL", "UI/UX", "Interactive Design" ]
-                , blogPost
-                    "SHADER PROGRAMMING FOR CREATIVE CODING"
-                    "2025.03.10"
-                    "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects. From basic color manipulation to complex procedural animations, shaders open up infinite possibilities for web-based art. Understanding the GPU pipeline is key to creating performant visual experiences."
-                    [ "WebGL", "Shaders", "Creative Coding" ]
-                , blogPost
-                    "FUNCTIONAL REACTIVE PROGRAMMING IN ELM"
-                    "2025.03.05"
-                    "Why Elm's architecture makes complex state management feel effortless. Moving from imperative to functional thinking changes how we approach user interfaces and application state. The Elm Architecture provides a robust foundation for building reliable, maintainable applications."
-                    [ "Elm", "Functional Programming", "Architecture" ]
-                , blogPost
-                    "THE AESTHETICS OF Y2K DESIGN REVIVAL"
-                    "2025.02.28"
-                    "Analyzing the return of millennium bug era design principles in modern web interfaces. Chrome effects, organic shapes, and digital mysticism are making a comeback, but with modern technical capabilities. This revival represents a nostalgic longing for optimistic futurism."
-                    [ "Design", "Y2K", "Aesthetics" ]
-                , blogPost
-                    "BUILDING RESPONSIVE 3D INTERFACES"
-                    "2025.02.20"
-                    "How to create WebGL interfaces that adapt to different screen sizes and input methods. From mobile touch to desktop precision, 3D interfaces need to be as responsive as their 2D counterparts. Performance considerations become critical when dealing with complex 3D scenes."
-                    [ "WebGL", "Responsive Design", "3D" ]
-                , blogPost
-                    "PERFORMANCE OPTIMIZATION FOR COMPLEX ANIMATIONS"
-                    "2025.02.15"
-                    "Techniques for maintaining 60fps in browser-based animations. GPU acceleration, efficient rendering loops, and smart resource management for smooth interactive experiences. Understanding browser rendering pipelines is essential for creating fluid animations."
-                    [ "Performance", "Animation", "Optimization" ]
-                , blogPost
-                    "THE PSYCHOLOGY OF ORGANIC NAVIGATION"
-                    "2025.02.10"
-                    "How fluid, organic interfaces can reduce cognitive load and create more intuitive user experiences. Research into spatial navigation and visual hierarchy in non-linear interfaces. Users naturally gravitate toward organic, flowing navigation patterns."
-                    [ "UX Research", "Psychology", "Navigation" ]
-                , blogPost
-                    "CREATIVE CODING WITH MATHEMATICAL BEAUTY"
-                    "2025.02.05"
-                    "Exploring the intersection of mathematics and visual art in code. From fractals to fluid dynamics, how mathematical concepts can inspire beautiful, interactive experiences. Mathematics provides the foundation for creating compelling generative art."
-                    [ "Mathematics", "Creative Coding", "Generative Art" ]
-                , blogPost
-                    "ADVANCED WEBGL TECHNIQUES"
-                    "2025.01.30"
-                    "Deep dive into advanced WebGL programming techniques including custom shaders, texture manipulation, and performance optimization. Creating complex visual effects requires understanding both the artistic and technical aspects of real-time graphics programming."
-                    [ "WebGL", "Graphics Programming", "Advanced Techniques" ]
-                , blogPost
-                    "THE FUTURE OF WEB INTERFACES"
-                    "2025.01.25"
-                    "Predictions for how web interfaces will evolve over the next decade. Virtual reality, augmented reality, and spatial computing will reshape how we interact with digital content. The web is becoming increasingly immersive and three-dimensional."
-                    [ "Future Tech", "VR/AR", "Web Evolution" ]
-                ]
+                -- Render filtered blog posts
+                (filteredPosts activeFilters allPosts
+                    |> List.map (\post -> blogPost post.title post.date post.content post.tags)
+                )
 
             -- Bottom fade overlay
             , div
@@ -147,7 +206,7 @@ view =
             [ text """
                 /* Tachyons gap utilities */
                 .gap2 { gap: 0.5rem; }
-                .gap1 { gap: 0.25rem; }
+                .gap1 { gap: 0.75rem; }
 
                 /* FIXED: Custom scroll container - same as Services page */
                 .custom-scroll-container {
@@ -241,6 +300,27 @@ view =
                 .goop-blog-category:hover * {
                     color: rgba(255, 255, 255, 0.95) !important;
                     text-shadow: 0 0 6px rgba(192, 192, 192, 0.3);
+                }
+
+                /* Active filter state - matches links page styling */
+                .goop-blog-category.active-filter {
+                    background: radial-gradient(ellipse at center,
+                        rgba(100, 150, 180, 0.15) 0%,
+                        rgba(80, 120, 140, 0.08) 50%,
+                        rgba(60, 100, 120, 0.03) 100%);
+                    border: 2px solid rgba(100, 150, 180, 0.5);
+                    color: rgba(255, 255, 255, 1) !important;
+                    transform: scale(1.1);
+                    box-shadow: 0 0 15px rgba(100, 150, 180, 0.4),
+                                0 0 30px rgba(100, 150, 180, 0.2);
+                }
+
+                .goop-blog-category.active-filter::before {
+                    opacity: 1;
+                }
+
+                .goop-blog-category.active-filter * {
+                    color: rgba(255, 255, 255, 1) !important;
                 }
 
                 /* Blog post styling (enhanced for better readability) */
@@ -461,13 +541,26 @@ view =
 -- Blog category node (small, for header)
 
 
-goopBlogCategoryNode : String -> String -> Html BlogMsg
-goopBlogCategoryNode title nodeId =
+goopBlogCategoryNode : String -> BlogTag -> List BlogTag -> Html BlogMsg
+goopBlogCategoryNode title tag activeFilters =
+    let
+        isActive =
+            tagIsActive tag activeFilters
+    in
     div
-        [ Attr.class "db pa1 ph1 tc goop-blog-category"
+        [ Attr.class
+            ("db pa1 ph1 tc goop-blog-category"
+                ++ (if isActive then
+                        " active-filter"
+
+                    else
+                        ""
+                   )
+            )
         , Attr.style "min-width" "40px"
-        , Attr.id nodeId
-        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        , Attr.style "cursor" "pointer"
+        , onClick (ToggleFilter tag)
+        , stopPropagationOn "click" (Decode.succeed ( ToggleFilter tag, True ))
         ]
         [ span
             [ Attr.class "f9 tracked ttu"

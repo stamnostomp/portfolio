@@ -11,7 +11,7 @@ module Model exposing
 import Browser
 import Math.Vector2 as Vec2
 import Navigation.GoopNav as GoopNav
-import Types exposing (Page(..))
+import Types exposing (Page(..), BlogTag, LinkFilter)
 
 
 
@@ -50,6 +50,10 @@ type alias Model =
     , transitionSpeed : Float -- How fast transitions happen
     , transitionEasing : String -- Type of easing to use
     , organicVariation : Float -- Amount of organic variation in transitions
+
+    -- Filter state
+    , blogFilters : List BlogTag
+    , linkFilters : List LinkFilter
     }
 
 
@@ -79,6 +83,9 @@ type Msg
     | SetOrganicVariation Float
       -- Content bounds detection
     | ContentBoundsChanged Int Int
+      -- Filter messages
+    | ToggleBlogFilter BlogTag
+    | ToggleLinkFilter LinkFilter
 
 
 
@@ -111,6 +118,10 @@ init flags =
       , transitionSpeed = 0.8 -- Slower, more organic transitions (~1.25 seconds)
       , transitionEasing = "organic" -- Use organic easing
       , organicVariation = 0.15 -- 15% organic variation in timing
+
+      -- Initialize filters (empty = show all)
+      , blogFilters = []
+      , linkFilters = []
       }
     , Cmd.none
     )
