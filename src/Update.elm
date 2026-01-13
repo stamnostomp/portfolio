@@ -451,6 +451,15 @@ update msg model =
                     , Cmd.none
                     )
 
+        CloseBlogPost ->
+            ( { model
+                | currentBlogPost = Nothing
+                , selectedBlogSlug = Nothing
+                , blogError = Nothing
+              }
+            , Cmd.none
+            )
+
 
 
 -- Enhanced helper function to update transition state with organic easing

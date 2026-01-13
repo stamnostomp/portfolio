@@ -416,6 +416,9 @@ blogMsgToMainMsg msg =
         Pages.Blog.LoadPost slug ->
             LoadBlogPost slug
 
+        Pages.Blog.ClosePost ->
+            CloseBlogPost
+
         Pages.Blog.NoOp ->
             Tick 0
 

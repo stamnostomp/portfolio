@@ -18,6 +18,7 @@ type BlogMsg
     = NoOp
     | ToggleFilter BlogTag
     | LoadPost String
+    | ClosePost
 
 
 -- Blog post index structure - just metadata for listing
@@ -114,12 +115,24 @@ view activeFilters currentBlogPost blogPostLoading blogError =
                     ]
                     [ text "BLOG" ]
 
-                -- Blog category nodes (smaller)
-                , div [ Attr.class "flex gap1" ]
-                    [ goopBlogCategoryNode "TECH" TechTag activeFilters
-                    , goopBlogCategoryNode "DESIGN" DesignTag activeFilters
-                    , goopBlogCategoryNode "THOUGHTS" ThoughtsTag activeFilters
-                    ]
+                -- Show back button if viewing a post, otherwise show filters
+                , case currentBlogPost of
+                    Just _ ->
+                        button
+                            [ Attr.class "bg-transparent pa1 ph2 f8 fw6 monospace tracked pointer back-to-list-button"
+                            , Attr.style "cursor" "pointer"
+                            , Attr.style "color" "rgba(255, 255, 255, 0.9)"
+                            , onClick ClosePost
+                            , stopPropagationOn "click" (Decode.succeed ( ClosePost, True ))
+                            ]
+                            [ text "← BACK TO LIST" ]
+
+                    Nothing ->
+                        div [ Attr.class "flex gap1" ]
+                            [ goopBlogCategoryNode "TECH" TechTag activeFilters
+                            , goopBlogCategoryNode "DESIGN" DesignTag activeFilters
+                            , goopBlogCategoryNode "THOUGHTS" ThoughtsTag activeFilters
+                            ]
                 ]
 
             -- Right side: Close button (smaller)
@@ -509,6 +522,34 @@ view activeFilters currentBlogPost blogPostLoading blogError =
                 .blog-post:nth-child(8) { animation-delay: 0.45s; }
                 .blog-post:nth-child(9) { animation-delay: 0.5s; }
                 .blog-post:nth-child(10) { animation-delay: 0.55s; }
+
+                /* Back to list button with pulsing blue border */
+                .back-to-list-button {
+                    border: 2px solid rgba(120, 160, 200, 0.5) !important;
+                    animation: pulse-blue-border 2s ease-in-out infinite;
+                    box-shadow: 0 0 10px rgba(120, 160, 200, 0.2),
+                                inset 0 0 10px rgba(120, 160, 200, 0.08);
+                }
+
+                .back-to-list-button:hover {
+                    border-color: rgba(140, 180, 220, 0.7) !important;
+                    box-shadow: 0 0 20px rgba(120, 160, 200, 0.4),
+                                inset 0 0 15px rgba(120, 160, 200, 0.15);
+                    transform: scale(1.05);
+                }
+
+                @keyframes pulse-blue-border {
+                    0%, 100% {
+                        border-color: rgba(120, 160, 200, 0.5);
+                        box-shadow: 0 0 10px rgba(120, 160, 200, 0.2),
+                                    inset 0 0 10px rgba(120, 160, 200, 0.08);
+                    }
+                    50% {
+                        border-color: rgba(140, 180, 220, 0.7);
+                        box-shadow: 0 0 20px rgba(120, 160, 200, 0.4),
+                                    inset 0 0 15px rgba(120, 160, 200, 0.15);
+                    }
+                }
             """ ]
         ]
 

@@ -97,6 +97,7 @@ type Msg
       -- Blog post loading messages
     | LoadBlogPost String
     | BlogPostLoaded (Result Http.Error String)
+    | CloseBlogPost
 
 
 
