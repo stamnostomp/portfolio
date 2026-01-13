@@ -1,9 +1,10 @@
-module Pages.Portfolio exposing (view)
+module Pages.Portfolio exposing (view, PortfolioMsg(..))
 
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
+import Types exposing (PortfolioFilter(..))
 
 
 
@@ -14,10 +15,11 @@ import Json.Decode as Decode
 type PortfolioMsg
     = NoOp
     | SelectProject String
+    | SetFilter PortfolioFilter
 
 
-view : Html PortfolioMsg
-view =
+view : PortfolioFilter -> Html PortfolioMsg
+view activeFilter =
     div
         [ Attr.class "h-100 w-100 flex flex-column monospace bg-transparent relative"
         ]
@@ -45,10 +47,10 @@ view =
 
                 -- Filter category nodes
                 , div [ Attr.class "flex gap1" ]
-                    [ goopFilterNode "ALL" "filter-all" True
-                    , goopFilterNode "WEBGL" "filter-webgl" False
-                    , goopFilterNode "UI/UX" "filter-ui" False
-                    , goopFilterNode "APPS" "filter-apps" False
+                    [ goopFilterNode "ALL" AllPortfolio (activeFilter == AllPortfolio)
+                    , goopFilterNode "WEBGL" WebGLPortfolio (activeFilter == WebGLPortfolio)
+                    , goopFilterNode "UI/UX" UIUXPortfolio (activeFilter == UIUXPortfolio)
+                    , goopFilterNode "APPS" AppsPortfolio (activeFilter == AppsPortfolio)
                     ]
                 ]
 
@@ -87,8 +89,9 @@ view =
                 [ -- Portfolio grid
                   div
                     [ Attr.class "portfolio-grid" ]
-                    [ -- Row 1
-                      portfolioItem
+                    (filterPortfolioItems activeFilter
+                        [ -- All portfolio items
+                          portfolioItem
                         "GOOP NAVIGATION SYSTEM"
                         "WebGL + Elm organic interface with real-time shader morphing"
                         "2025"
@@ -155,7 +158,8 @@ view =
                         "ui"
                         [ "React", "Styled Components", "Design System" ]
                         ""
-                    ]
+                        ]
+                    )
                 ]
 
             -- Bottom fade overlay
@@ -489,11 +493,47 @@ view =
 
 
 
+-- Filter portfolio items based on active filter
+
+
+filterPortfolioItems : PortfolioFilter -> List (Html PortfolioMsg) -> List (Html PortfolioMsg)
+filterPortfolioItems filter items =
+    case filter of
+        AllPortfolio ->
+            items
+
+        _ ->
+            -- Filter based on category match
+            -- Since we can't inspect Html after creation, we filter by matching
+            -- the creation pattern: every 9 items, webgl items are at positions: 0, 2, 3, 7
+            -- ui items at: 1, 5, 6, 8, apps at: 4
+            let
+                matchesFilter : Int -> Bool
+                matchesFilter index =
+                    case (filter, index) of
+                        (WebGLPortfolio, 0) -> True
+                        (WebGLPortfolio, 2) -> True
+                        (WebGLPortfolio, 3) -> True
+                        (WebGLPortfolio, 7) -> True
+                        (UIUXPortfolio, 1) -> True
+                        (UIUXPortfolio, 5) -> True
+                        (UIUXPortfolio, 6) -> True
+                        (UIUXPortfolio, 8) -> True
+                        (AppsPortfolio, 4) -> True
+                        _ -> False
+            in
+            items
+                |> List.indexedMap (\index item -> (index, item))
+                |> List.filter (\(index, _) -> matchesFilter index)
+                |> List.map Tuple.second
+
+
+
 -- Filter node component
 
 
-goopFilterNode : String -> String -> Bool -> Html PortfolioMsg
-goopFilterNode title nodeId isActive =
+goopFilterNode : String -> PortfolioFilter -> Bool -> Html PortfolioMsg
+goopFilterNode title filter isActive =
     div
         [ Attr.class
             ("db pa1 ph2 tc goop-filter-node"
@@ -505,8 +545,9 @@ goopFilterNode title nodeId isActive =
                    )
             )
         , Attr.style "min-width" "50px"
-        , Attr.id nodeId
-        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        , Attr.style "cursor" "pointer"
+        , onClick (SetFilter filter)
+        , stopPropagationOn "click" (Decode.succeed ( SetFilter filter, True ))
         ]
         [ span
             [ Attr.class "f8 tracked ttu"

@@ -400,6 +400,23 @@ update msg model =
             in
             ( { model | linkFilters = newFilters }, Cmd.none )
 
+        SetPortfolioFilter filter ->
+            ( { model | portfolioFilter = filter }, Cmd.none )
+
+        ToggleProjectFilter filter ->
+            let
+                isActive =
+                    List.any (\f -> f == filter) model.projectFilters
+
+                newFilters =
+                    if isActive then
+                        List.filter (\f -> f /= filter) model.projectFilters
+
+                    else
+                        filter :: model.projectFilters
+            in
+            ( { model | projectFilters = newFilters }, Cmd.none )
+
         -- Blog post loading messages
         LoadBlogPost slug ->
             ( { model

@@ -13,7 +13,7 @@ module Model exposing
 import Browser
 import Math.Vector2 as Vec2
 import Navigation.GoopNav as GoopNav
-import Types exposing (Page(..), BlogTag, LinkFilter)
+import Types exposing (Page(..), BlogTag, LinkFilter, PortfolioFilter(..), ProjectFilter)
 import BlogContent.Types exposing (BlogPost)
 import Http
 import Json.Decode as Decode
@@ -59,6 +59,8 @@ type alias Model =
     -- Filter state
     , blogFilters : List BlogTag
     , linkFilters : List LinkFilter
+    , portfolioFilter : PortfolioFilter
+    , projectFilters : List ProjectFilter
 
     -- Blog post loading state
     , currentBlogPost : Maybe BlogPost
@@ -113,6 +115,8 @@ type Msg
       -- Filter messages
     | ToggleBlogFilter BlogTag
     | ToggleLinkFilter LinkFilter
+    | SetPortfolioFilter PortfolioFilter
+    | ToggleProjectFilter ProjectFilter
       -- Blog post loading messages
     | LoadBlogPost String
     | BlogPostLoaded (Result Http.Error String)
@@ -156,6 +160,8 @@ init flags =
       -- Initialize filters (empty = show all)
       , blogFilters = []
       , linkFilters = []
+      , portfolioFilter = AllPortfolio
+      , projectFilters = []
 
       -- Initialize blog post state
       , currentBlogPost = Nothing

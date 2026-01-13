@@ -433,6 +433,29 @@ linksMsgToMainMsg msg =
             Tick 0
 
 
+portfolioMsgToMainMsg : Pages.Portfolio.PortfolioMsg -> Msg
+portfolioMsgToMainMsg msg =
+    case msg of
+        Pages.Portfolio.SetFilter filter ->
+            SetPortfolioFilter filter
+
+        _ ->
+            Tick 0
+
+
+projectMsgToMainMsg : Pages.Projects.ProjectMsg -> Msg
+projectMsgToMainMsg msg =
+    case msg of
+        Pages.Projects.ToggleFilter filter ->
+            ToggleProjectFilter filter
+
+        Pages.Projects.NoOp ->
+            Tick 0
+
+        _ ->
+            Tick 0
+
+
 -- Simple content for each page
 
 
@@ -456,11 +479,10 @@ viewPageContent page model =
                 ]
 
         Projects ->
-            Html.map (\_ -> Tick 0) Pages.Projects.view
+            Html.map projectMsgToMainMsg (Pages.Projects.view model.projectFilters)
 
         Portfolio ->
-            -- Use Html.map to handle the Portfolio page message conversion
-            Html.map (\_ -> Tick 0) Pages.Portfolio.view
+            Html.map portfolioMsgToMainMsg (Pages.Portfolio.view model.portfolioFilter)
 
         About ->
             Html.map (\_ -> Tick 0) Pages.About.view

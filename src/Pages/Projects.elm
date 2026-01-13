@@ -1,9 +1,10 @@
-module Pages.Projects exposing (view)
+module Pages.Projects exposing (view, ProjectMsg(..))
 
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
+import Types exposing (ProjectFilter(..))
 
 
 -- Projects page with detailed technical project showcase
@@ -14,10 +15,11 @@ type ProjectMsg
     = NoOp
     | ViewDemo String
     | ViewCode String
+    | ToggleFilter ProjectFilter
 
 
-view : Html ProjectMsg
-view =
+view : List ProjectFilter -> Html ProjectMsg
+view activeFilters =
     div
         [ Attr.class "h-100 w-100 flex flex-column monospace bg-transparent relative"
         ]
@@ -45,9 +47,9 @@ view =
 
                 -- Status indicators
                 , div [ Attr.class "flex gap1" ]
-                    [ statusIndicator "LIVE" "status-live" True
-                    , statusIndicator "GITHUB" "status-github" False
-                    , statusIndicator "FEATURED" "status-featured" False
+                    [ statusIndicator "LIVE" LiveProject (isFilterActive LiveProject activeFilters)
+                    , statusIndicator "GITHUB" GithubProject (isFilterActive GithubProject activeFilters)
+                    , statusIndicator "FEATURED" FeaturedProject (isFilterActive FeaturedProject activeFilters)
                     ]
                 ]
 
@@ -86,7 +88,8 @@ view =
                 [ -- Projects list
                   div
                     [ Attr.class "projects-container" ]
-                    [ projectItem
+                    (filterProjects activeFilters
+                        [ projectItem
                         "GOOP NAVIGATION SYSTEM"
                         "Real-time WebGL fluid interface with organic morphing and interactive particle physics"
                         [ ( "Frontend", "Elm + WebGL" )
@@ -169,7 +172,8 @@ view =
                         "2022"
                         "live"
                         "Real-time collaborative code editor supporting multiple programming languages with integrated project management. Features conflict-free collaborative editing, live code execution, and seamless version control integration."
-                    ]
+                        ]
+                    )
                 ]
 
             -- Bottom fade overlay
@@ -484,11 +488,52 @@ view =
 
 
 
+-- Filter projects based on active filters
+
+
+filterProjects : List ProjectFilter -> List (Html ProjectMsg) -> List (Html ProjectMsg)
+filterProjects activeFilters items =
+    if List.isEmpty activeFilters then
+        items
+    else
+        -- Filter based on status match
+        -- Projects with status: live (0, 3, 5), github (1, 2, 4), featured (4)
+        let
+            matchesFilter : Int -> Bool
+            matchesFilter index =
+                List.any
+                    (\filter ->
+                        case (filter, index) of
+                            (LiveProject, 0) -> True
+                            (LiveProject, 3) -> True
+                            (LiveProject, 5) -> True
+                            (GithubProject, 1) -> True
+                            (GithubProject, 2) -> True
+                            (GithubProject, 4) -> True
+                            (FeaturedProject, 4) -> True
+                            _ -> False
+                    )
+                    activeFilters
+        in
+        items
+            |> List.indexedMap (\index item -> (index, item))
+            |> List.filter (\(index, _) -> matchesFilter index)
+            |> List.map Tuple.second
+
+
+-- Helper to check if a filter is active
+
+
+isFilterActive : ProjectFilter -> List ProjectFilter -> Bool
+isFilterActive filter activeFilters =
+    List.any (\f -> f == filter) activeFilters
+
+
 -- Status indicator component
 
 
-statusIndicator : String -> String -> Bool -> Html ProjectMsg
-statusIndicator title nodeId isActive =
+statusIndicator : String -> ProjectFilter -> Bool -> Html ProjectMsg
+statusIndicator title filter isActive =
     div
         [ Attr.class
             ("db pa1 ph2 tc status-indicator"
@@ -500,8 +545,9 @@ statusIndicator title nodeId isActive =
                    )
             )
         , Attr.style "min-width" "50px"
-        , Attr.id nodeId
-        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        , Attr.style "cursor" "pointer"
+        , onClick (ToggleFilter filter)
+        , stopPropagationOn "click" (Decode.succeed ( ToggleFilter filter, True ))
         ]
         [ span
             [ Attr.class "f8 tracked ttu"
