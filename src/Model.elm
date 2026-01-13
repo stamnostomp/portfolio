@@ -17,6 +17,8 @@ import Types exposing (Page(..), BlogTag, LinkFilter, PortfolioFilter(..), Proje
 import BlogContent.Types exposing (BlogPost)
 import Http
 import Json.Decode as Decode
+import Dict exposing (Dict)
+import Pages.Links exposing (LinkStatus(..))
 
 
 
@@ -61,6 +63,9 @@ type alias Model =
     , linkFilters : List LinkFilter
     , portfolioFilter : PortfolioFilter
     , projectFilters : List ProjectFilter
+
+    -- Link status checking
+    , linkStatuses : Dict String LinkStatus -- URL -> status
 
     -- Blog post loading state
     , currentBlogPost : Maybe BlogPost
@@ -117,6 +122,10 @@ type Msg
     | ToggleLinkFilter LinkFilter
     | SetPortfolioFilter PortfolioFilter
     | ToggleProjectFilter ProjectFilter
+      -- Link status messages
+    | CheckAllLinkStatuses
+    | CheckLinkStatus String
+    | LinkStatusResult String (Result Http.Error ())
       -- Blog post loading messages
     | LoadBlogPost String
     | BlogPostLoaded (Result Http.Error String)
@@ -162,6 +171,9 @@ init flags =
       , linkFilters = []
       , portfolioFilter = AllPortfolio
       , projectFilters = []
+
+      -- Initialize link statuses (empty dict, will be populated on load)
+      , linkStatuses = Dict.empty
 
       -- Initialize blog post state
       , currentBlogPost = Nothing

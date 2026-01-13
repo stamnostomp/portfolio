@@ -53,8 +53,8 @@ view model =
           viewGoopNavigation model
         , -- Content square (when active)
           viewContentSquare model
-        , -- Debug info (optional)
-          viewDebugInfo model
+        -- Debug info (hidden)
+        -- , viewDebugInfo model
         , -- Enhanced CSS with goop effects and Tachyons
           node "style"
             []
@@ -501,7 +501,7 @@ viewPageContent page model =
 
         Links ->
             -- Use Html.map to handle the Links page message conversion
-            Html.map linksMsgToMainMsg (Pages.Links.view model.linkFilters)
+            Html.map linksMsgToMainMsg (Pages.Links.view model.linkFilters model.linkStatuses)
 
         Gallery ->
             -- Use Html.map to handle the Gallery page message conversion

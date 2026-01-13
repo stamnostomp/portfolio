@@ -9,6 +9,8 @@ import Navigation.GoopNav as GoopNav
 import Types exposing (Page(..))
 import Http
 import BlogContent.OrgParser as OrgParser
+import Dict
+import Pages.Links
 
 
 
@@ -322,9 +324,20 @@ update msg model =
                                     }
                             else
                                 Cmd.none
+
+                        -- Check link statuses if navigating to Links and not already checking
+                        checkLinksCmd =
+                            if targetPage == Links && Dict.isEmpty model.linkStatuses then
+                                update CheckAllLinkStatuses model
+                                    |> Tuple.second
+                            else
+                                Cmd.none
+
+                        allCmds =
+                            Cmd.batch [ loadBlogIndexCmd, checkLinksCmd ]
                     in
                     ( { model | transitionState = TransitioningOut 0.0 targetPage }
-                    , loadBlogIndexCmd
+                    , allCmds
                     )
 
                 _ ->
@@ -416,6 +429,76 @@ update msg model =
                         filter :: model.projectFilters
             in
             ( { model | projectFilters = newFilters }, Cmd.none )
+
+        -- Link status checking messages
+        CheckAllLinkStatuses ->
+            let
+                checkCommands =
+                    Pages.Links.allLinks
+                        |> List.map (\link ->
+                            Http.request
+                                { method = "HEAD"
+                                , headers = []
+                                , url = link.url
+                                , body = Http.emptyBody
+                                , expect = Http.expectWhatever (LinkStatusResult link.url)
+                                , timeout = Just 5000
+                                , tracker = Nothing
+                                }
+                        )
+
+                -- Mark all as checking initially
+                initialStatuses =
+                    Pages.Links.allLinks
+                        |> List.map (\link -> (link.url, Pages.Links.Checking))
+                        |> Dict.fromList
+            in
+            ( { model | linkStatuses = initialStatuses }
+            , Cmd.batch checkCommands
+            )
+
+        CheckLinkStatus url ->
+            let
+                checkCmd =
+                    Http.request
+                        { method = "HEAD"
+                        , headers = []
+                        , url = url
+                        , body = Http.emptyBody
+                        , expect = Http.expectWhatever (LinkStatusResult url)
+                        , timeout = Just 5000
+                        , tracker = Nothing
+                        }
+            in
+            ( { model | linkStatuses = Dict.insert url Pages.Links.Checking model.linkStatuses }
+            , checkCmd
+            )
+
+        LinkStatusResult url result ->
+            let
+                status =
+                    case result of
+                        Ok () ->
+                            Pages.Links.Online
+
+                        Err (Http.BadStatus code) ->
+                            if code >= 200 && code < 300 then
+                                Pages.Links.Online
+                            else
+                                Pages.Links.Offline
+
+                        Err Http.Timeout ->
+                            Pages.Links.Offline
+
+                        Err Http.NetworkError ->
+                            Pages.Links.CorsError
+
+                        Err _ ->
+                            Pages.Links.Offline
+            in
+            ( { model | linkStatuses = Dict.insert url status model.linkStatuses }
+            , Cmd.none
+            )
 
         -- Blog post loading messages
         LoadBlogPost slug ->

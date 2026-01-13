@@ -1,10 +1,11 @@
-module Pages.Links exposing (view, LinksMsg(..))
+module Pages.Links exposing (view, LinksMsg(..), allLinks, LinkStatus(..))
 
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Types exposing (LinkFilter(..))
+import Dict exposing (Dict)
 
 
 -- Links page showcasing live services and platforms
@@ -15,6 +16,15 @@ type LinksMsg
     = NoOp
     | OpenLink String
     | ToggleFilter LinkFilter
+    | CheckLinkStatus String
+    | LinkStatusChecked String LinkStatus
+
+
+type LinkStatus
+    = Checking
+    | Online
+    | Offline
+    | CorsError
 
 
 -- Link data structure with categories
@@ -23,7 +33,6 @@ type LinksMsg
 type alias LinkItem =
     { title : String
     , url : String
-    , status : String
     , categories : List LinkFilter
     }
 
@@ -35,62 +44,50 @@ allLinks : List LinkItem
 allLinks =
     [ { title = "MEDIA STREAMING"
       , url = "https://media.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus, MediaCategory ]
       }
     , { title = "MUSIC SERVER"
       , url = "https://music.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus, MediaCategory ]
       }
     , { title = "PHOTO GALLERY"
       , url = "https://photos.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus, MediaCategory ]
       }
     , { title = "CLOUD STORAGE"
       , url = "https://files.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus, StorageCategory ]
       }
     , { title = "FILE SHARING"
       , url = "https://share.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus, StorageCategory ]
       }
     , { title = "BACKUP SYSTEM"
       , url = "https://backup.stamno.com"
-      , status = "maintenance"
       , categories = [ StorageCategory ]
       }
     , { title = "GIT REPOS"
       , url = "https://git.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus ]
       }
     , { title = "CODE REVIEW"
       , url = "https://review.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus ]
       }
     , { title = "MONITORING"
       , url = "https://monitor.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus ]
       }
     , { title = "MATRIX CHAT"
       , url = "https://matrix.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus ]
       }
     , { title = "RSS FEEDS"
       , url = "https://feeds.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus ]
       }
     , { title = "BOOKMARKS"
       , url = "https://bookmarks.stamno.com"
-      , status = "online"
       , categories = [ OnlineStatus ]
       }
     ]
@@ -121,8 +118,8 @@ filteredLinks activeFilters links =
                 )
 
 
-view : List LinkFilter -> Html LinksMsg
-view activeFilters =
+view : List LinkFilter -> Dict String LinkStatus -> Html LinksMsg
+view activeFilters linkStatuses =
     div
         [ Attr.class "h-100 w-100 flex flex-column monospace bg-transparent relative"
         ]
@@ -192,7 +189,11 @@ view activeFilters =
                   div
                     [ Attr.class "links-grid" ]
                     (filteredLinks activeFilters allLinks
-                        |> List.map (\link -> compactLinkItem link.title link.url link.status)
+                        |> List.map (\link ->
+                            let
+                                status = Dict.get link.url linkStatuses |> Maybe.withDefault Checking
+                            in
+                            compactLinkItem link.title link.url status)
                     )
                 ]
 
@@ -521,16 +522,54 @@ statusIndicator title filter activeFilters =
 
 
 
+-- Helper to convert LinkStatus to string
+
+
+linkStatusToString : LinkStatus -> String
+linkStatusToString status =
+    case status of
+        Checking ->
+            "checking"
+
+        Online ->
+            "online"
+
+        Offline ->
+            "offline"
+
+        CorsError ->
+            "cors-error"
+
+
+-- Helper to get status display text
+
+
+linkStatusToDisplay : LinkStatus -> String
+linkStatusToDisplay status =
+    case status of
+        Checking ->
+            "checking..."
+
+        Online ->
+            "online"
+
+        Offline ->
+            "offline"
+
+        CorsError ->
+            "blocked"
+
+
 -- Compact link item component
 
 
-compactLinkItem : String -> String -> String -> Html LinksMsg
+compactLinkItem : String -> String -> LinkStatus -> Html LinksMsg
 compactLinkItem title url status =
     a
         [ Attr.class "compact-link-item"
         , Attr.href url
         , Attr.target "_blank"
-        , Attr.attribute "data-status" status
+        , Attr.attribute "data-status" (linkStatusToString status)
         , stopPropagationOn "click" (Decode.succeed ( OpenLink url, True ))
         ]
         [ -- Link title
@@ -540,6 +579,6 @@ compactLinkItem title url status =
 
         -- Status indicator
         , div
-            [ Attr.class ("compact-link-status " ++ status) ]
-            [ text status ]
+            [ Attr.class ("compact-link-status " ++ linkStatusToString status) ]
+            [ text (linkStatusToDisplay status) ]
         ]
