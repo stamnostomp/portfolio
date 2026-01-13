@@ -550,6 +550,269 @@ view activeFilters currentBlogPost blogPostLoading blogError =
                                     inset 0 0 15px rgba(120, 160, 200, 0.15);
                     }
                 }
+
+                /* Blog post full content styling - muted pastels */
+                .blog-post-full {
+                    padding: 1rem;
+                    max-width: 900px;
+                    margin: 0 auto;
+                }
+
+                .blog-post-header {
+                    margin-bottom: 2rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid rgba(180, 160, 200, 0.2);
+                }
+
+                .blog-post-title {
+                    color: rgba(220, 200, 230, 0.95);
+                    font-size: 28px;
+                    font-weight: 600;
+                    letter-spacing: 0.05em;
+                    text-transform: uppercase;
+                    margin-bottom: 0.75rem;
+                    text-shadow: 0 0 20px rgba(180, 160, 200, 0.3);
+                }
+
+                .blog-post-meta {
+                    color: rgba(160, 180, 190, 0.7);
+                    font-size: 11px;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                }
+
+                .blog-post-date,
+                .blog-post-author {
+                    margin-right: 1rem;
+                }
+
+                .blog-post-tags {
+                    display: flex;
+                    gap: 6px;
+                    flex-wrap: wrap;
+                    margin-top: 0.75rem;
+                }
+
+                .blog-post-content {
+                    line-height: 1.8;
+                }
+
+                /* Headings - soft pastel colors */
+                .blog-heading {
+                    font-weight: 600;
+                    margin-top: 2.5rem;
+                    margin-bottom: 1rem;
+                    letter-spacing: 0.03em;
+                    line-height: 1.4;
+                }
+
+                .blog-heading-1 {
+                    color: rgba(200, 180, 220, 0.95);
+                    font-size: 24px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    border-bottom: 2px solid rgba(180, 160, 200, 0.3);
+                    padding-bottom: 0.5rem;
+                    margin-top: 3rem;
+                    text-shadow: 0 0 15px rgba(180, 160, 200, 0.2);
+                }
+
+                .blog-heading-2 {
+                    color: rgba(180, 200, 220, 0.9);
+                    font-size: 20px;
+                    border-bottom: 1px solid rgba(160, 180, 200, 0.25);
+                    padding-bottom: 0.4rem;
+                    margin-top: 2.5rem;
+                }
+
+                .blog-heading-3 {
+                    color: rgba(200, 190, 180, 0.85);
+                    font-size: 17px;
+                    margin-top: 2rem;
+                }
+
+                .blog-heading-4 {
+                    color: rgba(180, 190, 200, 0.8);
+                    font-size: 15px;
+                    margin-top: 1.5rem;
+                }
+
+                .blog-heading-5,
+                .blog-heading-6 {
+                    color: rgba(190, 190, 190, 0.75);
+                    font-size: 14px;
+                    margin-top: 1.5rem;
+                }
+
+                /* Paragraphs */
+                .blog-paragraph {
+                    color: rgba(200, 200, 200, 0.85);
+                    margin-bottom: 1.2rem;
+                    font-size: 14px;
+                    line-height: 1.8;
+                }
+
+                /* Bold text - soft purple/pink tint */
+                .blog-bold {
+                    color: rgba(220, 200, 220, 0.95);
+                    font-weight: 600;
+                    text-shadow: 0 0 10px rgba(200, 180, 200, 0.15);
+                }
+
+                /* Italic text - soft blue tint */
+                .blog-italic {
+                    color: rgba(180, 200, 220, 0.9);
+                    font-style: italic;
+                }
+
+                /* Inline code - soft green tint */
+                .blog-code-inline {
+                    background: rgba(160, 200, 180, 0.08);
+                    border: 1px solid rgba(160, 200, 180, 0.2);
+                    color: rgba(180, 220, 200, 0.9);
+                    padding: 2px 8px;
+                    border-radius: 3px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 13px;
+                }
+
+                /* Code blocks - soft green theme */
+                .blog-codeblock {
+                    background: rgba(0, 0, 0, 0.25);
+                    border: 1px solid rgba(160, 200, 180, 0.2);
+                    border-left: 3px solid rgba(160, 200, 180, 0.4);
+                    border-radius: 4px;
+                    padding: 1.25rem;
+                    margin: 1.5rem 0;
+                    overflow-x: auto;
+                    font-family: 'Courier New', monospace;
+                    font-size: 13px;
+                    line-height: 1.6;
+                }
+
+                .blog-codeblock code {
+                    color: rgba(180, 220, 200, 0.9);
+                    background: none;
+                    padding: 0;
+                }
+
+                /* Links - soft cyan */
+                .blog-link {
+                    color: rgba(160, 200, 220, 0.9);
+                    text-decoration: none;
+                    border-bottom: 1px solid rgba(160, 200, 220, 0.3);
+                    transition: all 0.2s;
+                }
+
+                .blog-link:hover {
+                    color: rgba(180, 220, 240, 1);
+                    border-bottom-color: rgba(180, 220, 240, 0.6);
+                    text-shadow: 0 0 10px rgba(160, 200, 220, 0.3);
+                }
+
+                /* Lists - soft colors */
+                .blog-list {
+                    color: rgba(200, 200, 200, 0.85);
+                    margin-bottom: 1.2rem;
+                    margin-left: 1.5rem;
+                    padding-left: 1rem;
+                }
+
+                .blog-list-item {
+                    margin-bottom: 0.5rem;
+                    font-size: 14px;
+                    line-height: 1.7;
+                }
+
+                .blog-list-item::marker {
+                    color: rgba(180, 160, 200, 0.6);
+                }
+
+                /* Blockquotes - soft lavender */
+                .blog-blockquote {
+                    border-left: 3px solid rgba(180, 160, 200, 0.4);
+                    padding-left: 1.2rem;
+                    margin: 1.5rem 0;
+                    color: rgba(200, 180, 210, 0.85);
+                    font-style: italic;
+                    background: rgba(180, 160, 200, 0.03);
+                    padding: 1rem 1rem 1rem 1.2rem;
+                    border-radius: 0 4px 4px 0;
+                }
+
+                /* Tables - soft pastel theme */
+                .blog-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 1.5rem 0;
+                    font-size: 13px;
+                }
+
+                .blog-table-header {
+                    background: rgba(180, 160, 200, 0.08);
+                    color: rgba(220, 200, 230, 0.9);
+                    border: 1px solid rgba(180, 160, 200, 0.25);
+                    padding: 0.6rem 0.8rem;
+                    text-align: left;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    font-size: 12px;
+                }
+
+                .blog-table-cell {
+                    border: 1px solid rgba(180, 180, 200, 0.15);
+                    padding: 0.6rem 0.8rem;
+                    color: rgba(200, 200, 200, 0.85);
+                }
+
+                .blog-table tbody tr:nth-child(even) {
+                    background: rgba(180, 180, 200, 0.02);
+                }
+
+                /* Horizontal rules - soft gradient */
+                .blog-hr {
+                    border: none;
+                    height: 1px;
+                    background: linear-gradient(90deg,
+                        transparent 0%,
+                        rgba(180, 180, 200, 0.3) 50%,
+                        transparent 100%);
+                    margin: 2.5rem 0;
+                }
+
+                /* Strikethrough - muted */
+                .blog-strikethrough {
+                    color: rgba(180, 180, 180, 0.5);
+                    text-decoration: line-through;
+                }
+
+                /* Underline - soft emphasis */
+                .blog-underline {
+                    color: rgba(200, 190, 210, 0.9);
+                    text-decoration: underline;
+                    text-decoration-color: rgba(180, 160, 200, 0.4);
+                }
+
+                /* Images */
+                .blog-image {
+                    margin: 2rem 0;
+                    text-align: center;
+                }
+
+                .blog-image-img {
+                    max-width: 100%;
+                    border: 1px solid rgba(180, 180, 200, 0.2);
+                    border-radius: 4px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                }
+
+                .blog-image-caption {
+                    color: rgba(180, 180, 200, 0.7);
+                    font-size: 12px;
+                    margin-top: 0.75rem;
+                    font-style: italic;
+                }
             """ ]
         ]
 
