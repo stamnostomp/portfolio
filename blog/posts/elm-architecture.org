@@ -1,0 +1,300 @@
+#+TITLE: Functional Reactive Programming in Elm
+#+DATE: 2025-03-05
+#+AUTHOR: Your Name
+#+TAGS: Elm, Functional Programming, Architecture
+#+CATEGORIES: tech
+#+SUMMARY: Why Elm's architecture makes complex state management feel effortless.
+#+SLUG: elm-architecture
+#+DRAFT: false
+
+* Why Elm?
+
+JavaScript fatigue is real. Every year brings new frameworks, new paradigms, new ways to shoot yourself in the foot with =undefined= errors.
+
+*Elm* is different. It's a purely functional language that compiles to JavaScript, with a rock-solid architecture that makes it /nearly impossible/ to write buggy code.
+
+No runtime exceptions. Ever.
+
+* The Elm Architecture
+
+At its core, Elm uses a simple pattern called *The Elm Architecture* (TEA):
+
+#+BEGIN_SRC elm
+-- MODEL: Your application state
+type alias Model =
+    { counter : Int
+    , text : String
+    }
+
+-- UPDATE: How state changes
+type Msg
+    = Increment
+    | Decrement
+    | UpdateText String
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        Increment ->
+            { model | counter = model.counter + 1 }
+
+        Decrement ->
+            { model | counter = model.counter - 1 }
+
+        UpdateText newText ->
+            { model | text = newText }
+
+-- VIEW: How to display your state
+view : Model -> Html Msg
+view model =
+    div []
+        [ button [ onClick Increment ] [ text "+" ]
+        , div [] [ text (String.fromInt model.counter) ]
+        , button [ onClick Decrement ] [ text "-" ]
+        ]
+#+END_SRC
+
+That's it. *Model*, *Update*, *View*. Everything flows in one direction.
+
+* Immutability By Default
+
+In Elm, everything is /immutable/. You can't modify data in place:
+
+#+BEGIN_SRC elm
+-- This is NOT Elm - just for illustration
+let counter = 0
+counter = counter + 1  -- ❌ Error!
+
+-- This IS Elm
+let counter = 0
+let newCounter = counter + 1  -- ✅ Works!
+#+END_SRC
+
+This might seem limiting, but it's *liberating*. You never have to worry about:
+
+- Shared mutable state
+- Race conditions
+- Who modified what and when
+
+Your data can't change unexpectedly because *it can't change at all*.
+
+* Type Safety
+
+Elm's type system catches errors at /compile time/, not runtime:
+
+#+BEGIN_SRC elm
+type Page
+    = Home
+    | Blog
+    | Contact
+
+viewPage : Page -> Html Msg
+viewPage page =
+    case page of
+        Home -> viewHome
+        Blog -> viewBlog
+        -- ❌ Compiler error: missing Contact case!
+#+END_SRC
+
+The compiler *forces* you to handle every possibility. No forgotten edge cases. No =undefined is not a function=.
+
+* Managing Side Effects
+
+In Elm, side effects are isolated in *Commands*:
+
+#+BEGIN_SRC elm
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+    case msg of
+        LoadPost slug ->
+            ( { model | loading = True }
+            , Http.get
+                { url = "/posts/" ++ slug ++ ".json"
+                , expect = Http.expectJson PostLoaded postDecoder
+                }
+            )
+
+        PostLoaded (Ok post) ->
+            ( { model
+                | currentPost = Just post
+                , loading = False
+              }
+            , Cmd.none
+            )
+
+        PostLoaded (Err error) ->
+            ( { model
+                | error = Just error
+                , loading = False
+              }
+            , Cmd.none
+            )
+#+END_SRC
+
+HTTP requests, timers, random numbers—all side effects are explicitly declared and type-checked.
+
+* Pattern Matching: The Secret Weapon
+
+Pattern matching makes complex logic /readable/:
+
+#+BEGIN_SRC elm
+type RemoteData error value
+    = NotAsked
+    | Loading
+    | Failure error
+    | Success value
+
+viewPost : RemoteData String Post -> Html Msg
+viewPost data =
+    case data of
+        NotAsked ->
+            div [] [ text "Click to load" ]
+
+        Loading ->
+            div [] [ text "Loading..." ]
+
+        Failure error ->
+            div [] [ text ("Error: " ++ error) ]
+
+        Success post ->
+            viewFullPost post
+#+END_SRC
+
+Every state is explicit. The compiler ensures you handle them all.
+
+* Comparison with JavaScript
+
+Let's compare the same feature:
+
+** JavaScript (React)
+
+#+BEGIN_SRC javascript
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  // Could be null, undefined, or wrong type
+  useEffect(() => {
+    setCount(someRandomValue);  // Runtime error waiting to happen
+  }, []);
+
+  return (
+    <div>
+      <button onClick={() => setCount(count + 1)}>+</button>
+      <div>{count}</div>
+    </div>
+  );
+}
+#+END_SRC
+
+** Elm
+
+#+BEGIN_SRC elm
+type alias Model = { count : Int }
+
+type Msg = Increment
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        Increment -> { model | count = model.count + 1 }
+
+view : Model -> Html Msg
+view model =
+    div []
+        [ button [ onClick Increment ] [ text "+" ]
+        , div [] [ text (String.fromInt model.count) ]
+        ]
+#+END_SRC
+
+The Elm version:
+- Can't have null/undefined errors
+- Types are guaranteed correct
+- State updates are predictable
+- Refactoring is fearless
+
+* Real-World Example: This Portfolio
+
+This entire site is built with Elm! The complex state management includes:
+
+- Page navigation
+- WebGL rendering state
+- Filter states for blog/links
+- Blog post loading
+- Transition animations
+
+All managed with TEA. The entire state tree is in =Model=, all changes go through =update=, and the view is a pure function of that state.
+
+* The Downsides
+
+Elm isn't perfect. Trade-offs include:
+
+- *Smaller ecosystem* than JavaScript
+- *Steeper learning curve* (functional programming is different)
+- *Interop complexity* when you need JavaScript libraries
+- *Compile times* can be slow on large projects
+
+But for many projects, these trade-offs are /absolutely worth it/.
+
+* Getting Started
+
+To start with Elm:
+
+1. Install Elm: =npm install -g elm=
+2. Create a project: =elm init=
+3. Read the guide: [[https://guide.elm-lang.org]]
+4. Join the community: [[https://elm-lang.org/community]]
+
+The Elm community is incredibly welcoming to beginners!
+
+* Best Practices
+
+After building several Elm apps, here's what I've learned:
+
+** Keep messages granular
+#+BEGIN_SRC elm
+-- ❌ Bad: Generic message
+type Msg = DataChanged String
+
+-- ✅ Good: Specific messages
+type Msg
+    = UsernameChanged String
+    | PasswordChanged String
+#+END_SRC
+
+** Use custom types instead of booleans
+#+BEGIN_SRC elm
+-- ❌ Bad: Boolean soup
+type alias Model =
+    { loading : Bool
+    , hasError : Bool
+    , isEmpty : Bool
+    }
+
+-- ✅ Good: Explicit states
+type LoadState
+    = Loading
+    | Error String
+    | Empty
+    | Loaded (List Item)
+#+END_SRC
+
+** Break down large views
+#+BEGIN_SRC elm
+view : Model -> Html Msg
+view model =
+    div []
+        [ viewHeader model
+        , viewContent model
+        , viewFooter model
+        ]
+#+END_SRC
+
+* Conclusion
+
+Elm won't replace JavaScript entirely, but it *proves* that web development can be better. No runtime exceptions, fearless refactoring, and code that just /works/.
+
+Once you experience the joy of never seeing =undefined is not a function= again, it's hard to go back.
+
+-----
+
+Give Elm a try. Your future self will thank you.

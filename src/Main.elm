@@ -413,6 +413,9 @@ blogMsgToMainMsg msg =
         Pages.Blog.ToggleFilter tag ->
             ToggleBlogFilter tag
 
+        Pages.Blog.LoadPost slug ->
+            LoadBlogPost slug
+
         Pages.Blog.NoOp ->
             Tick 0
 
@@ -469,7 +472,7 @@ viewPageContent page model =
 
         Blog ->
             -- Use Html.map to handle the Blog page message conversion
-            Html.map blogMsgToMainMsg (Pages.Blog.view model.blogFilters)
+            Html.map blogMsgToMainMsg (Pages.Blog.view model.blogFilters model.currentBlogPost model.blogPostLoading model.blogError)
 
         Links ->
             -- Use Html.map to handle the Links page message conversion

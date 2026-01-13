@@ -5,6 +5,8 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Types exposing (BlogTag(..))
+import BlogContent.Types as BlogContent
+import BlogContent.Renderer as Renderer
 
 
 
@@ -15,15 +17,17 @@ import Types exposing (BlogTag(..))
 type BlogMsg
     = NoOp
     | ToggleFilter BlogTag
+    | LoadPost String
 
 
--- Blog post data structure with categories
+-- Blog post index structure - just metadata for listing
 
 
-type alias BlogPost =
+type alias BlogPostIndex =
     { title : String
     , date : String
-    , content : String
+    , slug : String
+    , summary : String
     , tags : List String
     , categories : List BlogTag
     }
@@ -32,67 +36,28 @@ type alias BlogPost =
 -- All blog posts with categorization
 
 
-allPosts : List BlogPost
+allPosts : List BlogPostIndex
 allPosts =
     [ { title = "THE ORGANIC WEB: BEYOND STATIC INTERFACES"
       , date = "2025.03.15"
-      , content = "Exploring how organic, fluid interfaces can create more intuitive user experiences. This goop navigation system represents a shift away from rigid menu structures toward something more natural and responsive to user interaction. By embracing fluid, organic forms, we can create interfaces that feel more alive and engaging."
+      , slug = "organic-web"
+      , summary = "Exploring how organic, fluid interfaces can create more intuitive user experiences. This goop navigation system represents a shift away from rigid menu structures toward something more natural and responsive to user interaction."
       , tags = [ "WebGL", "UI/UX", "Interactive Design" ]
       , categories = [ TechTag, DesignTag ]
       }
     , { title = "SHADER PROGRAMMING FOR CREATIVE CODING"
       , date = "2025.03.10"
-      , content = "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects. From basic color manipulation to complex procedural animations, shaders open up infinite possibilities for web-based art. Understanding the GPU pipeline is key to creating performant visual experiences."
+      , slug = "shader-programming"
+      , summary = "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects. From basic color manipulation to complex procedural animations, shaders open up infinite possibilities for web-based art."
       , tags = [ "WebGL", "Shaders", "Creative Coding" ]
       , categories = [ TechTag ]
       }
     , { title = "FUNCTIONAL REACTIVE PROGRAMMING IN ELM"
       , date = "2025.03.05"
-      , content = "Why Elm's architecture makes complex state management feel effortless. Moving from imperative to functional thinking changes how we approach user interfaces and application state. The Elm Architecture provides a robust foundation for building reliable, maintainable applications."
+      , slug = "elm-architecture"
+      , summary = "Why Elm's architecture makes complex state management feel effortless. Moving from imperative to functional thinking changes how we approach user interfaces and application state."
       , tags = [ "Elm", "Functional Programming", "Architecture" ]
       , categories = [ TechTag ]
-      }
-    , { title = "THE AESTHETICS OF Y2K DESIGN REVIVAL"
-      , date = "2025.02.28"
-      , content = "Analyzing the return of millennium bug era design principles in modern web interfaces. Chrome effects, organic shapes, and digital mysticism are making a comeback, but with modern technical capabilities. This revival represents a nostalgic longing for optimistic futurism."
-      , tags = [ "Design", "Y2K", "Aesthetics" ]
-      , categories = [ DesignTag, ThoughtsTag ]
-      }
-    , { title = "BUILDING RESPONSIVE 3D INTERFACES"
-      , date = "2025.02.20"
-      , content = "How to create WebGL interfaces that adapt to different screen sizes and input methods. From mobile touch to desktop precision, 3D interfaces need to be as responsive as their 2D counterparts. Performance considerations become critical when dealing with complex 3D scenes."
-      , tags = [ "WebGL", "Responsive Design", "3D" ]
-      , categories = [ TechTag ]
-      }
-    , { title = "PERFORMANCE OPTIMIZATION FOR COMPLEX ANIMATIONS"
-      , date = "2025.02.15"
-      , content = "Techniques for maintaining 60fps in browser-based animations. GPU acceleration, efficient rendering loops, and smart resource management for smooth interactive experiences. Understanding browser rendering pipelines is essential for creating fluid animations."
-      , tags = [ "Performance", "Animation", "Optimization" ]
-      , categories = [ TechTag ]
-      }
-    , { title = "THE PSYCHOLOGY OF ORGANIC NAVIGATION"
-      , date = "2025.02.10"
-      , content = "How fluid, organic interfaces can reduce cognitive load and create more intuitive user experiences. Research into spatial navigation and visual hierarchy in non-linear interfaces. Users naturally gravitate toward organic, flowing navigation patterns."
-      , tags = [ "UX Research", "Psychology", "Navigation" ]
-      , categories = [ ThoughtsTag, DesignTag ]
-      }
-    , { title = "CREATIVE CODING WITH MATHEMATICAL BEAUTY"
-      , date = "2025.02.05"
-      , content = "Exploring the intersection of mathematics and visual art in code. From fractals to fluid dynamics, how mathematical concepts can inspire beautiful, interactive experiences. Mathematics provides the foundation for creating compelling generative art."
-      , tags = [ "Mathematics", "Creative Coding", "Generative Art" ]
-      , categories = [ TechTag, ThoughtsTag ]
-      }
-    , { title = "ADVANCED WEBGL TECHNIQUES"
-      , date = "2025.01.30"
-      , content = "Deep dive into advanced WebGL programming techniques including custom shaders, texture manipulation, and performance optimization. Creating complex visual effects requires understanding both the artistic and technical aspects of real-time graphics programming."
-      , tags = [ "WebGL", "Graphics Programming", "Advanced Techniques" ]
-      , categories = [ TechTag ]
-      }
-    , { title = "THE FUTURE OF WEB INTERFACES"
-      , date = "2025.01.25"
-      , content = "Predictions for how web interfaces will evolve over the next decade. Virtual reality, augmented reality, and spatial computing will reshape how we interact with digital content. The web is becoming increasingly immersive and three-dimensional."
-      , tags = [ "Future Tech", "VR/AR", "Web Evolution" ]
-      , categories = [ ThoughtsTag ]
       }
     ]
 
@@ -108,7 +73,7 @@ tagIsActive tag activeFilters =
 -- Filter posts based on active filters
 
 
-filteredPosts : List BlogTag -> List BlogPost -> List BlogPost
+filteredPosts : List BlogTag -> List BlogPostIndex -> List BlogPostIndex
 filteredPosts activeFilters posts =
     if List.isEmpty activeFilters then
         posts
@@ -122,8 +87,8 @@ filteredPosts activeFilters posts =
                 )
 
 
-view : List BlogTag -> Html BlogMsg
-view activeFilters =
+view : List BlogTag -> Maybe BlogContent.BlogPost -> Bool -> Maybe String -> Html BlogMsg
+view activeFilters currentBlogPost blogPostLoading blogError =
     div
         [ Attr.class "h-100 w-100 flex flex-column monospace bg-transparent relative"
         ]
@@ -189,9 +154,20 @@ view activeFilters =
                 , Attr.style "padding-right" "2rem"
                 , Attr.style "margin-right" "-1rem"
                 ]
-                -- Render filtered blog posts
-                (filteredPosts activeFilters allPosts
-                    |> List.map (\post -> blogPost post.title post.date post.content post.tags)
+                -- Render filtered blog posts or full post
+                (case ( currentBlogPost, blogPostLoading, blogError ) of
+                    ( Just blogPost, _, _ ) ->
+                        [ viewFullBlogPost blogPost ]
+
+                    ( Nothing, True, _ ) ->
+                        [ loadingView ]
+
+                    ( Nothing, False, Just error ) ->
+                        [ errorView error ]
+
+                    ( Nothing, False, Nothing ) ->
+                        filteredPosts activeFilters allPosts
+                            |> List.map blogPostCard
                 )
 
             -- Bottom fade overlay
@@ -571,29 +547,80 @@ goopBlogCategoryNode title tag activeFilters =
 
 
 
--- Blog post component with enhanced styling
+-- Blog post card component (summary for list view)
 
 
-blogPost : String -> String -> String -> List String -> Html BlogMsg
-blogPost title date content tags =
+blogPostCard : BlogPostIndex -> Html BlogMsg
+blogPostCard post =
     article
         [ Attr.class "mb3 pa3 blog-post"
-        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        , Attr.style "cursor" "pointer"
+        , onClick (LoadPost post.slug)
+        , stopPropagationOn "click" (Decode.succeed ( LoadPost post.slug, True ))
         ]
         [ h2
             [ Attr.class "blog-title" ]
-            [ text title ]
+            [ text post.title ]
         , div
             [ Attr.class "blog-date" ]
-            [ text date ]
+            [ text post.date ]
         , p
             [ Attr.class "blog-content lh-copy mb2"
             ]
-            [ text content ]
+            [ text post.summary ]
         , div
             [ Attr.class "blog-tags" ]
-            (List.map blogTag tags)
+            (List.map blogTag post.tags)
         ]
+
+
+-- Loading indicator view
+
+
+loadingView : Html BlogMsg
+loadingView =
+    div
+        [ Attr.class "flex items-center justify-center pa4"
+        , Attr.style "color" "rgba(192, 192, 192, 0.8)"
+        ]
+        [ text "LOADING POST..." ]
+
+
+-- Error view
+
+
+errorView : String -> Html BlogMsg
+errorView error =
+    div
+        [ Attr.class "pa4 ma3"
+        , Attr.style "border" "1px solid rgba(192, 0, 0, 0.5)"
+        , Attr.style "background" "rgba(192, 0, 0, 0.1)"
+        , Attr.style "color" "rgba(255, 192, 192, 0.9)"
+        ]
+        [ h3
+            [ Attr.class "f5 mb2" ]
+            [ text "ERROR LOADING BLOG POST" ]
+        , p
+            [ Attr.class "f6 lh-copy" ]
+            [ text error ]
+        , p
+            [ Attr.class "f7 mt3"
+            , Attr.style "color" "rgba(192, 192, 192, 0.6)"
+            ]
+            [ text "Please check that the .org file exists in /blog/posts/" ]
+        ]
+
+
+-- Full blog post view using the renderer
+
+
+viewFullBlogPost : BlogContent.BlogPost -> Html BlogMsg
+viewFullBlogPost blogPost =
+    div
+        [ Attr.class "blog-post-full"
+        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        ]
+        [ Html.map (\_ -> NoOp) (Renderer.renderPost blogPost) ]
 
 
 

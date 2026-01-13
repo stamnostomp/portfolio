@@ -7,6 +7,8 @@ import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), TransitionState(..))
 import Navigation.GoopNav as GoopNav
 import Types exposing (Page(..))
+import Http
+import BlogContent.OrgParser as OrgParser
 
 
 
@@ -384,6 +386,70 @@ update msg model =
                         filter :: model.linkFilters
             in
             ( { model | linkFilters = newFilters }, Cmd.none )
+
+        -- Blog post loading messages
+        LoadBlogPost slug ->
+            ( { model
+                | blogPostLoading = True
+                , selectedBlogSlug = Just slug
+                , blogError = Nothing
+              }
+            , Http.get
+                { url = "/blog/posts/" ++ slug ++ ".org"
+                , expect = Http.expectString BlogPostLoaded
+                }
+            )
+
+        BlogPostLoaded result ->
+            case result of
+                Ok orgContent ->
+                    case OrgParser.parseBlogPost orgContent of
+                        Ok blogPost ->
+                            ( { model
+                                | currentBlogPost = Just blogPost
+                                , blogPostLoading = False
+                                , blogError = Nothing
+                              }
+                            , Cmd.none
+                            )
+
+                        Err parseError ->
+                            -- Failed to parse the org file
+                            ( { model
+                                | blogPostLoading = False
+                                , currentBlogPost = Nothing
+                                , blogError = Just ("Failed to parse org file: " ++ Debug.toString parseError)
+                              }
+                            , Cmd.none
+                            )
+
+                Err httpError ->
+                    -- Failed to load the org file
+                    let
+                        errorMessage =
+                            case httpError of
+                                Http.BadUrl url ->
+                                    "Bad URL: " ++ url
+
+                                Http.Timeout ->
+                                    "Request timed out"
+
+                                Http.NetworkError ->
+                                    "Network error"
+
+                                Http.BadStatus status ->
+                                    "HTTP error " ++ String.fromInt status
+
+                                Http.BadBody body ->
+                                    "Bad response body: " ++ body
+                    in
+                    ( { model
+                        | blogPostLoading = False
+                        , currentBlogPost = Nothing
+                        , blogError = Just errorMessage
+                      }
+                    , Cmd.none
+                    )
 
 
 

@@ -12,6 +12,8 @@ import Browser
 import Math.Vector2 as Vec2
 import Navigation.GoopNav as GoopNav
 import Types exposing (Page(..), BlogTag, LinkFilter)
+import BlogContent.Types exposing (BlogPost)
+import Http
 
 
 
@@ -54,6 +56,12 @@ type alias Model =
     -- Filter state
     , blogFilters : List BlogTag
     , linkFilters : List LinkFilter
+
+    -- Blog post loading state
+    , currentBlogPost : Maybe BlogPost
+    , blogPostLoading : Bool
+    , selectedBlogSlug : Maybe String
+    , blogError : Maybe String
     }
 
 
@@ -86,6 +94,9 @@ type Msg
       -- Filter messages
     | ToggleBlogFilter BlogTag
     | ToggleLinkFilter LinkFilter
+      -- Blog post loading messages
+    | LoadBlogPost String
+    | BlogPostLoaded (Result Http.Error String)
 
 
 
@@ -122,6 +133,12 @@ init flags =
       -- Initialize filters (empty = show all)
       , blogFilters = []
       , linkFilters = []
+
+      -- Initialize blog post state
+      , currentBlogPost = Nothing
+      , blogPostLoading = False
+      , selectedBlogSlug = Nothing
+      , blogError = Nothing
       }
     , Cmd.none
     )

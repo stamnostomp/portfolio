@@ -26,7 +26,6 @@
             pkgs.elmPackages.elm-live
             pkgs.elmPackages.elm-format
             pkgs.elmPackages.elm-test
-            pkgs.nodejs
             pkgs.uglify-js
 
             # Essential networking tools

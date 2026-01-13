@@ -1,0 +1,193 @@
+#+TITLE: Shader Programming for Creative Coding
+#+DATE: 2025-03-10
+#+AUTHOR: Your Name
+#+TAGS: WebGL, Shaders, Creative Coding
+#+CATEGORIES: tech
+#+SUMMARY: Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects.
+#+SLUG: shader-programming
+#+DRAFT: false
+
+* What Are Shaders?
+
+Shaders are small programs that run on your *GPU* (Graphics Processing Unit). Unlike regular code that executes sequentially on the CPU, shaders run in /massive parallel/ across thousands of cores.
+
+Think of shaders as *tiny workers*, each responsible for computing the color of a single pixel. When you have millions of pixels, this parallelism makes shaders incredibly powerful.
+
+* Types of Shaders
+
+** Vertex Shaders
+
+Process the =geometry= of your scene:
+
+- Transform 3D coordinates to screen space
+- Calculate vertex positions
+- Pass data to fragment shaders
+
+** Fragment Shaders
+
+Determine the =color= of each pixel:
+
+- Apply textures and lighting
+- Create procedural effects
+- Implement post-processing
+
+This post focuses primarily on *fragment shaders* for creative effects.
+
+* Your First Shader
+
+Let's start with the simplest possible fragment shader:
+
+#+BEGIN_SRC glsl
+precision mediump float;
+
+void main() {
+    gl_FragColor = vec4(1.0, 0.0, 0.5, 1.0);
+}
+#+END_SRC
+
+This shader makes every pixel the same color: =rgb(255, 0, 127)=—a bright pink.
+
+Not very exciting, but it's a start!
+
+* Using UV Coordinates
+
+To create interesting effects, we need to know /where/ each pixel is. That's where UV coordinates come in:
+
+#+BEGIN_SRC glsl
+precision mediump float;
+varying vec2 vUV;
+
+void main() {
+    gl_FragColor = vec4(vUV.x, vUV.y, 0.0, 1.0);
+}
+#+END_SRC
+
+This creates a gradient:
+- Left side is *black* (UV = 0,0)
+- Right side is *yellow* (UV = 1,1)
+- Creates smooth color transition
+
+* Distance Fields: The Foundation
+
+One of the most powerful techniques in shader programming is *signed distance fields* (SDFs):
+
+#+BEGIN_SRC glsl
+float sdCircle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+float sdBox(vec2 p, vec2 b) {
+    vec2 d = abs(p) - b;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+#+END_SRC
+
+These functions tell you how /far/ a point is from a shape. Negative means inside, positive means outside.
+
+* Building a Goop Effect
+
+Here's how to create an organic, glowing blob:
+
+#+BEGIN_SRC glsl
+precision mediump float;
+varying vec2 vUV;
+uniform float uTime;
+
+float sdCircle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+void main() {
+    vec2 center = vec2(0.5, 0.5);
+    vec2 p = vUV - center;
+
+    // Animate the radius
+    float radius = 0.2 + 0.05 * sin(uTime * 2.0);
+
+    // Calculate distance
+    float dist = sdCircle(p, radius);
+
+    // Create glow effect
+    float glow = exp(-abs(dist) * 8.0);
+
+    // Color
+    vec3 color = vec3(0.75, 0.75, 0.75);
+    vec3 finalColor = color * glow;
+
+    gl_FragColor = vec4(finalColor, glow);
+}
+#+END_SRC
+
+This creates a *pulsing, glowing blob* that changes size over time.
+
+* Combining Multiple Shapes
+
+You can combine distance fields using simple operations:
+
+- *Union*: =min(d1, d2)=
+- *Subtraction*: =max(-d1, d2)=
+- *Intersection*: =max(d1, d2)=
+- *Smooth blend*: =smoothstep(d1, d2, k)=
+
+Example of smooth blending:
+
+#+BEGIN_SRC glsl
+float smin(float a, float b, float k) {
+    float h = max(k - abs(a - b), 0.0) / k;
+    return min(a, b) - h * h * k * 0.25;
+}
+#+END_SRC
+
+This creates organic, /blobby/ unions perfect for goop effects!
+
+* Performance Tips
+
+| Technique | Impact | When to Use |
+|-----------+--------+-------------|
+| Early exit | High | Complex scenes |
+| Texture sampling | Medium | Repeated patterns |
+| Precision control | Low | Mobile devices |
+
+Always remember: *Every pixel runs your shader*. A 1920×1080 screen means your code runs over 2 million times per frame!
+
+* Common Pitfalls
+
+1. *Branching*: Avoid =if= statements when possible
+2. *Texture lookups*: Minimize texture samples
+3. *Complex math*: GPU math is fast, but not /that/ fast
+4. *Precision*: Use =mediump= on mobile to save bandwidth
+
+* Real-World Applications
+
+Shaders aren't just for demos—they power:
+
+- Video game graphics
+- Real-time video effects
+- Data visualization
+- Generative art
+- UI animations
+
+The goop navigation you see on this site? *All shaders*.
+
+* Learning Resources
+
+To master shaders, I recommend:
+
+- [[https://thebookofshaders.com][The Book of Shaders]] - Essential reading
+- [[https://www.shadertoy.com][Shadertoy]] - Practice and inspiration
+- [[https://iquilezles.org][Inigo Quilez's articles]] - Advanced techniques
+
+* Next Steps
+
+Now that you understand the basics, try:
+
+1. Modify the glow shader to use different colors
+2. Create a bouncing ball effect
+3. Combine multiple shapes with smooth blending
+4. Add mouse interaction
+
+The best way to learn is to *experiment* and *break things*!
+
+-----
+
+Happy shader coding! May your frame rates stay high and your visual effects stay mesmerizing.
