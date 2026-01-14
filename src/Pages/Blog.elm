@@ -150,7 +150,7 @@ view activeFilters currentBlogPost blogPostLoading blogError blogPostIndex =
             ]
             [ -- Top fade overlay
               div
-                [ Attr.class "absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
+                [ Attr.class "dn absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
                 []
 
             -- FIXED: Scrollable blog content with explicit height and hidden scrollbar
@@ -189,7 +189,7 @@ view activeFilters currentBlogPost blogPostLoading blogError blogPostIndex =
 
             -- Bottom fade overlay
             , div
-                [ Attr.class "absolute bottom-0 left-0 right-0 z-2 pointer-events-none fade-overlay-bottom" ]
+                [ Attr.class "dn absolute bottom-0 left-0 right-0 z-2 pointer-events-none fade-overlay-bottom" ]
                 []
             ]
 
@@ -204,9 +204,9 @@ view activeFilters currentBlogPost blogPostLoading blogError blogPostIndex =
                 /* FIXED: Custom scroll container - same as Services page */
                 .custom-scroll-container {
                     position: relative;
-                    border: 1px solid rgba(192, 192, 192, 0.1);
-                    background: rgba(0, 0, 0, 0.05);
-                    backdrop-filter: blur(2px);
+                    border: none;
+                    background: transparent;
+                    backdrop-filter: none;
                 }
 
                 /* FIXED: Hide scrollbar completely like Services page */

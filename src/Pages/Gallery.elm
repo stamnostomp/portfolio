@@ -69,7 +69,7 @@ view =
             ]
             [ -- Top fade overlay
               div
-                [ Attr.class "absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
+                [ Attr.class "dn absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
                 []
 
             -- Scrollable gallery content
@@ -114,7 +114,7 @@ view =
 
             -- Bottom fade overlay
             , div
-                [ Attr.class "absolute bottom-0 left-0 right-0 z-2 pointer-events-none fade-overlay-bottom" ]
+                [ Attr.class "dn absolute bottom-0 left-0 right-0 z-2 pointer-events-none fade-overlay-bottom" ]
                 []
             ]
 
@@ -292,9 +292,9 @@ view =
                 /* Custom scroll styling - same as other pages */
                 .custom-scroll-container {
                     position: relative;
-                    border: 1px solid rgba(192, 192, 192, 0.1);
-                    background: rgba(0, 0, 0, 0.05);
-                    backdrop-filter: blur(2px);
+                    border: none;
+                    background: transparent;
+                    backdrop-filter: none;
                 }
 
                 .custom-scroll-content {
