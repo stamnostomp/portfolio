@@ -35,7 +35,7 @@ view =
 
             -- Close button positioned to the right
             , button
-                [ Attr.class "bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
+                [ Attr.class " bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
                 , Attr.style "min-width" "70px"
                 , Attr.style "height" "32px"
                 ]
@@ -53,13 +53,13 @@ view =
 
         -- Scrollable content container with custom scroll and fade effects
         , div
-            [ Attr.class "w-100 mw6 relative custom-scroll-container"
+            [ Attr.class " w-100 mw6 relative custom-scroll-container"
             , Attr.style "height" "50vh"
             , Attr.style "max-height" "400px"
             ]
             [ -- Top fade overlay
               div
-                [ Attr.class "absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
+                [ Attr.class " dn absolute top-0 left-0 right-0 z-2 pointer-events-none fade-overlay-top" ]
                 []
 
             -- Scrollable content
@@ -84,7 +84,7 @@ view =
 
             -- Bottom fade overlay
             , div
-                [ Attr.class "absolute bottom-0 left-0 right-0 z-2 pointer-events-none fade-overlay-bottom" ]
+                [ Attr.class "dn absolute bottom-0 left-0 right-0 z-2 pointer-events-none fade-overlay-bottom" ]
                 []
             ]
 

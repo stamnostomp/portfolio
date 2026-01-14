@@ -111,33 +111,40 @@ view activeFilters currentBlogPost blogPostLoading blogError blogPostIndex =
                     ]
                     [ text "BLOG" ]
 
-                -- Show back button if viewing a post, otherwise show filters
+                -- Show filters only when viewing list (not when viewing a post)
                 , case currentBlogPost of
-                    Just _ ->
-                        button
-                            [ Attr.class "bg-transparent pa1 ph2 f8 fw6 monospace tracked pointer back-to-list-button"
-                            , Attr.style "cursor" "pointer"
-                            , Attr.style "color" "rgba(255, 255, 255, 0.9)"
-                            , onClick ClosePost
-                            , stopPropagationOn "click" (Decode.succeed ( ClosePost, True ))
-                            ]
-                            [ text "← BACK TO LIST" ]
-
                     Nothing ->
                         div [ Attr.class "flex gap1" ]
                             [ goopBlogCategoryNode "TECH" TechTag activeFilters
                             , goopBlogCategoryNode "DESIGN" DesignTag activeFilters
                             , goopBlogCategoryNode "THOUGHTS" ThoughtsTag activeFilters
                             ]
+
+                    Just _ ->
+                        text ""
                 ]
 
-            -- Right side: Close button (smaller)
-            , button
-                [ Attr.class "bg-transparent pa1 ph2 f8 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
-                , Attr.style "min-width" "50px"
-                , Attr.style "height" "24px"
-                ]
-                [ text "✕ CLOSE" ]
+            -- Right side: Show close button when viewing list, or back button when viewing post
+            , case currentBlogPost of
+                Nothing ->
+                    button
+                        [ Attr.class "bg-transparent pa1 ph2 f8 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
+                        , Attr.style "min-width" "50px"
+                        , Attr.style "height" "24px"
+                        ]
+                        [ text "✕ CLOSE" ]
+
+                Just _ ->
+                    button
+                        [ Attr.class "bg-transparent pa1 ph2 f8 fw6 monospace tracked pointer back-to-list-button"
+                        , Attr.style "cursor" "pointer"
+                        , Attr.style "color" "rgba(255, 255, 255, 0.9)"
+                        , Attr.style "min-width" "100px"
+                        , Attr.style "height" "24px"
+                        , onClick ClosePost
+                        , stopPropagationOn "click" (Decode.succeed ( ClosePost, True ))
+                        ]
+                        [ text "← BACK TO LIST" ]
             ]
 
         -- FIXED: Main scrollable content area with explicit height
