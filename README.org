@@ -1,5 +1,7 @@
 * Portfolio
 
+[[https://github.com/stamnostomp/portfolio/actions/workflows/build.yml][https://github.com/stamnostomp/portfolio/actions/workflows/build.yml/badge.svg]]
+
 A personal portfolio website featuring an interactive WebGL-based navigation system.
 
 ** Overview
