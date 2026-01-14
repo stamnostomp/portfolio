@@ -236,8 +236,62 @@ viewGoopNavigation model =
 
           else
             text ""
+        , -- Center label (only when not transitioning)
+          if transitionProgress < 0.3 then
+            viewCenterLabel model
+
+          else
+            text ""
         ]
 
+
+
+-- Center label for hovered branch
+
+
+viewCenterLabel : Model -> Html Msg
+viewCenterLabel model =
+    case model.goopNavState.hoveredBranch of
+        Nothing ->
+            text ""
+
+        Just branch ->
+            let
+                centerX =
+                    Vec2.getX model.resolution / 2
+
+                centerY =
+                    Vec2.getY model.resolution / 2
+
+                label =
+                    GoopNav.getBranchLabel branch
+
+                -- Floating animation based on time
+                floatOffsetY =
+                    sin (model.time * 2.0) * 3.0
+
+                floatOffsetX =
+                    cos (model.time * 1.5) * 2.0
+            in
+            div
+                [ Attr.class "dn fixed pointer-events-none z-3 monospace tc center-goop-label"
+                , Attr.style "left" (String.fromFloat (centerX + floatOffsetX) ++ "px")
+                , Attr.style "top" (String.fromFloat (centerY + floatOffsetY) ++ "px")
+                , Attr.style "transform" "translate(-50%, -50%)"
+                ]
+                [ div
+                    [ Attr.class "f5 fw6"
+                    , Attr.style "color" "rgba(192, 192, 192, 0.9)"
+                    , Attr.style "text-shadow" "0 0 8px rgba(192, 192, 192, 0.5), 0 0 16px rgba(192, 192, 192, 0.3)"
+                    ]
+                    [ text label ]
+                , div
+                    [ Attr.class "f7 mt1"
+                    , Attr.style "color" "rgba(192, 192, 192, 0.6)"
+                    , Attr.style "text-shadow" "0 0 6px rgba(192, 192, 192, 0.4)"
+                    ]
+                    [ text "◦ CLICK TO EXPAND ◦" ]
+                ]
 
 
 -- Hover labels for branches
