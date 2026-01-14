@@ -565,7 +565,7 @@ update msg model =
                             ( { model
                                 | blogPostLoading = False
                                 , currentBlogPost = Nothing
-                                , blogError = Just ("Failed to parse org file: " ++ Debug.toString parseError)
+                                , blogError = Just "Failed to parse org file"
                               }
                             , Cmd.none
                             )

@@ -19,6 +19,37 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in
       {
+        packages.default = pkgs.stdenv.mkDerivation {
+          name = "portfolio";
+          src = ./.;
+
+          nativeBuildInputs = [
+            pkgs.elmPackages.elm
+            pkgs.uglify-js
+          ];
+
+          configurePhase = pkgs.elmPackages.fetchElmDeps {
+            elmPackages = import ./elm-srcs.nix;
+            elmVersion = "0.19.1";
+            registryDat = ./registry.dat;
+          };
+
+          buildPhase = ''
+            # Compile Elm to JavaScript
+            elm make src/Main.elm --optimize --output=elm.js
+
+            # Minify the output
+            uglifyjs elm.js --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output elm.min.js
+          '';
+
+          installPhase = ''
+            mkdir -p $out
+            cp index.html $out/ || true
+            cp -r blog $out/ || true
+            cp elm.min.js $out/elm.js
+          '';
+        };
+
         devShells.default = pkgs.mkShell {
           buildInputs = [
             # Elm dependencies
@@ -27,6 +58,7 @@
             pkgs.elmPackages.elm-format
             pkgs.elmPackages.elm-test
             pkgs.uglify-js
+            pkgs.elm2nix
 
             # Essential networking tools
             pkgs.cacert
@@ -44,6 +76,7 @@
                         echo "Available commands:"
                         echo "  start-dev          - Start development server"
                         echo "  generate-blog-data - Generate posts.json from .org files"
+                        echo "  generate-elm-nix   - Generate elm-srcs.nix for Nix builds"
 
                         start-dev() {
                             elm make src/Main.elm --output=elm.js
@@ -104,31 +137,39 @@ EOF
                         }
 
                         manual-elm() {
-                            cat > elm.json << 'ELMJSON'
-            {
-                "type": "application",
-                "source-directories": ["src"],
-                "elm-version": "0.19.1",
-                "dependencies": {
-                    "direct": {
-                        "elm/browser": "1.0.2",
-                        "elm/core": "1.0.5",
-                        "elm/html": "1.0.0",
-                        "elm/json": "1.1.3",
-                        "elm/time": "1.0.0"
-                    },
-                    "indirect": {
-                        "elm/url": "1.0.0",
-                        "elm/virtual-dom": "1.0.3"
-                    }
-                },
-                "test-dependencies": {"direct": {}, "indirect": {}}
-            }
-            ELMJSON
+                            cat > elm.json << 'EOF'
+{
+    "type": "application",
+    "source-directories": ["src"],
+    "elm-version": "0.19.1",
+    "dependencies": {
+        "direct": {
+            "elm/browser": "1.0.2",
+            "elm/core": "1.0.5",
+            "elm/html": "1.0.0",
+            "elm/json": "1.1.3",
+            "elm/time": "1.0.0"
+        },
+        "indirect": {
+            "elm/url": "1.0.0",
+            "elm/virtual-dom": "1.0.3"
+        }
+    },
+    "test-dependencies": {"direct": {}, "indirect": {}}
+}
+EOF
+                        }
+
+                        generate-elm-nix() {
+                            echo "Generating elm-srcs.nix..."
+                            elm2nix convert > elm-srcs.nix
+                            elm2nix snapshot
+                            echo "Generated elm-srcs.nix and registry.dat"
                         }
 
                         export -f start-dev
                         export -f generate-blog-data
+                        export -f generate-elm-nix
                         export -f manual-elm
           '';
         };
