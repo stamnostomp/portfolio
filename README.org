@@ -1,0 +1,60 @@
+* Portfolio
+
+A personal portfolio website featuring an interactive WebGL-based navigation system.
+
+** Overview
+
+This portfolio uses a custom "goop navigation" system where users interact with organic, fluid shapes rendered in WebGL. Hovering over different branches reveals navigation options, and clicking opens content pages with smooth transitions.
+
+** Technical Stack
+
+- Elm - Functional frontend language for type-safe UI
+- WebGL - Real-time graphics rendering via GLSL shaders
+- Tachyons - Utility-first CSS framework
+- Nix - Reproducible build environment
+
+** Architecture
+
+*** Navigation System
+
+The main navigation uses WebGL to render organic shapes that morph and respond to mouse input. Each "branch" of the goop represents a different section of the portfolio. Branch positions are calculated using time-based functions to create floating animations.
+
+*** Content Display
+
+When a branch is clicked, the application transitions to a content view. The WebGL background continues rendering while content appears in a centered rectangle. Content pages are individual Elm modules with their own styling and interactions.
+
+*** State Management
+
+The application uses a single Model type that tracks:
+- Current transition state (showing content, transitioning in/out, or idle)
+- Mouse position and hover detection
+- Time for animations
+- Page-specific filters and data
+
+** Project Structure
+
+- src/Main.elm - Main application entry point and view composition
+- src/Update.elm - State updates and message handling
+- src/Model.elm - Application state types
+- src/Shaders/ - GLSL shader code for WebGL rendering
+- src/Pages/ - Individual page modules (Blog, Projects, About, etc.)
+- src/Navigation/GoopNav.elm - Navigation logic and hit detection
+
+** Building
+
+Build the project:
+#+BEGIN_SRC bash
+nix build
+#+END_SRC
+
+Development server:
+#+BEGIN_SRC bash
+nix develop
+
+start dev
+
+#+END_SRC
+
+** Content
+
+Blog posts are written in Org mode format and stored in blog/posts/. A custom Elm parser converts Org syntax to HTML at runtime.
