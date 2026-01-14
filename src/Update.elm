@@ -295,6 +295,36 @@ update msg model =
                 -- Check if any branch was clicked using floating center and time
                 clickedBranch =
                     GoopNav.detectHoveredBranchWithTime adjustedMouse model.goopNavState.centerPosition model.time
+
+                -- Calculate content square bounds to check if click is inside
+                centerX =
+                    Vec2.getX model.resolution / 2
+
+                centerY =
+                    Vec2.getY model.resolution / 2
+
+                baseWidth =
+                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.6
+
+                baseHeight =
+                    baseWidth * 0.71
+
+                squareWidth =
+                    baseWidth * 1.3
+
+                squareHeight =
+                    baseHeight * 1.3
+
+                leftPos =
+                    centerX - squareWidth / 2
+
+                topPos =
+                    centerY - squareHeight / 2
+
+                -- Check if click is inside content square
+                isInsideContentSquare =
+                    x >= leftPos && x <= (leftPos + squareWidth) &&
+                    y >= topPos && y <= (topPos + squareHeight)
             in
             case clickedBranch of
                 Just branch ->
@@ -304,7 +334,11 @@ update msg model =
                     -- Check if we're in content mode and should close
                     case model.transitionState of
                         ShowingContent _ _ ->
-                            update CloseContent model
+                            -- Only close if click is outside the content square
+                            if isInsideContentSquare then
+                                ( model, Cmd.none )
+                            else
+                                update CloseContent model
 
                         _ ->
                             ( model, Cmd.none )

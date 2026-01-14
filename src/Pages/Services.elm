@@ -99,9 +99,9 @@ view =
                 /* Custom scroll container */
                 .custom-scroll-container {
                     position: relative;
-                    border: 1px solid rgba(192, 192, 192, 0.1);
-                    background: rgba(0, 0, 0, 0.05);
-                    backdrop-filter: blur(2px);
+                    border: none;
+                    background: transparent;
+                    backdrop-filter: none;
                 }
 
                 /* Hide default scrollbar completely */
@@ -228,10 +228,10 @@ view =
                 .goop-service-node::before {
                     content: '';
                     position: absolute;
-                    top: -50%;
-                    left: -50%;
-                    width: 200%;
-                    height: 200%;
+                    top: -200%;
+                    left: -200%;
+                    width: 500%;
+                    height: 500%;
                     background: conic-gradient(
                         from 0deg at 50% 50%,
                         transparent 0deg,
