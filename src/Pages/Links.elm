@@ -130,8 +130,7 @@ view activeFilters linkStatuses =
             , Attr.style "background" "rgba(0, 0, 0, 0.2)"
             , Attr.style "backdrop-filter" "blur(4px)"
             , Attr.style "border-bottom" "1px solid rgba(192, 192, 192, 0.1)"
-            , Attr.style "margin" "1.5rem 3rem 0.5rem 3rem"
-            , Attr.style "max-width" "90%"
+            , Attr.style "margin" "1.5rem 0 0.5rem 0"
             ]
             [ -- Left side: Title and service status indicators
               div [ Attr.class "flex items-center gap2" ]
@@ -168,10 +167,8 @@ view activeFilters linkStatuses =
         -- Main links container with scroll
         , div
             [ Attr.class "w-100 relative custom-scroll-container"
-            , Attr.style "height" "calc(100vh - 140px)"
-            , Attr.style "max-height" "620px"
-            , Attr.style "margin" "0 3rem 0.5rem 3rem"
-            , Attr.style "max-width" "90%"
+            , Attr.style "height" "calc(100% - 80px)"
+            , Attr.style "margin" "0 0 0.5rem 0"
             ]
             [ -- Top fade overlay
               div
