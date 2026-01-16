@@ -249,8 +249,10 @@ view activeFilters linkStatuses =
                     display: flex;
                     flex-direction: column;
                     justify-content: space-between;
+                    align-items: center;
                     min-height: 80px;
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                    text-align: center;
                 }
 
                 @keyframes item-fade-in {
