@@ -30,7 +30,7 @@ view activeFilters =
             , Attr.style "background" "rgba(0, 0, 0, 0.2)"
             , Attr.style "backdrop-filter" "blur(4px)"
             , Attr.style "border-bottom" "1px solid rgba(192, 192, 192, 0.1)"
-            , Attr.style "margin" "1.5rem 0 0.5rem 0"
+            , Attr.style "margin" "0.5rem 0 0.5rem 0"
             ]
             [ -- Left side: Title and status indicators
               div [ Attr.class "flex items-center gap2" ]
