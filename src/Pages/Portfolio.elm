@@ -92,71 +92,48 @@ view activeFilter =
                     (filterPortfolioItems activeFilter
                         [ -- All portfolio items
                           portfolioItem
-                        "GOOP NAVIGATION SYSTEM"
-                        "WebGL + Elm organic interface with real-time shader morphing"
-                        "2025"
+                        "PORTFOLIO WEBSITE"
+                        "WebGL goop navigation with organic morphing and CRT effects"
+                        "2024-2025"
                         "webgl"
-                        [ "WebGL", "Elm", "Shaders", "UI/UX" ]
+                        [ "WebGL", "Elm", "GLSL Shaders", "Y2K Design" ]
                         ""
                     , portfolioItem
-                        "Y2K RETRO DASHBOARD"
-                        "Interactive dashboard with chrome effects and animated graphs"
-                        "2025"
-                        "ui"
-                        [ "React", "D3.js", "CSS3", "Design" ]
-                        ""
-                    , portfolioItem
-                        "FLUID PARTICLE SYSTEM"
-                        "Real-time particle physics simulation with WebGL compute shaders"
+                        "UNITY LINK SUBMISSIONS"
+                        "Game submission platform for Code Ninjas students"
                         "2024"
-                        "webgl"
-                        [ "WebGL", "Physics", "Shaders" ]
+                        "apps"
+                        [ "Elm", "SPA", "Educational" ]
+                        ""
+                    , portfolioItem
+                        "JELLYFIN WEB CLIENT"
+                        "Reimagined media streaming client with functional architecture"
+                        "2024"
+                        "apps"
+                        [ "Elm", "Media Streaming", "REST API" ]
                         ""
 
                     -- Row 2
                     , portfolioItem
-                        "ORGANIC FORM GENERATOR"
-                        "Procedural 3D form generation tool for creative applications"
-                        "2024"
-                        "webgl"
-                        [ "Three.js", "WebGL", "Generative" ]
-                        ""
-                    , portfolioItem
-                        "CYBERPUNK CHAT APP"
-                        "Real-time messaging with terminal-style interface design"
-                        "2024"
+                        "CHESS-HS"
+                        "Functional chess with terminal and GTK graphical interfaces"
+                        "2023-2024"
                         "apps"
-                        [ "Node.js", "Socket.io", "UI/UX" ]
+                        [ "Haskell", "GTK3", "Game Logic" ]
                         ""
                     , portfolioItem
-                        "HOLOGRAPHIC MENU SYSTEM"
-                        "3D holographic navigation with gesture controls and haptic feedback"
-                        "2024"
-                        "ui"
-                        [ "Three.js", "WebXR", "Gestures" ]
-                        ""
-
-                    -- Row 3
-                    , portfolioItem
-                        "NEON VISUALIZATION SUITE"
-                        "Data visualization toolkit with neon aesthetics and smooth animations"
+                        "RAYLIB DASHBOARD"
+                        "Embedded car dashboard with real-time vehicle data"
                         "2023"
                         "ui"
-                        [ "D3.js", "Canvas", "Animations" ]
+                        [ "C", "Raylib", "Raspberry Pi", "Embedded" ]
                         ""
                     , portfolioItem
-                        "REACTIVE AUDIO VISUALIZER"
-                        "Real-time audio analysis with WebGL reactive visuals"
-                        "2023"
-                        "webgl"
-                        [ "Web Audio", "WebGL", "FFT" ]
-                        ""
-                    , portfolioItem
-                        "CHROME INTERFACE TOOLKIT"
-                        "Complete UI component library with metallic Y2K styling"
-                        "2023"
+                        "NIXOS CONFIGURATION"
+                        "Declarative system configuration and development environment"
+                        "2023-2024"
                         "ui"
-                        [ "React", "Styled Components", "Design System" ]
+                        [ "Nix", "Linux", "DevOps" ]
                         ""
                         ]
                     )

@@ -57,6 +57,7 @@ view =
         -- Message interface with click-blocking container
         , div
             [ Attr.class "w-100 mw6 relative transmission-interface"
+            , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
             ]
             [ -- Click-blocking container around form fields
               div
@@ -64,6 +65,7 @@ view =
                 , Attr.style "background" "rgba(0, 0, 0, 0.1)"
                 , Attr.style "border" "1px solid rgba(192, 192, 192, 0.1)"
                 , Attr.style "backdrop-filter" "blur(2px)"
+                , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
                 ]
                 [ -- Form fields with proper event handling
                   goopFormField "NAME" "text" "Your name..." "field-1"
