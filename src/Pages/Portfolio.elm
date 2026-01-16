@@ -16,6 +16,7 @@ type PortfolioMsg
     = NoOp
     | SelectProject String
     | SetFilter PortfolioFilter
+    | Close
 
 
 view : PortfolioFilter -> Html PortfolioMsg
@@ -59,6 +60,8 @@ view activeFilter =
                 [ Attr.class "bg-transparent pa1 ph2 f8 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
                 , Attr.style "min-width" "50px"
                 , Attr.style "height" "24px"
+                , onClick Close
+                , stopPropagationOn "click" (Decode.succeed ( Close, True ))
                 ]
                 [ text "✕ CLOSE" ]
             ]

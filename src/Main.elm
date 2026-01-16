@@ -11,7 +11,6 @@ import Html.Events exposing (..)
 import Json.Decode as Decode
 import Math.Vector2 as Vec2
 import Model exposing (Model, Msg(..), TransitionState(..), init)
-import Ports
 import Navigation.GoopNav as GoopNav
 import Pages.About
 import Pages.Blog
@@ -21,6 +20,7 @@ import Pages.Links
 import Pages.Portfolio
 import Pages.Projects
 import Pages.Services
+import Ports
 import Shaders.GoopBall
 import Shaders.Mesh exposing (fullscreenMesh)
 import Types exposing (Page(..))
@@ -53,6 +53,7 @@ view model =
           viewGoopNavigation model
         , -- Content square (when active)
           viewContentSquare model
+
         -- Debug info (hidden)
         -- , viewDebugInfo model
         , -- Enhanced CSS with goop effects and Tachyons
@@ -185,6 +186,47 @@ view model =
 -- Goop navigation WebGL
 
 
+calculateContentSquareDimensions : Vec2.Vec2 -> { width : Float, height : Float, left : Float, top : Float }
+calculateContentSquareDimensions resolution =
+    let
+        centerX =
+            Vec2.getX resolution / 2
+
+        centerY =
+            Vec2.getY resolution / 2
+
+        viewportWidth =
+            Vec2.getX resolution
+
+        viewportHeight =
+            Vec2.getY resolution
+
+        -- Match the shader's rectangle calculation exactly
+        -- Shader draws: vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71)
+        -- These are half-extents in shader coordinates
+        -- Shader coordinate system: vertical [-1,1] maps to viewport height
+        -- So 1 shader unit = viewport height / 2
+
+        -- Rectangle half-height in shader units: 0.85 * 0.71 = 0.6035
+        -- Full height: 2 * 0.6035 * (viewport height / 2) = 0.6035 * viewport height
+        squareHeight =
+            viewportHeight * 0.6035
+
+        -- Rectangle half-width in shader units: 0.85 * aspectRatio * 0.85 = 0.7225 * aspectRatio
+        -- Full width: 2 * 0.7225 * aspectRatio * (viewport width / (2 * aspectRatio)) = 0.7225 * viewport width
+        squareWidth =
+            viewportWidth * 0.7225
+
+        -- Center the content
+        leftPos =
+            centerX - squareWidth / 2
+
+        topPos =
+            centerY - squareHeight / 2
+    in
+    { width = squareWidth, height = squareHeight, left = leftPos, top = topPos }
+
+
 viewGoopNavigation : Model -> Html Msg
 viewGoopNavigation model =
     let
@@ -202,13 +244,23 @@ viewGoopNavigation model =
 
                 NoTransition ->
                     ( 0.0, 0.0 )
+
+        -- Canvas always stays full screen
+        canvasDims =
+            { width = Vec2.getX model.resolution
+            , height = Vec2.getY model.resolution
+            , left = 0
+            , top = 0
+            }
     in
     div [ Attr.class "fixed top-0 left-0 w-100 h-100 z-2" ]
         [ -- WebGL Canvas for the goop effect
           WebGL.toHtml
-            [ Attr.width (floor (Vec2.getX model.resolution))
-            , Attr.height (floor (Vec2.getY model.resolution))
-            , Attr.class "absolute top-0 left-0"
+            [ Attr.width (floor canvasDims.width)
+            , Attr.height (floor canvasDims.height)
+            , Attr.class "absolute"
+            , Attr.style "left" (String.fromFloat canvasDims.left ++ "px")
+            , Attr.style "top" (String.fromFloat canvasDims.top ++ "px")
             , Attr.style "cursor" "crosshair"
             ]
             [ WebGL.entity
@@ -218,11 +270,11 @@ viewGoopNavigation model =
                 { time = model.time
                 , resolution = model.resolution
                 , mousePosition = model.mousePosition
-                , hoveredBranch = 
+                , hoveredBranch =
                     case GoopNav.getHoveredBranch model.goopNavState of
                         Just branch ->
                             toFloat (GoopNav.branchToIndex branch)
-                        
+
                         Nothing ->
                             -1.0
                 , centerPosition = model.goopNavState.centerPosition
@@ -292,6 +344,7 @@ viewCenterLabel model =
                     ]
                     [ text "◦ CLICK TO EXPAND ◦" ]
                 ]
+
 
 
 -- Hover labels for branches
@@ -389,47 +442,14 @@ viewContentSquare model =
     case model.transitionState of
         ShowingContent page _ ->
             let
-                centerX =
-                    Vec2.getX model.resolution / 2
-
-                centerY =
-                    Vec2.getY model.resolution / 2
-
-                -- Match the shader's organic rectangle size more closely
-                -- The shader uses vec2(0.7, 0.5) for the rectangle size
-                baseWidth =
-                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.6
-
-                -- Reduced from 0.75
-                baseHeight =
-                    baseWidth * 0.71
-
-                -- Matches shader ratio (0.5/0.7 ≈ 0.71)
-                -- Apply aspect ratio correction similar to shader
-                aspectRatio =
-                    Vec2.getX model.resolution / Vec2.getY model.resolution
-
-                -- Final dimensions that match the shader's organic rectangle
-                squareWidth =
-                    baseWidth * 1.3
-
-                -- Reduced multiplier
-                squareHeight =
-                    baseHeight * 1.3
-
-                -- Reduced multiplier
-                leftPos =
-                    centerX - squareWidth / 2
-
-                topPos =
-                    centerY - squareHeight / 2
+                dims = calculateContentSquareDimensions model.resolution
             in
             div
                 [ Attr.class "fixed z-3 overflow-hidden monospace white"
-                , Attr.style "left" (String.fromFloat leftPos ++ "px")
-                , Attr.style "top" (String.fromFloat topPos ++ "px")
-                , Attr.style "width" (String.fromFloat squareWidth ++ "px")
-                , Attr.style "height" (String.fromFloat squareHeight ++ "px")
+                , Attr.style "left" (String.fromFloat dims.left ++ "px")
+                , Attr.style "top" (String.fromFloat dims.top ++ "px")
+                , Attr.style "width" (String.fromFloat dims.width ++ "px")
+                , Attr.style "height" (String.fromFloat dims.height ++ "px")
 
                 -- Add border to visualize the content bounds (remove in production)
                 --, Attr.style "border" "1px solid rgba(192, 192, 192, 0.3)"
@@ -473,6 +493,9 @@ blogMsgToMainMsg msg =
         Pages.Blog.ClosePost ->
             CloseBlogPost
 
+        Pages.Blog.Close ->
+            CloseContent
+
         Pages.Blog.NoOp ->
             Tick 0
 
@@ -483,6 +506,9 @@ linksMsgToMainMsg msg =
         Pages.Links.ToggleFilter filter ->
             ToggleLinkFilter filter
 
+        Pages.Links.Close ->
+            CloseContent
+
         _ ->
             Tick 0
 
@@ -492,6 +518,9 @@ portfolioMsgToMainMsg msg =
     case msg of
         Pages.Portfolio.SetFilter filter ->
             SetPortfolioFilter filter
+
+        Pages.Portfolio.Close ->
+            CloseContent
 
         _ ->
             Tick 0
@@ -506,8 +535,12 @@ projectMsgToMainMsg msg =
         Pages.Projects.NoOp ->
             Tick 0
 
+        Pages.Projects.Close ->
+            CloseContent
+
         _ ->
             Tick 0
+
 
 
 -- Simple content for each page
@@ -539,27 +572,22 @@ viewPageContent page model =
             Html.map portfolioMsgToMainMsg (Pages.Portfolio.view model.portfolioFilter)
 
         About ->
-            Html.map (\_ -> Tick 0) Pages.About.view
+            Html.map (\_ -> CloseContent) Pages.About.view
 
         Contact ->
-            -- Use Html.map to handle the Contact page message conversion
-            Html.map (\_ -> Tick 0) Pages.Contact.view
+            Html.map (\_ -> CloseContent) Pages.Contact.view
 
         Services ->
-            -- Use Html.map to handle the Services page message conversion
-            Html.map (\_ -> Tick 0) Pages.Services.view
+            Html.map (\_ -> CloseContent) Pages.Services.view
 
         Blog ->
-            -- Use Html.map to handle the Blog page message conversion
             Html.map blogMsgToMainMsg (Pages.Blog.view model.blogFilters model.currentBlogPost model.blogPostLoading model.blogError model.blogPostIndex)
 
         Links ->
-            -- Use Html.map to handle the Links page message conversion
             Html.map linksMsgToMainMsg (Pages.Links.view model.linkFilters model.linkStatuses)
 
         Gallery ->
-            -- Use Html.map to handle the Gallery page message conversion
-            Html.map (\_ -> Tick 0) Pages.Gallery.view
+            Html.map (\_ -> CloseContent) Pages.Gallery.view
 
 
 

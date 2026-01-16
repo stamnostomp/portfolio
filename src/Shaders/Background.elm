@@ -26,7 +26,7 @@ fragmentShader =
 
             // Add scanlines
             float scanline = sin(vUV.y * resolution.y * 0.25) * 0.5 + 0.5;
-            color = mix(color, vec3(0.05, 0.06, 0.08), scanline * 0.2);
+            color = mix(color, vec3(0.05, 0.06, 0.08), scanline * 0.1);
 
             // Add subtle vignette
             float vignette = 1.0 - length(vUV - 0.5) * 1.2;

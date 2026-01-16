@@ -172,7 +172,9 @@ fragmentShader =
 
                 // Calculate shapes - morph from circle to organic rectangle
                 float currentCenterRadius = baseRadius + centerGrowProgress * 0.2; // Slight circle growth
-                vec2 rectSize = vec2(0.7, 0.5) * centerGrowProgress; // Rectangle target size
+                // Rectangle sized to match content square (85% of viewport)
+                float aspectRatio = resolution.x / resolution.y;
+                vec2 rectSize = vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71) * centerGrowProgress; // Rectangle target size
 
                 float circleShape = deformableCircle(p, center, currentCenterRadius);
                 float rectangleShape = deformableRectangle(p, center, rectSize, 0.05);
@@ -217,7 +219,8 @@ fragmentShader =
                 float branchOutwardProgress = smootherstep(0.4, 1.0, progress);
 
                 // Start with organic rectangle, morph to circle, then shrink
-                vec2 rectSize = vec2(0.7, 0.5) * (1.0 - centerShrinkProgress);
+                float aspectRatio = resolution.x / resolution.y;
+                vec2 rectSize = vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71) * (1.0 - centerShrinkProgress);
                 float rectangleShape = deformableRectangle(p, center, rectSize, 0.05);
 
                 float currentCenterRadius = mix(baseRadius + 0.2, baseRadius, centerShrinkProgress);

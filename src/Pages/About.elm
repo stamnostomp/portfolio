@@ -13,6 +13,7 @@ import Json.Decode as Decode
 
 type AboutMsg
     = NoOp
+    | Close
 
 
 view : Html AboutMsg
@@ -38,6 +39,8 @@ view =
                 [ Attr.class "bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button fr"
                 , Attr.style "min-width" "70px"
                 , Attr.style "height" "32px"
+                , onClick Close
+                , stopPropagationOn "click" (Decode.succeed ( Close, True ))
                 ]
                 [ text "✕ CLOSE" ]
             ]

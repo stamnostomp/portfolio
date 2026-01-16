@@ -13,6 +13,7 @@ import Json.Decode as Decode
 type GalleryMsg
     = NoOp
     | ViewImage String
+    | Close
 
 
 view : Html GalleryMsg
@@ -55,6 +56,8 @@ view =
                 [ Attr.class "bg-transparent pa1 ph2 f8 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button"
                 , Attr.style "min-width" "50px"
                 , Attr.style "height" "24px"
+                , onClick Close
+                , stopPropagationOn "click" (Decode.succeed ( Close, True ))
                 ]
                 [ text "✕ CLOSE" ]
             ]
