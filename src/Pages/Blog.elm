@@ -6,8 +6,8 @@ import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
-import Types exposing (BlogTag(..))
 import Model exposing (BlogPostIndexItem)
+import Types exposing (BlogTag(..))
 
 
 
@@ -43,7 +43,10 @@ categoryStringToTag str =
             Nothing
 
 
+
 -- Convert BlogPostIndexItem to our local representation with BlogTag enums
+
+
 convertIndexItem : BlogPostIndexItem -> { title : String, date : String, slug : String, summary : String, tags : List String, categories : List BlogTag }
 convertIndexItem item =
     { title = item.title
@@ -189,6 +192,7 @@ view activeFilters currentBlogPost blogPostLoading blogError blogPostIndex =
                                 ]
                                 [ text "No blog posts found. Loading..." ]
                             ]
+
                         else
                             filteredPosts activeFilters blogPostIndex
                                 |> List.map blogPostCard
@@ -564,6 +568,7 @@ view activeFilters currentBlogPost blogPostLoading blogError blogPostIndex =
 
                 /* Blog post full content styling - muted pastels */
                 .blog-post-full {
+                    padding: 2rem 1rem 1rem 1rem;
                     padding: 1rem;
                     max-width: 900px;
                     margin: 0 auto;
