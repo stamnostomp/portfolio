@@ -90,88 +90,88 @@ view activeFilters =
                     [ Attr.class "projects-container" ]
                     (filterProjects activeFilters
                         [ projectItem
-                        "GOOP NAVIGATION SYSTEM"
-                        "Real-time WebGL fluid interface with organic morphing and interactive particle physics"
+                        "PORTFOLIO WEBSITE"
+                        "Personal portfolio with WebGL goop navigation and organic UI animations"
                         [ ( "Frontend", "Elm + WebGL" )
                         , ( "Shaders", "GLSL Fragment/Vertex" )
-                        , ( "Math", "Vector Physics, Bezier Curves" )
-                        , ( "Performance", "60fps @ 4K Resolution" )
+                        , ( "Design", "Y2K Retro Aesthetic" )
+                        , ( "Effects", "CRT Scanlines, Organic Morphing" )
                         ]
                         "https://stamno.com"
-                        "https://github.com/stamno/goop-nav"
+                        "https://github.com/stamnostomp/portfolio"
                         "2024-2025"
                         "live"
-                        "This project represents 6+ months of intensive WebGL development, combining advanced shader programming with functional reactive programming in Elm. The organic navigation system uses real-time physics calculations to create fluid, responsive interactions that feel natural and intuitive."
+                        "A unique portfolio website featuring custom WebGL navigation with organic fluid animations. Built entirely in Elm with hand-crafted GLSL shaders for real-time visual effects including CRT scanlines, metallic goop balls, and smooth transitions."
 
                     , projectItem
-                        "Y2K RETRO TERMINAL FRAMEWORK"
-                        "Full-stack terminal aesthetic framework with authentic CRT effects and command interfaces"
-                        [ ( "Backend", "Node.js + WebSocket" )
-                        , ( "Frontend", "React + Canvas API" )
-                        , ( "Effects", "CRT Scanlines, Text Rendering" )
-                        , ( "Architecture", "Component Library" )
+                        "UNITY LINK SUBMISSIONS"
+                        "Comprehensive game submission platform for Code Ninjas students"
+                        [ ( "Frontend", "Elm" )
+                        , ( "Architecture", "SPA" )
+                        , ( "Target", "Educational Platform" )
                         ]
-                        "https://demo.y2k-terminal.dev"
-                        "https://github.com/stamno/y2k-terminal"
+                        ""
+                        "https://github.com/stamnostomp/unity_link_submissions"
+                        "2024"
+                        "featured"
+                        "A comprehensive site designed for students of CodeNinjas Marda Loop to submit games. Built with Elm for reliability and maintainability, providing an intuitive interface for young developers to showcase their Unity projects."
+
+                    , projectItem
+                        "JELLYFIN WEB CLIENT (ELM)"
+                        "Modern Jellyfin web client reimagined in Elm"
+                        [ ( "Frontend", "Elm" )
+                        , ( "Media", "Video Streaming" )
+                        , ( "API", "Jellyfin REST API" )
+                        , ( "Architecture", "Functional Reactive" )
+                        ]
+                        ""
+                        "https://github.com/stamnostomp/jellyfin-web-elm"
                         "2024"
                         "github"
-                        "A comprehensive framework for building retro terminal interfaces with authentic Y2K aesthetics. Features real-time command processing, customizable CRT effects, and a complete component library for rapid development of nostalgic user interfaces."
+                        "A complete reimplementation of the Jellyfin web client using Elm for enhanced type safety and reliability. Features media browsing, playback controls, and library management with a clean, functional architecture."
 
                     , projectItem
-                        "DISTRIBUTED TASK ORCHESTRATOR"
-                        "High-performance distributed computing system for parallel task execution and data processing"
-                        [ ( "Backend", "Go + gRPC" )
-                        , ( "Database", "PostgreSQL + Redis" )
-                        , ( "Infrastructure", "Docker + Kubernetes" )
-                        , ( "Monitoring", "Prometheus + Grafana" )
+                        "NIXOS DOTFILES"
+                        "Personal NixOS configuration and system setup"
+                        [ ( "System", "NixOS" )
+                        , ( "Config", "Nix" )
+                        , ( "Tools", "Home Manager" )
+                        , ( "Stars", "3" )
                         ]
                         ""
-                        "https://github.com/stamno/task-orchestrator"
+                        "https://github.com/stamnostomp/dots"
                         "2023-2024"
                         "github"
-                        "Enterprise-grade distributed system handling 10,000+ concurrent tasks across multiple nodes. Built with Go for performance, featuring automatic failover, load balancing, and comprehensive monitoring. Used in production by several fintech companies."
+                        "Complete NixOS system configuration including development environment, window manager setup, and dotfiles. Declarative configuration for reproducible development environments across machines."
 
                     , projectItem
-                        "NEURAL PATTERN VISUALIZER"
-                        "Interactive machine learning visualization tool for neural network analysis and debugging"
-                        [ ( "ML Framework", "TensorFlow.js" )
-                        , ( "Visualization", "D3.js + WebGL" )
-                        , ( "Data Processing", "Python + FastAPI" )
-                        , ( "Real-time", "WebSocket Updates" )
-                        ]
-                        "https://neural-viz.stamno.com"
-                        "https://github.com/stamno/neural-visualizer"
-                        "2023"
-                        "live"
-                        "Advanced visualization tool for understanding neural network behavior in real-time. Features interactive layer exploration, gradient flow visualization, and performance profiling. Helped debug training issues in several research projects."
-
-                    , projectItem
-                        "BLOCKCHAIN ANALYTICS PLATFORM"
-                        "Real-time cryptocurrency analysis platform with advanced charting and portfolio tracking"
-                        [ ( "Data Pipeline", "Apache Kafka + Spark" )
-                        , ( "API", "GraphQL + TypeScript" )
-                        , ( "Charts", "Custom WebGL Renderer" )
-                        , ( "Real-time", "WebSocket Feeds" )
+                        "RAYLIB DASH"
+                        "Simple car dashboard using Raspberry Pi and SocketCAN"
+                        [ ( "Language", "C" )
+                        , ( "Graphics", "Raylib" )
+                        , ( "Hardware", "Raspberry Pi" )
+                        , ( "Interface", "Linux SocketCAN" )
+                        , ( "Stars", "3" )
                         ]
                         ""
-                        "https://github.com/stamno/crypto-analytics"
-                        "2022-2023"
+                        "https://github.com/stamnostomp/raylib-dash"
+                        "2023"
                         "featured"
-                        "Comprehensive cryptocurrency analytics platform processing 1M+ transactions daily. Features custom high-performance charting engine, portfolio optimization algorithms, and real-time market analysis. Built scalable architecture handling petabytes of historical data."
+                        "A simple dashboard for cars using a Raspberry Pi and the Linux SocketCAN driver. Built with Raylib for efficient graphics rendering, providing real-time vehicle data visualization on embedded hardware."
 
                     , projectItem
-                        "COLLABORATIVE CODE EDITOR"
-                        "Real-time collaborative IDE with integrated version control and project management"
-                        [ ( "Backend", "Rust + WebRTC" )
-                        , ( "Frontend", "Vue.js + Monaco Editor" )
-                        , ( "Collaboration", "CRDT + Operational Transform" )
-                        , ( "Version Control", "Custom Git Integration" )
+                        "CHESS-HS"
+                        "Functional chess implementation with terminal and GTK interfaces"
+                        [ ( "Language", "Haskell (85.3%)" )
+                        , ( "Build", "Cabal + Nix Flakes" )
+                        , ( "UI", "Terminal + GTK3 GUI" )
+                        , ( "Compiler", "GHC 9.0+" )
                         ]
-                        "https://code.stamno.dev"
-                        "https://github.com/stamno/collaborative-editor"
-                        "2022"
-                        "live"
-                        "Real-time collaborative code editor supporting multiple programming languages with integrated project management. Features conflict-free collaborative editing, live code execution, and seamless version control integration."
+                        ""
+                        "https://github.com/stamnostomp/chess-hs"
+                        "2023-2024"
+                        "github"
+                        "A complete chess implementation in Haskell featuring standard chess rules, move validation, and detection of check, checkmate, and stalemate conditions. Offers both a terminal-based interface and a GTK graphical option with modular architecture separating game logic from UI concerns."
                         ]
                     )
                 ]

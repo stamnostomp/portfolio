@@ -49,9 +49,9 @@ view =
         , div
             [ Attr.class "flex gap2 mb3 flex-wrap justify-center"
             ]
-            [ goopInfoNode "FRONTEND" "React, Elm, WebGL" "node-1"
-            , goopInfoNode "BACKEND" "Node.js, Elixir, Haskell" "node-2"
-            , goopInfoNode "DESIGN" "UI/UX, Shaders" "node-3"
+            [ goopInfoNode "FRONTEND" "Elm, WebGL, Haskell" "node-1"
+            , goopInfoNode "SYSTEMS" "Nix, C, GTK" "node-2"
+            , goopInfoNode "DESIGN" "Shaders, UI/UX" "node-3"
             ]
 
         -- Compact information areas with scroll
@@ -60,16 +60,16 @@ view =
             , Attr.style "max-height" "60vh"
             ]
             [ -- Bio section (more compact)
-              infoSection "BIO" " I LOVE EATING BUGS"
+              infoSection "BIO" "Developer based in Calgary, Alberta. Work at CodeNinjas Marda Loop. Focus on functional programming, systems programming, and embedded development."
 
             -- Experience section (more compact)
-            , infoSection "EXPERIENCE" "I HAVE EAT 5 BUGS"
+            , infoSection "EXPERIENCE" "WebGL interfaces in Elm. Chess engine in Haskell. Embedded dashboards in C. NixOS system configuration. Full-stack development from graphics to hardware."
 
             -- Philosophy section (more compact)
-            , infoSection "PHILOSOPHY" "I THINK BUGS ARE COOL"
+            , infoSection "PHILOSOPHY" "Functional programming: immutability, type safety, pure functions. Strong typing catches bugs at compile time. Functional composition builds complex systems from simple parts."
 
             -- Current section (more compact)
-            , infoSection "CURRENTLY" "EATING 1 MORE BUG"
+            , infoSection "CURRENTLY" "Building educational platforms at CodeNinjas Marda Loop. Contributing to open source. Exploring functional programming with systems-level development."
             ]
 
         -- Goop CSS effects with close button styling

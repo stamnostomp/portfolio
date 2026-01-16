@@ -297,23 +297,27 @@ update msg model =
                     GoopNav.detectHoveredBranchWithTime adjustedMouse model.goopNavState.centerPosition model.time
 
                 -- Calculate content square bounds to check if click is inside
+                -- Must match the calculation in Main.elm's calculateContentSquareDimensions
                 centerX =
                     Vec2.getX model.resolution / 2
 
                 centerY =
                     Vec2.getY model.resolution / 2
 
-                baseWidth =
-                    min (Vec2.getX model.resolution) (Vec2.getY model.resolution) * 0.6
+                viewportWidth =
+                    Vec2.getX model.resolution
 
-                baseHeight =
-                    baseWidth * 0.71
+                viewportHeight =
+                    Vec2.getY model.resolution
 
-                squareWidth =
-                    baseWidth * 1.3
-
+                -- Match shader's rectangle calculation exactly
+                -- Rectangle half-height in shader units: 0.85 * 0.71 = 0.6035
                 squareHeight =
-                    baseHeight * 1.3
+                    viewportHeight * 0.6035
+
+                -- Rectangle half-width in shader units: 0.85 * aspectRatio * 0.85 = 0.7225 * aspectRatio
+                squareWidth =
+                    viewportWidth * 0.7225
 
                 leftPos =
                     centerX - squareWidth / 2
