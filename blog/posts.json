@@ -1,12 +1,12 @@
 [
   {
-    "title": "Functional Reactive Programming in Elm",
-    "date": "2025-03-05",
-    "slug": "elm-architecture",
-    "summary": "Why Elm's architecture makes complex state management feel effortless.",
-    "tags": ["Elm","Functional Programming","Architecture"],
+    "title": "Building Dual Interfaces in Haskell: TUI and GTK for Chess",
+    "date": "2024-11-15",
+    "slug": "chess-hs-tui-gtk",
+    "summary": "Implementing both terminal and graphical interfaces for a chess engine in Haskell.",
+    "tags": ["Haskell","GTK","TUI","Chess"],
     "categories": ["tech"],
-    "author": "Your Name"
+    "author": "stamno"
   }
 ,
   {
@@ -20,13 +20,13 @@
   }
 ,
   {
-    "title": "Shader Programming for Creative Coding",
-    "date": "2025-03-10",
-    "slug": "shader-programming",
-    "summary": "Diving deep into fragment shaders and how they can be used to create mesmerizing visual effects.",
-    "tags": ["WebGL","Shaders","Creative Coding"],
+    "title": "Reading CAN Bus Data on Raspberry Pi with SocketCAN",
+    "date": "2023-08-10",
+    "slug": "socketcan-raspberry-pi",
+    "summary": "Building a car dashboard that reads real-time vehicle data via CAN bus.",
+    "tags": ["C","Embedded","SocketCAN","Raspberry Pi"],
     "categories": ["tech"],
-    "author": "Your Name"
+    "author": "stamno"
   }
 ,
   {
@@ -40,23 +40,13 @@
   }
 ,
   {
-    "title": "The Organic Web: Beyond Static Interfaces",
-    "date": "2025-03-15",
-    "slug": "test1234",
-    "summary": "Exploring how organic, fluid interfaces can create more intuitive user experiences.",
-    "tags": ["WebGL","UI/UX","Interactive Design"],
-    "categories": ["tech","design"],
-    "author": "Your Name"
-  }
-,
-  {
-    "title": "An Ode to tylerSWag420",
-    "date": "",
-    "slug": "tyler-swag",
-    "summary": "",
-    "tags": [],
-    "categories": [],
-    "author": "[Your Name]"
+    "title": "WebGL Organic Navigation: Building the Goop Interface",
+    "date": "2024-12-20",
+    "slug": "webgl-goop-navigation",
+    "summary": "How I built an organic, morphing navigation system with WebGL and Elm.",
+    "tags": ["WebGL","Elm","GLSL","Shaders"],
+    "categories": ["tech"],
+    "author": "stamno"
   }
 
 ]

@@ -1,0 +1,241 @@
+#+TITLE: WebGL Organic Navigation: Building the Goop Interface
+#+DATE: 2024-12-20
+#+AUTHOR: stamno
+#+TAGS: WebGL, Elm, GLSL, Shaders
+#+CATEGORIES: tech
+#+SUMMARY: How I built an organic, morphing navigation system with WebGL and Elm.
+#+SLUG: webgl-goop-navigation
+#+DRAFT: false
+
+* The Vision
+
+Standard navigation is boring. Boxes. Lists. Static.
+
+I wanted something alive. Organic. Fluid.
+
+Enter: the goop ball.
+
+* Architecture
+
+The system has three parts:
+
+1. Elm manages state
+2. WebGL renders the goop
+3. GLSL shaders create organic motion
+
+#+BEGIN_SRC elm
+type alias Model =
+  { goopState : GoopNavState
+  , mousePosition : Vec2
+  , resolution : Vec2
+  , time : Float
+  , transitionState : TransitionState
+  }
+#+END_SRC
+
+* The Shader: Signed Distance Fields
+
+The goop is a signed distance field (SDF). Not pixels. Math.
+
+#+BEGIN_SRC glsl
+float circle(vec2 p, vec2 center, float radius) {
+  return length(p - center) - radius;
+}
+
+float smin(float a, float b, float k) {
+  float h = clamp(k - abs(a - b), 0.0, k) / k;
+  return min(a, b) - h * h * h * k * (1.0 / 6.0);
+}
+
+float goopSDF(vec2 p) {
+  // Center ball
+  float center = circle(p, vec2(0.0, 0.0), 0.15);
+
+  // Eight branch balls
+  vec2 branches[8];
+  branches[0] = vec2(0.0, -0.25);
+  branches[1] = vec2(0.18, -0.16);
+  // ... etc
+
+  float result = center;
+  for (int i = 0; i < 8; i++) {
+    float ball = circle(p, branches[i], 0.04);
+    result = smin(result, ball, 0.03);  // Smooth blend
+  }
+
+  return result;
+}
+#+END_SRC
+
+Smooth minimum blends shapes organically. No hard edges.
+
+* Organic Deformation
+
+Static circles are boring. Add deformation:
+
+#+BEGIN_SRC glsl
+float deformableCircle(vec2 p, vec2 center, float radius) {
+  vec2 offset = p - center;
+  float angle = atan(offset.y, offset.x);
+
+  // Organic edge variation
+  float deform1 = 0.003 * sin(angle * 3.0 + time * 0.2);
+  float deform2 = 0.002 * sin(angle * 5.0 - time * 0.15);
+
+  // Breathing effect
+  float breathing = 0.004 * sin(time * 0.3);
+
+  float finalRadius = radius + deform1 + deform2 + breathing;
+  return length(offset) - finalRadius;
+}
+#+END_SRC
+
+The goop breathes. Lives.
+
+* Morphing Transitions
+
+Clicking a branch triggers a morph. Circle → rectangle:
+
+#+BEGIN_SRC glsl
+float rectangleSDF(vec2 p, vec2 center, vec2 size) {
+  vec2 d = abs(p - center) - size;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float morphingShape(vec2 p, float progress) {
+  float circleShape = deformableCircle(p, vec2(0.0), 0.15);
+  float rectShape = rectangleSDF(p, vec2(0.0), vec2(0.7, 0.5));
+
+  return mix(circleShape, rectShape, progress);
+}
+#+END_SRC
+
+Smooth interpolation. No jarring jumps.
+
+* Branch Animation
+
+Branches move to center during transition:
+
+#+BEGIN_SRC glsl
+vec2 branches[8];
+for (int i = 0; i < 8; i++) {
+  vec2 startPos = originalPositions[i];
+  vec2 endPos = vec2(0.0, 0.0);
+  branches[i] = mix(startPos, endPos, transitionProgress);
+}
+#+END_SRC
+
+Elm updates =transitionProgress= each frame. Shader interpolates.
+
+* Metallic Shading
+
+The goop is chrome. Needs metallic shading:
+
+#+BEGIN_SRC glsl
+vec3 getMetallicColor(vec2 p, float sdf) {
+  vec3 silver = vec3(0.7, 0.75, 0.8);
+  vec3 dark = vec3(0.2, 0.2, 0.25);
+
+  // Distance-based gradient
+  float t = 1.0 - smoothstep(0.0, 0.015, abs(sdf));
+
+  // Animated reflection
+  float reflection = 0.5 + 0.5 * sin(p.x * 8.0 + time * 0.3);
+  float sheen = 0.5 + 0.5 * cos(time * 0.4 + p.y * 6.0);
+
+  vec3 base = mix(dark, silver, reflection * 0.7);
+  vec3 highlight = mix(dark, silver, sheen * 0.5);
+
+  return mix(base, highlight, t * 0.8);
+}
+#+END_SRC
+
+Time-based reflections create motion.
+
+* Hit Detection
+
+Mouse position converts to normalized coordinates:
+
+#+BEGIN_SRC elm
+normalizedMouse : Float -> Float -> Vec2 -> Vec2
+normalizedMouse x y resolution =
+  let
+    nx = (x / Vec2.getX resolution) * 2.0 - 1.0
+    ny = 1.0 - (y / Vec2.getY resolution) * 2.0
+    aspectRatio = Vec2.getX resolution / Vec2.getY resolution
+  in
+  Vec2.vec2 (nx * aspectRatio) ny
+#+END_SRC
+
+Check distance to each branch:
+
+#+BEGIN_SRC elm
+detectHoveredBranch : Vec2 -> GoopNavState -> Maybe Branch
+detectHoveredBranch mouse state =
+  state.branches
+    |> List.filter (\branch ->
+         Vec2.distance mouse branch.position < 0.08
+       )
+    |> List.head
+    |> Maybe.map .branch
+#+END_SRC
+
+* CRT Effects
+
+Background shader adds scanlines:
+
+#+BEGIN_SRC glsl
+void main() {
+  vec3 color = vec3(0.08, 0.09, 0.11);
+
+  // Scanlines
+  float scanline = sin(vUV.y * resolution.y * 0.25) * 0.5 + 0.5;
+  color = mix(color, vec3(0.05, 0.06, 0.08), scanline * 0.1);
+
+  // Vignette
+  float vignette = 1.0 - length(vUV - 0.5) * 1.2;
+  color *= vignette;
+
+  gl_FragColor = vec4(color, 1.0);
+}
+#+END_SRC
+
+Subtle. Retro.
+
+* Performance
+
+60fps at 4K. How?
+
+** Minimize state updates
+Only update when mouse moves or animation runs.
+
+** Use requestAnimationFrame
+Let browser handle timing.
+
+** Keep shaders simple
+Distance fields are fast. No raymarching needed.
+
+* Lessons Learned
+
+** SDFs are powerful
+Organic shapes with minimal code.
+
+** GLSL is expressive
+Complex effects in a few lines.
+
+** Elm handles complexity
+State management stays clean despite WebGL chaos.
+
+* Future Improvements
+
+- Add particle trails on hover
+- Implement ripple effects on click
+- Dynamic branch count based on page count
+
+* Conclusion
+
+WebGL makes impossible interfaces possible. SDFs make organic motion simple.
+
+The goop lives.
+
+Code: [[https://github.com/stamnostomp/portfolio]]

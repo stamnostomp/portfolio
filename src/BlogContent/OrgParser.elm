@@ -137,7 +137,8 @@ headingParser =
                 )
                 |> andThen (\stars -> succeed (String.length stars))
            )
-        |. spaces
+        |. chompIf ((==) ' ')
+        |. chompWhile ((==) ' ')
         |= getChompedString (chompUntil "\n")
         |. symbol "\n"
 
@@ -230,12 +231,19 @@ underlineParser =
 
 textParser : Parser InlineContent
 textParser =
-    succeed Text
-        |= getChompedString
-            (succeed ()
-                |. chompIf (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[' && c /= '|')
-                |. chompWhile (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[' && c /= '|')
-            )
+    oneOf
+        [ -- Regular text (non-special characters)
+          succeed Text
+            |= getChompedString
+                (succeed ()
+                    |. chompIf (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[' && c /= '|')
+                    |. chompWhile (\c -> c /= '\n' && c /= '*' && c /= '/' && c /= '=' && c /= '+' && c /= '_' && c /= '[' && c /= '|')
+                )
+        , -- Fallback: single special character as text (when markup parsing failed)
+          succeed Text
+            |= getChompedString
+                (chompIf (\c -> c == '/' || c == '=' || c == '+' || c == '_'))
+        ]
 
 
 

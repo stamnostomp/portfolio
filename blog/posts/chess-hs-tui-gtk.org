@@ -1,0 +1,216 @@
+#+TITLE: Building Dual Interfaces in Haskell: TUI and GTK for Chess
+#+DATE: 2024-11-15
+#+AUTHOR: stamno
+#+TAGS: Haskell, GTK, TUI, Chess
+#+CATEGORIES: tech
+#+SUMMARY: Implementing both terminal and graphical interfaces for a chess engine in Haskell.
+#+SLUG: chess-hs-tui-gtk
+#+DRAFT: false
+
+* The Problem
+
+Chess engines need interfaces. But which one? Terminal for quick testing? GUI for actual play?
+
+Why not both?
+
+* Architecture
+
+The key is separation. Game logic knows nothing about rendering:
+
+#+BEGIN_SRC haskell
+-- Core game state
+data GameState = GameState
+  { board :: Board
+  , turn :: Color
+  , moveHistory :: [Move]
+  }
+
+-- UI abstraction
+class ChessUI ui where
+  renderBoard :: Board -> ui -> IO ()
+  getPlayerMove :: ui -> IO Move
+  showMessage :: String -> ui -> IO ()
+#+END_SRC
+
+This lets us implement =ChessUI= for both terminal and GTK.
+
+* Terminal Interface
+
+The TUI is simple. Unicode chess pieces:
+
+#+BEGIN_SRC haskell
+renderBoard :: Board -> IO ()
+renderBoard board = do
+  putStrLn "  a b c d e f g h"
+  forM_ [8,7..1] $ \rank -> do
+    putStr $ show rank ++ " "
+    forM_ ['a'..'h'] $ \file -> do
+      let piece = getPiece board (file, rank)
+      putStr $ pieceChar piece ++ " "
+    putStrLn $ show rank
+  putStrLn "  a b c d e f g h"
+
+pieceChar :: Maybe Piece -> String
+pieceChar Nothing = "·"
+pieceChar (Just (Piece White King))   = "♔"
+pieceChar (Just (Piece White Queen))  = "♕"
+pieceChar (Just (Piece Black King))   = "♚"
+-- ... etc
+#+END_SRC
+
+Input is algebraic notation: =e2e4=, =Nf3=, etc.
+
+* GTK Interface
+
+GTK needs more setup. Create a window, drawing area, handle clicks:
+
+#+BEGIN_SRC haskell
+createGUI :: GameState -> IO ()
+createGUI initialState = do
+  Gtk.init Nothing
+
+  window <- new Gtk.Window
+    [ #title := "Chess-HS"
+    , #defaultWidth := 640
+    , #defaultHeight := 640
+    ]
+
+  canvas <- new Gtk.DrawingArea []
+  on canvas #draw $ \context -> do
+    renderBoardGTK context board
+    return True
+
+  on canvas #buttonPressEvent $ \event -> do
+    (x, y) <- getEventCoordinates event
+    handleClick (x, y) gameState
+    return True
+
+  #add window canvas
+  #showAll window
+  Gtk.main
+#+END_SRC
+
+* Rendering with Cairo
+
+GTK uses Cairo for drawing:
+
+#+BEGIN_SRC haskell
+renderBoardGTK :: Cairo.Context -> Board -> IO ()
+renderBoardGTK ctx board = Cairo.renderWithContext ctx $ do
+  -- Draw checkerboard
+  forM_ [0..7] $ \rank ->
+    forM_ [0..7] $ \file -> do
+      let color = if even (rank + file)
+                  then (0.9, 0.9, 0.8)  -- Light square
+                  else (0.5, 0.4, 0.3)  -- Dark square
+      Cairo.setSourceRGB color
+      Cairo.rectangle (file * 80) (rank * 80) 80 80
+      Cairo.fill
+
+  -- Draw pieces
+  forM_ allSquares $ \square -> do
+    case getPiece board square of
+      Just piece -> drawPiece ctx square piece
+      Nothing -> return ()
+
+drawPiece :: Cairo.Context -> Square -> Piece -> IO ()
+drawPiece ctx (file, rank) piece = do
+  let (x, y) = squareToPixels (file, rank)
+  Cairo.selectFontFace "DejaVu Sans"
+                       Cairo.FontSlantNormal
+                       Cairo.FontWeightBold
+  Cairo.setFontSize 48
+  Cairo.moveTo (x + 16) (y + 56)
+  Cairo.showText $ pieceUnicode piece
+#+END_SRC
+
+* Sharing Game Logic
+
+Both UIs share the same game engine:
+
+#+BEGIN_SRC haskell
+-- Game loop (UI-agnostic)
+gameLoop :: ChessUI ui => GameState -> ui -> IO ()
+gameLoop state ui = do
+  renderBoard (board state) ui
+
+  if isCheckmate state then
+    showMessage "Checkmate!" ui
+  else if isStalemate state then
+    showMessage "Stalemate!" ui
+  else do
+    move <- getPlayerMove ui
+    case validateMove move state of
+      Valid newState -> gameLoop newState ui
+      Invalid reason -> do
+        showMessage reason ui
+        gameLoop state ui
+#+END_SRC
+
+* Move Validation
+
+Move validation is pure logic:
+
+#+BEGIN_SRC haskell
+validateMove :: Move -> GameState -> MoveResult
+validateMove move state = do
+  -- Check basic legality
+  guard $ isLegalMove move (board state)
+
+  -- Check if move leaves king in check
+  let newBoard = applyMove move (board state)
+  guard $ not $ inCheck (turn state) newBoard
+
+  -- Check special moves (castling, en passant)
+  when (isCastling move) $
+    guard $ canCastle move state
+
+  return $ GameState newBoard (opponent $ turn state) (move : moveHistory state)
+#+END_SRC
+
+* Building
+
+Cabal handles both interfaces:
+
+#+BEGIN_SRC cabal
+executable chess-hs
+  main-is: Main.hs
+  build-depends:
+    , base
+    , gi-gtk
+    , gi-cairo
+  default-language: Haskell2010
+
+executable chess-hs-tui
+  main-is: MainTUI.hs
+  build-depends:
+    , base
+  default-language: Haskell2010
+#+END_SRC
+
+Or use Nix flakes for reproducible builds.
+
+* Lessons Learned
+
+** Type safety prevents bugs
+Haskell's type system catches move validation errors at compile time.
+
+** Pure functions are testable
+Game logic is pure. Testing is trivial:
+
+#+BEGIN_SRC haskell
+testCheckmate :: Test
+testCheckmate =
+  let board = setupCheckmatePosition
+      state = GameState board Black []
+  in assert $ isCheckmate state
+#+END_SRC
+
+** UI abstraction works
+Same game engine. Different interfaces. Zero duplication.
+
+* Conclusion
+
+Haskell's abstraction makes dual interfaces natural. Terminal for development. GTK for users.
+
+Code: [[https://github.com/stamnostomp/chess-hs]]

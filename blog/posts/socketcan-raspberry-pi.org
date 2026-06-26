@@ -1,0 +1,749 @@
+#+TITLE: Reading CAN Bus Data on Raspberry Pi with SocketCAN
+#+DATE: 2023-08-10
+#+AUTHOR: stamno
+#+TAGS: C, Embedded, SocketCAN, Raspberry Pi
+#+CATEGORIES: tech
+#+SUMMARY: Building a car dashboard that reads real-time vehicle data via CAN bus.
+#+SLUG: socketcan-raspberry-pi
+#+DRAFT: false
+
+* The Goal
+
+Modern cars communicate over CAN bus. Engine RPM, speed, temperature—all on the wire.
+
+
+* CAN Bus Basics
+
+Controller Area Network (CAN) is a message-based protocol. No addresses. Broadcast only.
+
+Each message has:
+- ID: Message identifier (11 or 29 bits)
+- Data: Up to 8 bytes
+- DLC: Data length code
+
+Example: Engine RPM might be ID =0x0C= with 2 bytes of data.
+
+* SocketCAN
+
+Linux has CAN support built-in: SocketCAN.
+
+CAN interface looks like a network interface:
+
+#+BEGIN_SRC bash
+# Bring up CAN interface at 500kbps
+sudo ip link set can0 type can bitrate 500000
+sudo ip link set up can0
+
+# View messages
+candump can0
+#+END_SRC
+
+SocketCAN uses standard BSD sockets. No special libraries.
+
+* Hardware Adapters
+
+Multiple options exist. Not all work well.
+
+** MCP2515 + TJA1050 (Recommended)
+
+Most common. SPI interface. Works reliably.
+
+Costs $5-15. Waveshare and others make modules.
+
+*Pros:*
+- Cheap
+- Well-supported in Linux kernel
+- Works with standard =mcp2515= overlay
+
+Cons:
+
+- Requires SPI pins
+- Needs device tree configuration
+- Max 1Mbps (sufficient for most cars)
+
+** PiCAN2 / PiCAN3
+
+Professional HAT for Raspberry Pi. Uses MCP2515.
+Pros:
+
+- Plug-and-play HAT
+- Screw terminals for CAN H/L
+- Optional OBD-II cable
+- Better EMI protection
+
+Cons:
+- $30-50
+- Takes GPIO header space
+
+** USB Adapters
+
+PEAK PCAN-USB, Kvaser Leaf Light, CANtact.
+Pros:
+
+- No GPIO needed
+- Works on any Linux machine
+- Easy to move between systems
+
+Cons:
+- $50-300
+- USB latency
+- Driver quality varies
+
+** What NOT to Buy
+
+Avoid:
+- Generic "USB CAN adapter" from eBay/AliExpress
+- CH340-based adapters (poor Linux support)
+- Anything without explicit Linux support
+
+* Hardware Setup
+
+** MCP2515 Wiring
+
+Connect to Raspberry Pi SPI0:
+
+#+BEGIN_SRC text
+MCP2515 -> Raspberry Pi
+VCC     -> 3.3V (Pin 1)
+GND     -> GND (Pin 6)
+CS      -> CE0 (Pin 24, GPIO 8)
+SI      -> MOSI (Pin 19, GPIO 10)
+SO      -> MISO (Pin 21, GPIO 9)
+SCK     -> SCLK (Pin 23, GPIO 11)
+INT     -> GPIO 25 (Pin 22)
+#+END_SRC
+
+** Enable SPI and Configure Overlay
+
+Edit =/boot/config.txt= (or =/boot/firmware/config.txt= on newer Raspberry Pi OS):
+
+#+BEGIN_SRC text
+# Enable SPI
+dtparam=spi=on
+
+# MCP2515 overlay
+# oscillator: Crystal frequency (8MHz or 16MHz - check your module)
+# interrupt: GPIO pin for interrupts (usually 25)
+dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25
+
+# For second CAN interface (optional):
+# dtoverlay=mcp2515-can1,oscillator=8000000,interrupt=24,spimaxfrequency=1000000
+#+END_SRC
+
+Common oscillator frequencies:
+- 8MHz - Most common
+- 16MHz - Some modules
+- 12MHz - Rare
+
+Wrong frequency causes communication failures.
+
+** Verify Hardware
+
+Reboot and check:
+
+#+BEGIN_SRC bash
+# Should show can0
+ip link show
+
+# Check dmesg for MCP2515
+dmesg | grep mcp251x
+
+# Should see: mcp251x spi0.0 can0: MCP2515 successfully initialized
+#+END_SRC
+
+If =can0= doesn't appear, check wiring and oscillator frequency.
+
+* Reading CAN Frames in C
+
+SocketCAN uses standard socket API:
+
+#+BEGIN_SRC c
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+
+int open_can_socket(const char *interface) {
+  int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+  if (sock < 0) {
+    perror("socket");
+    return -1;
+  }
+
+  struct ifreq ifr;
+  strcpy(ifr.ifr_name, interface);
+  ioctl(sock, SIOCGIFINDEX, &ifr);
+
+  struct sockaddr_can addr;
+  addr.can_family = AF_CAN;
+  addr.can_ifindex = ifr.ifr_ifindex;
+
+  if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    perror("bind");
+    return -1;
+  }
+
+  return sock;
+}
+#+END_SRC
+
+* Receiving Frames
+
+Read frames in a loop:
+
+#+BEGIN_SRC c
+void read_can_frames(int sock) {
+  struct can_frame frame;
+
+  while (1) {
+    ssize_t nbytes = read(sock, &frame, sizeof(frame));
+
+    if (nbytes < 0) {
+      perror("read");
+      continue;
+    }
+
+    if (nbytes < sizeof(frame)) {
+      fprintf(stderr, "Incomplete frame\n");
+      continue;
+    }
+
+    handle_can_frame(&frame);
+  }
+}
+#+END_SRC
+
+* Parsing OBD-II Data
+
+OBD-II uses specific CAN IDs:
+
+- Request: =0x7DF=
+- Response: =0x7E8= - =0x7EF=
+
+Example: Request engine RPM:
+
+#+BEGIN_SRC c
+void request_rpm(int sock) {
+  struct can_frame frame;
+  frame.can_id = 0x7DF;
+  frame.can_dlc = 8;
+  frame.data[0] = 0x02;  // Length
+  frame.data[1] = 0x01;  // Service 01 (current data)
+  frame.data[2] = 0x0C;  // PID 0x0C (RPM)
+  frame.data[3] = 0x00;
+  frame.data[4] = 0x00;
+  frame.data[5] = 0x00;
+  frame.data[6] = 0x00;
+  frame.data[7] = 0x00;
+
+  write(sock, &frame, sizeof(frame));
+}
+
+int parse_rpm_response(struct can_frame *frame) {
+  if (frame->can_id < 0x7E8 || frame->can_id > 0x7EF)
+    return -1;
+
+  if (frame->data[1] != 0x41 || frame->data[2] != 0x0C)
+    return -1;  // Not an RPM response
+
+  int rpm = ((frame->data[3] << 8) | frame->data[4]) / 4;
+  return rpm;
+}
+#+END_SRC
+
+* Non-Blocking Reads
+
+Use =select()= for non-blocking operation:
+
+#+BEGIN_SRC c
+void read_can_nonblocking(int sock) {
+  struct can_frame frame;
+  fd_set readfds;
+  struct timeval timeout = {0, 100000};  // 100ms
+
+  FD_ZERO(&readfds);
+  FD_SET(sock, &readfds);
+
+  if (select(sock + 1, &readfds, NULL, NULL, &timeout) > 0) {
+    if (FD_ISSET(sock, &readfds)) {
+      read(sock, &frame, sizeof(frame));
+      handle_can_frame(&frame);
+    }
+  }
+}
+#+END_SRC
+
+This lets Raylib render while waiting for CAN data.
+
+* Rendering with Raylib
+
+Display data with Raylib:
+
+#+BEGIN_SRC c
+#include "raylib.h"
+
+typedef struct {
+  int rpm;
+  int speed;
+  int coolant_temp;
+} VehicleData;
+
+void draw_dashboard(VehicleData *data) {
+  BeginDrawing();
+  ClearBackground(BLACK);
+
+  // RPM gauge
+  DrawText("RPM", 50, 50, 40, WHITE);
+  DrawText(TextFormat("%d", data->rpm), 50, 100, 60, GREEN);
+
+  // Speed
+  DrawText("SPEED", 300, 50, 40, WHITE);
+  DrawText(TextFormat("%d km/h", data->speed), 300, 100, 60, GREEN);
+
+  // Coolant temp
+  DrawText("COOLANT", 550, 50, 40, WHITE);
+  Color temp_color = data->coolant_temp > 100 ? RED : GREEN;
+  DrawText(TextFormat("%d°C", data->coolant_temp), 550, 100, 60, temp_color);
+
+  EndDrawing();
+}
+#+END_SRC
+
+* Main Loop
+
+Combine CAN reading with rendering:
+
+#+BEGIN_SRC c
+int main(void) {
+  InitWindow(800, 600, "CAN Dashboard");
+  SetTargetFPS(60);
+
+  int can_sock = open_can_socket("can0");
+  if (can_sock < 0) {
+    return 1;
+  }
+
+  VehicleData data = {0};
+
+  while (!WindowShouldClose()) {
+    // Read CAN data (non-blocking)
+    read_can_nonblocking(can_sock);
+
+    // Update vehicle data
+    update_vehicle_data(&data);
+
+    // Render dashboard
+    draw_dashboard(&data);
+  }
+
+  close(can_sock);
+  CloseWindow();
+
+  return 0;
+}
+#+END_SRC
+
+* Error Handling
+
+CAN bus can be noisy. Handle errors:
+
+#+BEGIN_SRC c
+void handle_can_error(struct can_frame *frame) {
+  if (frame->can_id & CAN_ERR_FLAG) {
+    if (frame->can_id & CAN_ERR_BUSOFF) {
+      fprintf(stderr, "CAN bus off\n");
+      // Attempt recovery
+    }
+    if (frame->can_id & CAN_ERR_CRTL) {
+      fprintf(stderr, "Controller error\n");
+    }
+  }
+}
+#+END_SRC
+
+* Filtering
+
+Filter specific CAN IDs:
+
+#+BEGIN_SRC c
+void set_can_filter(int sock) {
+  struct can_filter filter[2];
+
+  // Only receive OBD-II responses
+  filter[0].can_id = 0x7E8;
+  filter[0].can_mask = CAN_SFF_MASK;
+
+  filter[1].can_id = 0x7E9;
+  filter[1].can_mask = CAN_SFF_MASK;
+
+  setsockopt(sock, SOL_CAN_RAW, CAN_RAW_FILTER,
+             &filter, sizeof(filter));
+}
+#+END_SRC
+
+Reduces CPU load. Only process relevant messages.
+
+** Advanced Filtering
+
+Masks allow flexible matching:
+
+#+BEGIN_SRC c
+// Match all IDs from 0x100 to 0x1FF
+filter.can_id = 0x100;
+filter.can_mask = 0x700;  // Mask upper bits
+
+// Match exact ID
+filter.can_id = 0x123;
+filter.can_mask = CAN_SFF_MASK;  // 0x7FF for standard frames
+
+// Match extended frames only
+filter.can_id = CAN_EFF_FLAG;
+filter.can_mask = CAN_EFF_FLAG;
+#+END_SRC
+
+* SocketCAN API Details
+
+** Socket Options
+
+Control behavior with =setsockopt()=:
+
+#+BEGIN_SRC c
+// Enable error frames
+int err_mask = CAN_ERR_MASK;
+setsockopt(sock, SOL_CAN_RAW, CAN_RAW_ERR_FILTER,
+           &err_mask, sizeof(err_mask));
+
+// Enable loopback (see own transmissions)
+int loopback = 1;
+setsockopt(sock, SOL_CAN_RAW, CAN_RAW_LOOPBACK,
+           &loopback, sizeof(loopback));
+
+// Receive own messages
+int recv_own = 1;
+setsockopt(sock, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS,
+           &recv_own, sizeof(recv_own));
+
+// Set FD mode (CAN-FD)
+int enable_canfd = 1;
+setsockopt(sock, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,
+           &enable_canfd, sizeof(enable_canfd));
+#+END_SRC
+
+** Sending Frames
+
+Writing is simple:
+
+#+BEGIN_SRC c
+int send_can_frame(int sock, uint32_t id, uint8_t *data, uint8_t len) {
+  struct can_frame frame;
+
+  frame.can_id = id;
+  frame.can_dlc = len;
+  memcpy(frame.data, data, len);
+
+  ssize_t nbytes = write(sock, &frame, sizeof(frame));
+  if (nbytes != sizeof(frame)) {
+    perror("write");
+    return -1;
+  }
+
+  return 0;
+}
+
+// Usage
+uint8_t data[] = {0x02, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00};
+send_can_frame(sock, 0x7DF, data, 8);
+#+END_SRC
+
+** Timestamps
+
+Get precise receive timestamps:
+
+#+BEGIN_SRC c
+// Enable hardware timestamps
+int timestamp = 1;
+setsockopt(sock, SOL_SOCKET, SO_TIMESTAMP,
+           &timestamp, sizeof(timestamp));
+
+// Receive with timestamp
+struct msghdr msg;
+struct iovec iov;
+struct can_frame frame;
+char ctrlmsg[CMSG_SPACE(sizeof(struct timeval))];
+
+iov.iov_base = &frame;
+iov.iov_len = sizeof(frame);
+
+msg.msg_name = NULL;
+msg.msg_namelen = 0;
+msg.msg_iov = &iov;
+msg.msg_iovlen = 1;
+msg.msg_control = &ctrlmsg;
+msg.msg_controllen = sizeof(ctrlmsg);
+msg.msg_flags = 0;
+
+ssize_t nbytes = recvmsg(sock, &msg, 0);
+
+// Extract timestamp
+struct cmsghdr *cmsg;
+for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+     cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+  if (cmsg->cmsg_level == SOL_SOCKET &&
+      cmsg->cmsg_type == SO_TIMESTAMP) {
+    struct timeval *tv = (struct timeval *)CMSG_DATA(cmsg);
+    printf("Received at %ld.%06ld\n", tv->tv_sec, tv->tv_usec);
+  }
+}
+#+END_SRC
+
+* Common Pitfalls
+
+** Wrong Bitrate
+
+CAN bus requires matching bitrates. Common rates:
+
+- 125 kbps - Industrial
+- 250 kbps - Some vehicles
+- 500 kbps - Most cars (OBD-II)
+- 1000 kbps - High-speed CAN
+
+Set bitrate before bringing interface up:
+
+#+BEGIN_SRC bash
+# WRONG - interface already up
+sudo ip link set up can0
+sudo ip link set can0 type can bitrate 500000  # Fails!
+
+# RIGHT - set bitrate first
+sudo ip link set can0 type can bitrate 500000
+sudo ip link set up can0
+#+END_SRC
+
+Wrong bitrate symptoms:
+- No messages received
+- =dmesg= shows bus-off errors
+- Interface enters ERROR-PASSIVE state
+
+** Forgetting Termination Resistors
+
+CAN bus needs 120Ω termination at both ends.
+
+Without termination:
+- Reflections corrupt data
+- Intermittent errors
+- Works at low speeds, fails at high speeds
+
+Most dev boards have optional termination jumper. Enable it.
+
+In production, use proper 120Ω resistors between CAN_H and CAN_L.
+
+** Buffer Overflows
+
+Socket buffers can overflow on busy bus:
+
+#+BEGIN_SRC c
+// Increase receive buffer
+int bufsize = 1000000;  // 1MB
+setsockopt(sock, SOL_SOCKET, SO_RCVBUF,
+           &bufsize, sizeof(bufsize));
+
+// Check for ENOBUFS error
+if (errno == ENOBUFS) {
+  fprintf(stderr, "Socket buffer overflow - packets lost\n");
+}
+#+END_SRC
+
+** Not Checking Interface State
+
+Always verify interface is up:
+
+#+BEGIN_SRC bash
+# Check state
+ip -details link show can0
+
+# Look for:
+# - UP
+# - LOWER_UP
+# - state UP
+
+# If ERROR-PASSIVE or BUS-OFF, restart:
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 500000 restart-ms 100
+sudo ip link set can0 up
+#+END_SRC
+
+** Extended vs Standard Frames
+
+CAN supports two frame types:
+
+- Standard: 11-bit ID (0x000 - 0x7FF)
+- Extended: 29-bit ID (0x00000000 - 0x1FFFFFFF)
+
+Mark extended frames:
+
+#+BEGIN_SRC c
+// Send extended frame
+frame.can_id = 0x12345678 | CAN_EFF_FLAG;
+
+// Check if received frame is extended
+if (frame.can_id & CAN_EFF_FLAG) {
+  uint32_t id = frame.can_id & CAN_EFF_MASK;
+  printf("Extended frame, ID: 0x%X\n", id);
+} else {
+  uint32_t id = frame.can_id & CAN_SFF_MASK;
+  printf("Standard frame, ID: 0x%X\n", id);
+}
+#+END_SRC
+
+** Blocking on Empty Bus
+
+Without timeouts, =read()= blocks forever:
+
+#+BEGIN_SRC c
+// Use select() with timeout
+struct timeval timeout = {1, 0};  // 1 second
+fd_set readfds;
+FD_ZERO(&readfds);
+FD_SET(sock, &readfds);
+
+int ret = select(sock + 1, &readfds, NULL, NULL, &timeout);
+if (ret < 0) {
+  perror("select");
+} else if (ret == 0) {
+  printf("Timeout - no messages\n");
+} else {
+  // Data available
+  read(sock, &frame, sizeof(frame));
+}
+#+END_SRC
+
+** Not Handling Bus-Off
+
+Heavy errors cause bus-off:
+
+#+BEGIN_SRC bash
+# Auto-restart on bus-off after 100ms
+sudo ip link set can0 type can restart-ms 100
+#+END_SRC
+
+Without auto-restart, manually restart:
+
+#+BEGIN_SRC c
+// Restart after bus-off
+if (frame.can_id & CAN_ERR_BUSOFF) {
+  system("sudo ip link set can0 type can restart");
+}
+#+END_SRC
+
+* Debugging Tools
+
+** candump
+
+View all CAN traffic:
+
+#+BEGIN_SRC bash
+# Basic dump
+candump can0
+
+# With timestamps
+candump -t a can0
+
+# Human-readable
+candump -c can0
+
+# Log to file
+candump -l can0
+
+# Filter specific ID
+candump can0,7E8:7FF
+#+END_SRC
+
+** cansend
+
+Send test frames:
+
+#+BEGIN_SRC bash
+# Send frame with ID 0x123 and data
+cansend can0 123#DEADBEEF
+
+# Extended frame
+cansend can0 12345678#CAFEBABE
+
+# RTR (Remote Transmission Request)
+cansend can0 123#R
+#+END_SRC
+
+** cangen
+
+Generate test traffic:
+
+#+BEGIN_SRC bash
+# Random frames at 100ms interval
+cangen can0 -g 100
+
+# Specific ID range
+cangen can0 -I 100 -L 8
+
+# Increment data
+cangen can0 -I 200 -D i -g 50
+#+END_SRC
+
+** can-utils
+
+Essential package:
+
+#+BEGIN_SRC bash
+sudo apt install can-utils
+
+# Available tools:
+# candump  - Display frames
+# cansend  - Send single frame
+# cangen   - Generate test traffic
+# cansequence - Check frame ordering
+# canbusload - Monitor bus load
+#+END_SRC
+
+* Performance
+
+Raspberry Pi 3B+ handles 500kbps CAN + 60fps rendering easily.
+
+Tips:
+- Use hardware SPI (not bit-banging)
+- Filter CAN messages in kernel
+- Keep rendering simple
+
+* Safety
+
+Never write to production CAN bus without understanding.
+
+Wrong messages can:
+- Trigger airbags
+- Disable brakes
+- Damage ECUs
+
+Use on test bench only.
+
+* Conclusion
+
+SocketCAN provides direct CAN bus access without proprietary drivers. Standard BSD sockets. Simple API.
+
+Key takeaways:
+
+- MCP2515 modules work reliably
+- Set bitrate before bringing interface up
+- Use filters to reduce CPU load
+- Enable termination resistors
+- Monitor interface state
+- Use can-utils for debugging
+
+Combined with Raylib, real-time vehicle dashboards run at 60fps.
+
+SocketCAN handles the complexity. You handle the rendering.
+
+* Resources
+
+- [[https://github.com/stamnostomp/raylib-dash][Code: raylib-dash]]
+- [[https://www.kernel.org/doc/Documentation/networking/can.txt][Linux SocketCAN Documentation]]
+- [[https://en.wikipedia.org/wiki/OBD-II_PIDs][OBD-II PID List]]
+- [[https://github.com/linux-can/can-utils][can-utils Repository]]
