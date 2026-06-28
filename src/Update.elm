@@ -10,6 +10,7 @@ import Types exposing (Page(..))
 import Http
 import BlogContent.OrgParser as OrgParser
 import Dict
+import Pages.Games.MissileCommand as MissileCommand
 import Pages.Links
 
 
@@ -332,11 +333,22 @@ update msg model =
             in
             case clickedBranch of
                 Just branch ->
-                    update (ClickBranch branch) model
+                    -- The game owns all clicks; don't let a margin click navigate.
+                    case model.transitionState of
+                        ShowingContent Games _ ->
+                            ( model, Cmd.none )
+
+                        _ ->
+                            update (ClickBranch branch) model
 
                 Nothing ->
                     -- Check if we're in content mode and should close
                     case model.transitionState of
+                        ShowingContent Games _ ->
+                            -- The game owns the whole screen; clicks aim/fire.
+                            -- It is closed with Esc or its corner button only.
+                            ( model, Cmd.none )
+
                         ShowingContent _ _ ->
                             -- Only close if click is outside the content square
                             if isInsideContentSquare then
@@ -400,10 +412,10 @@ update msg model =
             ( { model | transitionState = NoTransition }, Cmd.none )
 
         CloseContent ->
-            -- Start transition back to goop nav
+            -- Start transition back to goop nav (and clear any open game)
             case model.transitionState of
                 ShowingContent fromPage _ ->
-                    ( { model | transitionState = TransitioningIn 0.0 fromPage }, Cmd.none )
+                    ( { model | transitionState = TransitioningIn 0.0 fromPage, selectedGame = Nothing }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -635,6 +647,39 @@ update msg model =
                     ( { model | blogIndexLoading = False }
                     , Cmd.none
                     )
+
+        -- Games
+        MissileGameMsg subMsg ->
+            let
+                ( newGameState, gameCmd ) =
+                    MissileCommand.update subMsg model.missileGame
+            in
+            ( { model | missileGame = newGameState }
+            , Cmd.map MissileGameMsg gameCmd
+            )
+
+        OpenGame id ->
+            -- Only Missile Command is playable for now; ignore the others.
+            if id == "missile-command" then
+                ( { model | selectedGame = Just id, missileGame = Tuple.first MissileCommand.init }
+                , Cmd.none
+                )
+
+            else
+                ( model, Cmd.none )
+
+        CloseGame ->
+            -- Back to the games list (without leaving the Games page)
+            ( { model | selectedGame = Nothing }, Cmd.none )
+
+        EscapePressed ->
+            -- Esc backs out of an open game to the list, otherwise closes the page.
+            case model.selectedGame of
+                Just _ ->
+                    update CloseGame model
+
+                Nothing ->
+                    update CloseContent model
 
 
 

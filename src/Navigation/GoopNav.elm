@@ -29,9 +29,10 @@ type NavBranch
     | BranchPortfolio -- 2
     | BranchBlog -- 3
     | BranchContact -- 4
-    | BranchGallery -- 5
+    | BranchGames -- 5
     | BranchServices -- 6
     | BranchNews -- 7
+
 
 
 -- Convert NavBranch to Page
@@ -55,14 +56,15 @@ getBranchPage branch =
         BranchContact ->
             Contact
 
-        BranchGallery ->
-            Gallery
+        BranchGames ->
+            Games
 
         BranchServices ->
             Services
 
         BranchNews ->
             Links
+
 
 
 -- Convert NavBranch to index
@@ -86,7 +88,7 @@ branchToIndex branch =
         BranchContact ->
             4
 
-        BranchGallery ->
+        BranchGames ->
             5
 
         BranchServices ->
@@ -94,6 +96,7 @@ branchToIndex branch =
 
         BranchNews ->
             7
+
 
 
 -- Get branch label string
@@ -117,14 +120,15 @@ getBranchLabel branch =
         BranchContact ->
             "Contact"
 
-        BranchGallery ->
-            "Gallery"
+        BranchGames ->
+            "Games"
 
         BranchServices ->
             "Services"
 
         BranchNews ->
             "Links"
+
 
 
 -- Get the currently hovered branch from state
@@ -282,7 +286,7 @@ detectHoveredBranchWithTime mousePos floatingCenter time =
             , BranchPortfolio
             , BranchBlog
             , BranchContact
-            , BranchGallery
+            , BranchGames
             , BranchServices
             , BranchNews
             ]

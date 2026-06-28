@@ -18,6 +18,7 @@ import BlogContent.Types exposing (BlogPost)
 import Http
 import Json.Decode as Decode
 import Dict exposing (Dict)
+import Pages.Games.MissileCommand as MissileCommand
 import Pages.Links exposing (LinkStatus(..))
 
 
@@ -76,6 +77,10 @@ type alias Model =
     -- Blog index state
     , blogPostIndex : List BlogPostIndexItem
     , blogIndexLoading : Bool
+
+    -- Games
+    , missileGame : MissileCommand.GameState
+    , selectedGame : Maybe String -- which game is open on the Games page (Nothing = list)
     }
 
 
@@ -133,6 +138,11 @@ type Msg
       -- Blog index loading messages
     | LoadBlogIndex
     | BlogIndexLoaded (Result Http.Error (List BlogPostIndexItem))
+      -- Games
+    | MissileGameMsg MissileCommand.Msg
+    | OpenGame String
+    | CloseGame
+    | EscapePressed
 
 
 
@@ -184,6 +194,10 @@ init flags =
       -- Initialize blog index
       , blogPostIndex = []
       , blogIndexLoading = False
+
+      -- Initialize games
+      , missileGame = Tuple.first MissileCommand.init
+      , selectedGame = Nothing
       }
     , Cmd.none
     )

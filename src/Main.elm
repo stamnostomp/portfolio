@@ -15,7 +15,8 @@ import Navigation.GoopNav as GoopNav
 import Pages.About
 import Pages.Blog
 import Pages.Contact
-import Pages.Gallery
+import Pages.Games
+import Pages.Games.MissileCommand as MissileCommand
 import Pages.Links
 import Pages.Portfolio
 import Pages.Projects
@@ -206,7 +207,6 @@ calculateContentSquareDimensions resolution =
         -- These are half-extents in shader coordinates
         -- Shader coordinate system: vertical [-1,1] maps to viewport height
         -- So 1 shader unit = viewport height / 2
-
         -- Rectangle half-height in shader units: 0.85 * 0.71 = 0.6035
         -- Full height: 2 * 0.6035 * (viewport height / 2) = 0.6035 * viewport height
         squareHeight =
@@ -440,31 +440,16 @@ getBranchLabelPosition branch resolution center time =
 viewContentSquare : Model -> Html Msg
 viewContentSquare model =
     case model.transitionState of
+        ShowingContent Games _ ->
+            -- The Games page shows the list; opening a game swaps to its panel.
+            if gameOpen model then
+                viewFullscreenGame model
+
+            else
+                viewContentPanel Games model
+
         ShowingContent page _ ->
-            let
-                dims = calculateContentSquareDimensions model.resolution
-            in
-            div
-                [ Attr.class "fixed z-3 overflow-hidden monospace white"
-                , Attr.style "left" (String.fromFloat dims.left ++ "px")
-                , Attr.style "top" (String.fromFloat dims.top ++ "px")
-                , Attr.style "width" (String.fromFloat dims.width ++ "px")
-                , Attr.style "height" (String.fromFloat dims.height ++ "px")
-
-                -- Add border to visualize the content bounds (remove in production)
-                --, Attr.style "border" "1px solid rgba(192, 192, 192, 0.3)"
-                --, Attr.style "border-radius" "8px" -- Slight rounding to match organic feel
-                ]
-                [ -- Content container - full height for blog/portfolio, with padding for others
-                  if page == Blog || page == Portfolio || page == Projects || page == Links || page == Gallery then
-                    div [ Attr.class "h-100 w-100 pa2" ]
-                        [ viewPageContent page model ]
-
-                  else
-                    div [ Attr.class "pa3 h-100 overflow-auto" ]
-                        -- Reduced padding from pa4 to pa3
-                        [ viewPageContent page model ]
-                ]
+            viewContentPanel page model
 
         TransitioningOut progress page ->
             if progress > 0.7 then
@@ -477,8 +462,99 @@ viewContentSquare model =
             text ""
 
 
+{-| True when a playable game is open on the Games page. -}
+gameOpen : Model -> Bool
+gameOpen model =
+    case model.transitionState of
+        ShowingContent Games _ ->
+            model.selectedGame == Just "missile-command"
+
+        _ ->
+            False
+
+
+{-| The standard centered content square used by every page (and the Games list). -}
+viewContentPanel : Page -> Model -> Html Msg
+viewContentPanel page model =
+    let
+        dims =
+            calculateContentSquareDimensions model.resolution
+    in
+    div
+        [ Attr.class "fixed z-3 overflow-hidden monospace white"
+        , Attr.style "left" (String.fromFloat dims.left ++ "px")
+        , Attr.style "top" (String.fromFloat dims.top ++ "px")
+        , Attr.style "width" (String.fromFloat dims.width ++ "px")
+        , Attr.style "height" (String.fromFloat dims.height ++ "px")
+        ]
+        [ -- Content container - full height for blog/portfolio/games, padded for others
+          if page == Blog || page == Portfolio || page == Projects || page == Links || page == Games then
+            div [ Attr.class "h-100 w-100 pa2" ]
+                [ viewPageContent page model ]
+
+          else
+            div [ Attr.class "pa3 h-100 overflow-auto" ]
+                [ viewPageContent page model ]
+        ]
+
+
+{-| The game sits a bit inside the shader's metallic rectangle so the spinning
+metal effect frames it (and shows faintly through the transparent playfield).
+Closed with Esc or the corner button.
+-}
+viewFullscreenGame : Model -> Html Msg
+viewFullscreenGame model =
+    let
+        dims =
+            calculateContentSquareDimensions model.resolution
+
+        -- A touch smaller than the metal rectangle, centered within it.
+        scale =
+            0.9
+
+        w =
+            dims.width * scale
+
+        h =
+            dims.height * scale
+
+        left =
+            dims.left + (dims.width - w) / 2
+
+        top =
+            dims.top + (dims.height - h) / 2
+    in
+    div
+        [ Attr.class "fixed z-3 overflow-hidden monospace white"
+        , Attr.style "left" (String.fromFloat left ++ "px")
+        , Attr.style "top" (String.fromFloat top ++ "px")
+        , Attr.style "width" (String.fromFloat w ++ "px")
+        , Attr.style "height" (String.fromFloat h ++ "px")
+        ]
+        [ Html.map MissileGameMsg (MissileCommand.view model.missileGame)
+        , button
+            [ Attr.class "absolute top-1 right-1 z-4 bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer ttu goop-close-button"
+            , onClick CloseGame
+            ]
+            [ text "✕ BACK" ]
+        ]
+
+
 
 -- Message conversion functions for page-specific messages
+
+
+gamesMsgToMainMsg : Pages.Games.GamesMsg -> Msg
+gamesMsgToMainMsg msg =
+    case msg of
+        Pages.Games.OpenGame id ->
+            OpenGame id
+
+        Pages.Games.Close ->
+            CloseContent
+
+        Pages.Games.NoOp ->
+            Tick 0
 
 
 blogMsgToMainMsg : Pages.Blog.BlogMsg -> Msg
@@ -586,8 +662,8 @@ viewPageContent page model =
         Links ->
             Html.map linksMsgToMainMsg (Pages.Links.view model.linkFilters model.linkStatuses)
 
-        Gallery ->
-            Html.map (\_ -> CloseContent) Pages.Gallery.view
+        Games ->
+            Html.map gamesMsgToMainMsg Pages.Games.view
 
 
 
@@ -665,8 +741,8 @@ pageToString page =
         Links ->
             "LINKS"
 
-        Gallery ->
-            "GALLERY"
+        Games ->
+            "GAMES"
 
 
 transitionStateToString : TransitionState -> String
@@ -706,6 +782,13 @@ subscriptions model =
             )
         , Browser.Events.onKeyPress keyDecoder
         , Ports.contentBoundsChanged (\bounds -> ContentBoundsChanged bounds.width bounds.height)
+
+        -- Run the game loop only while a game is actually open
+        , if gameOpen model then
+            Sub.map MissileGameMsg (MissileCommand.subscriptions model.missileGame)
+
+          else
+            Sub.none
         ]
 
 
@@ -718,7 +801,7 @@ toKey : String -> Msg
 toKey key =
     case key of
         "Escape" ->
-            CloseContent
+            EscapePressed
 
         _ ->
             Tick 0

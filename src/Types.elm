@@ -1,7 +1,7 @@
 -- src/Types.elm - Shared types to avoid import cycles with Blog page added
 
 
-module Types exposing (Page(..), BlogTag(..), LinkFilter(..), PortfolioFilter(..), ProjectFilter(..))
+module Types exposing (BlogTag(..), LinkFilter(..), Page(..), PortfolioFilter(..), ProjectFilter(..))
 
 -- Page type used across the application
 
@@ -15,7 +15,8 @@ type Page
     | Blog
     | Portfolio
     | Links
-    | Gallery
+    | Games
+
 
 
 -- Blog filter types
@@ -27,6 +28,7 @@ type BlogTag
     | ThoughtsTag
 
 
+
 -- Link filter types (combination of status and category)
 
 
@@ -34,6 +36,7 @@ type LinkFilter
     = OnlineStatus
     | MediaCategory
     | StorageCategory
+
 
 
 -- Portfolio filter types
@@ -44,6 +47,7 @@ type PortfolioFilter
     | WebGLPortfolio
     | UIUXPortfolio
     | AppsPortfolio
+
 
 
 -- Project filter types

@@ -24,9 +24,22 @@ fragmentShader =
             // Base dark gray color
             vec3 color = vec3(0.08, 0.09, 0.11);
 
-            // Add scanlines
-            float scanline = sin(vUV.y * resolution.y * 0.25) * 0.5 + 0.5;
-            color = mix(color, vec3(0.05, 0.06, 0.08), scanline * 0.1);
+            // Add wavy scanlines
+            float waveFrequency = 0.25 * resolution.y;
+            float waveAmplitude = 0.5;
+            float waveSpeed = 0.5;
+
+            // Create wavy pattern - the x position affects the phase of the y-based scanline
+            float waveOffset = sin(vUV.x * 20.0 + time * waveSpeed) * waveAmplitude;
+            float scanline = sin((vUV.y + waveOffset) * waveFrequency) * 0.5 + 0.5;
+
+            // Add a second layer of waves with different frequency for more organic look
+            float waveOffset2 = sin(vUV.x * 15.0 - time * waveSpeed * 0.7) * waveAmplitude * 0.7;
+            float scanline2 = sin((vUV.y + waveOffset2) * waveFrequency * 1.3) * 0.5 + 0.5;
+
+            // Combine both scanline patterns
+            float combinedScanline = mix(scanline, scanline2, 0.5);
+            color = mix(color, vec3(0.05, 0.06, 0.08), combinedScanline * 0.1);
 
             // Add subtle vignette
             float vignette = 1.0 - length(vUV - 0.5) * 1.2;
