@@ -57,9 +57,15 @@ type Msg
 -- CONSTANTS
 
 
-arenaHalf : Float
-arenaHalf =
-    12
+{-| World size of one map tile. -}
+cellSize : Float
+cellSize =
+    2
+
+
+wallHeight : Float
+wallHeight =
+    3
 
 
 playerRadius : Float
@@ -106,14 +112,149 @@ targetRadius =
     0.75
 
 
-obstacles0 : List Box
-obstacles0 =
-    [ Box (vec3 -3 1.5 0) (vec3 1 1.5 1)
-    , Box (vec3 3 1.5 -2) (vec3 1 1.5 1)
-    , Box (vec3 0 1 -5) (vec3 1.6 1 1.6)
-    , Box (vec3 -5 1.5 -6) (vec3 1 1.5 1)
-    , Box (vec3 5 2 -7) (vec3 1 2 1)
+-- LEVEL
+--
+-- The map is a tile grid, one character per cell:
+--   '#' wall (floor to ceiling)   '.' open floor
+--   'T' target spawn              'P' player start
+
+
+levelMap : List String
+levelMap =
+    [ "#########################"
+    , "#.......#.......#.......#"
+    , "#..T....#..T....#..T....#"
+    , "#.......#.......#.......#"
+    , "####.#######.#######.####"
+    , "#.......................#"
+    , "#.......................#"
+    , "######.###########.######"
+    , "#.......#.......#.......#"
+    , "#..T....#...T...#....T..#"
+    , "#.......#.......#.......#"
+    , "####.#######.#######.####"
+    , "#.......................#"
+    , "#..................P....#"
+    , "######.#####.#####.######"
+    , "#.......#.......#.......#"
+    , "#..T....#..T....#..T....#"
+    , "#.......#.......#.......#"
+    , "#########################"
     ]
+
+
+type alias Level =
+    { walls : List Box
+    , openCells : List ( Float, Float )
+    , targetSpawns : List Vec3
+    , playerSpawn : Vec3
+    , halfW : Float
+    , halfD : Float
+    }
+
+
+levelData : Level
+levelData =
+    parseLevel levelMap
+
+
+parseLevel : List String -> Level
+parseLevel rows =
+    let
+        width =
+            List.foldl (\r m -> Basics.max (String.length r) m) 0 rows
+
+        halfW =
+            toFloat width * cellSize / 2
+
+        halfD =
+            toFloat (List.length rows) * cellSize / 2
+
+        cellX i =
+            (toFloat i + 0.5) * cellSize - halfW
+
+        cellZ j =
+            (toFloat j + 0.5) * cellSize - halfD
+
+        -- One box per horizontal run of '#' keeps the wall count low.
+        runBox j ( s, e ) =
+            let
+                x1 =
+                    toFloat s * cellSize - halfW
+
+                x2 =
+                    toFloat (e + 1) * cellSize - halfW
+            in
+            Box (vec3 ((x1 + x2) / 2) (wallHeight / 2) (cellZ j))
+                (vec3 ((x2 - x1) / 2) (wallHeight / 2) (cellSize / 2))
+
+        collectCell j ( i, ch ) acc =
+            case ch of
+                '.' ->
+                    { acc | openCells = ( cellX i, cellZ j ) :: acc.openCells }
+
+                'T' ->
+                    { acc
+                        | openCells = ( cellX i, cellZ j ) :: acc.openCells
+                        , targetSpawns = vec3 (cellX i) 1.2 (cellZ j) :: acc.targetSpawns
+                    }
+
+                'P' ->
+                    { acc
+                        | openCells = ( cellX i, cellZ j ) :: acc.openCells
+                        , playerSpawn = vec3 (cellX i) 0 (cellZ j)
+                    }
+
+                _ ->
+                    acc
+
+        collectRow j row acc =
+            let
+                withCells =
+                    List.foldl (collectCell j)
+                        acc
+                        (List.indexedMap Tuple.pair (String.toList row))
+            in
+            { withCells | walls = List.map (runBox j) (wallRuns row) ++ withCells.walls }
+    in
+    List.foldl (\row ( j, acc ) -> ( j + 1, collectRow j row acc ))
+        ( 0, Level [] [] [] (vec3 0 0 0) halfW halfD )
+        rows
+        |> Tuple.second
+
+
+{-| Start/end column indices of each consecutive run of '#'. -}
+wallRuns : String -> List ( Int, Int )
+wallRuns row =
+    let
+        stepChar ( i, ch ) ( current, done ) =
+            if ch == '#' then
+                case current of
+                    Nothing ->
+                        ( Just ( i, i ), done )
+
+                    Just ( s, _ ) ->
+                        ( Just ( s, i ), done )
+
+            else
+                case current of
+                    Nothing ->
+                        ( Nothing, done )
+
+                    Just run ->
+                        ( Nothing, run :: done )
+
+        ( leftover, runs ) =
+            List.foldl stepChar
+                ( Nothing, [] )
+                (List.indexedMap Tuple.pair (String.toList row))
+    in
+    case leftover of
+        Nothing ->
+            runs
+
+        Just run ->
+            run :: runs
 
 
 
@@ -122,19 +263,15 @@ obstacles0 =
 
 init : ( GameState, Cmd Msg )
 init =
-    let
-        ( targets, seed ) =
-            spawnMany 6 (Random.initialSeed 11)
-    in
-    ( { camPos = vec3 0 eyeHeight 9
-      , yaw = pi -- look toward -Z (into the arena)
+    ( { camPos = Vec3.add levelData.playerSpawn (vec3 0 eyeHeight 0)
+      , yaw = pi -- look toward -Z ("up" the map)
       , pitch = 0
       , keys = Keys False False False False False
-      , targets = targets
-      , obstacles = obstacles0
+      , targets = levelData.targetSpawns
+      , obstacles = levelData.walls
       , score = 0
       , time = Time.millisToPosix 0
-      , seed = seed
+      , seed = Random.initialSeed 11
       , locked = False
       , lookDx = 0
       , lookDy = 0
@@ -145,32 +282,22 @@ init =
     )
 
 
-spawnMany : Int -> Random.Seed -> ( List Vec3, Random.Seed )
-spawnMany n seed =
-    if n <= 0 then
-        ( [], seed )
-
-    else
-        let
-            ( p, s1 ) =
-                spawnOne seed
-
-            ( rest, s2 ) =
-                spawnMany (n - 1) s1
-        in
-        ( p :: rest, s2 )
-
-
+{-| Respawn a target on a random open floor cell. -}
 spawnOne : Random.Seed -> ( Vec3, Random.Seed )
 spawnOne seed =
     let
-        ( x, s1 ) =
-            Random.step (Random.float -8 8) seed
+        cells =
+            levelData.openCells
 
-        ( z, s2 ) =
-            Random.step (Random.float -9 -1) s1
+        ( idx, s1 ) =
+            Random.step (Random.int 0 (List.length cells - 1)) seed
+
+        ( x, z ) =
+            List.drop idx cells
+                |> List.head
+                |> Maybe.withDefault ( 0, 0 )
     in
-    ( vec3 x 1.2 z, s2 )
+    ( vec3 x 1.2 z, s1 )
 
 
 
@@ -364,6 +491,10 @@ step dt state =
             if wantY <= 0 && velY <= 0 then
                 ( 0, 0 )
 
+            else if wantY > wallHeight - 1.8 then
+                -- Bumped the ceiling.
+                ( wallHeight - 1.8, 0 )
+
             else
                 ( wantY, velY )
     in
@@ -440,8 +571,8 @@ lookDir yaw pitch =
 
 blocked : List Box -> Float -> Float -> Bool
 blocked obstacles x z =
-    (abs x > arenaHalf - 0.5)
-        || (abs z > arenaHalf - 0.5)
+    (abs x > levelData.halfW)
+        || (abs z > levelData.halfD)
         || List.any
             (\o ->
                 (abs (x - Vec3.getX o.center) < Vec3.getX o.half + playerRadius)
@@ -543,6 +674,9 @@ view state =
         floorEntity =
             entity (mvp Mat4.identity) Mat4.identity 0.22 1 floorMesh
 
+        ceilingEntity =
+            entity (mvp Mat4.identity) Mat4.identity 0.12 0 ceilingMesh
+
         obstacleEntities =
             List.map
                 (\o ->
@@ -594,7 +728,7 @@ view state =
             , Attr.style "height" "100%"
             , Attr.style "display" "block"
             ]
-            (floorEntity :: obstacleEntities ++ targetEntities)
+            (floorEntity :: ceilingEntity :: obstacleEntities ++ targetEntities)
         , viewCrosshair
         , viewHud state
         , if state.locked then
@@ -707,15 +841,39 @@ entity mvp model shade grid mesh =
 floorMesh : WebGL.Mesh Vertex
 floorMesh =
     let
-        s =
-            arenaHalf
+        w =
+            levelData.halfW
+
+        d =
+            levelData.halfD
 
         up =
             vec3 0 1 0
     in
     WebGL.triangles
-        [ ( Vertex (vec3 -s 0 -s) up, Vertex (vec3 s 0 -s) up, Vertex (vec3 s 0 s) up )
-        , ( Vertex (vec3 -s 0 -s) up, Vertex (vec3 s 0 s) up, Vertex (vec3 -s 0 s) up )
+        [ ( Vertex (vec3 -w 0 -d) up, Vertex (vec3 w 0 -d) up, Vertex (vec3 w 0 d) up )
+        , ( Vertex (vec3 -w 0 -d) up, Vertex (vec3 w 0 d) up, Vertex (vec3 -w 0 d) up )
+        ]
+
+
+ceilingMesh : WebGL.Mesh Vertex
+ceilingMesh =
+    let
+        w =
+            levelData.halfW
+
+        d =
+            levelData.halfD
+
+        h =
+            wallHeight
+
+        down =
+            vec3 0 -1 0
+    in
+    WebGL.triangles
+        [ ( Vertex (vec3 -w h -d) down, Vertex (vec3 w h d) down, Vertex (vec3 w h -d) down )
+        , ( Vertex (vec3 -w h -d) down, Vertex (vec3 -w h d) down, Vertex (vec3 w h d) down )
         ]
 
 
