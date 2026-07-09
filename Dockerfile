@@ -12,4 +12,8 @@ FROM nginx:alpine
 
 COPY --from=build /output/ /usr/share/nginx/html/
 
+# Nix store files carry epoch (1970) mtimes, so nginx's Last-Modified/ETag
+# never change between builds and browsers cache the old elm.js forever.
+RUN find /usr/share/nginx/html -exec touch {} +
+
 EXPOSE 80
