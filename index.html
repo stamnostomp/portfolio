@@ -362,6 +362,17 @@
 
       // Pointer lock for the shooter game: Elm asks for capture by element
       // id, Esc (handled natively by the browser) releases it.
+      // Prefer raw deltas (no OS pointer acceleration); once the browser
+      // declines the option, stop asking and lock plainly from then on.
+      var unadjustedOk = true;
+      function lockPlain(el) {
+        var result = el.requestPointerLock();
+        if (result && result.catch) {
+          result.catch(function(err) {
+            console.warn('requestPointerLock denied:', err);
+          });
+        }
+      }
       if (app.ports && app.ports.requestPointerLock) {
         app.ports.requestPointerLock.subscribe(function(id) {
           var el = document.getElementById(id);
@@ -369,10 +380,26 @@
             console.warn('requestPointerLock: no element #' + id);
             return;
           }
-          var result = el.requestPointerLock();
+          if (!unadjustedOk) {
+            lockPlain(el);
+            return;
+          }
+          var result;
+          try {
+            result = el.requestPointerLock({ unadjustedMovement: true });
+          } catch (err) {
+            unadjustedOk = false;
+            lockPlain(el);
+            return;
+          }
           if (result && result.catch) {
             result.catch(function(err) {
-              console.warn('requestPointerLock failed:', err);
+              if (err && err.name === 'NotSupportedError') {
+                unadjustedOk = false;
+                lockPlain(el);
+              } else {
+                console.warn('requestPointerLock denied:', err);
+              }
             });
           }
         });

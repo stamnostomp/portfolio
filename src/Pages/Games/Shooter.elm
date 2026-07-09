@@ -29,6 +29,9 @@ type alias GameState =
     , time : Time.Posix
     , seed : Random.Seed
     , locked : Bool
+    , lookDx : Float
+    , lookDy : Float
+    , fps : Float
     }
 
 
@@ -73,6 +76,18 @@ moveSpeed =
     0.006
 
 
+lookSpeed : Float
+lookSpeed =
+    0.004
+
+
+{-| Time constant (ms) for draining accumulated mouse deltas.
+-}
+lookSmoothing : Float
+lookSmoothing =
+    40
+
+
 targetRadius : Float
 targetRadius =
     0.75
@@ -108,6 +123,9 @@ init =
       , time = Time.millisToPosix 0
       , seed = seed
       , locked = False
+      , lookDx = 0
+      , lookDy = 0
+      , fps = 60
       }
     , Cmd.none
     )
@@ -149,18 +167,26 @@ update : Msg -> GameState -> ( GameState, Cmd Msg )
 update msg state =
     case msg of
         Tick newTime ->
-            ( step (toFloat (Basics.clamp 0 32 (Time.posixToMillis newTime - Time.posixToMillis state.time))) { state | time = newTime }
+            let
+                raw =
+                    Time.posixToMillis newTime - Time.posixToMillis state.time
+
+                fps =
+                    if raw > 0 then
+                        0.9 * state.fps + 0.1 * (1000 / toFloat raw)
+
+                    else
+                        state.fps
+            in
+            ( step (toFloat (Basics.clamp 0 32 raw)) { state | time = newTime, fps = fps }
             , Cmd.none
             )
 
         Look dx dy ->
+            -- Deltas are accumulated here and drained smoothly in `step`,
+            -- so coarse-grained movement events don't read as jumps.
             if state.locked then
-                -- Positive yaw turns left (forward = (sin yaw, cos yaw)),
-                -- so mouse-right must decrease yaw.
-                ( { state
-                    | yaw = state.yaw - dx * 0.0025
-                    , pitch = Basics.clamp -1.4 1.4 (state.pitch - dy * 0.0025)
-                  }
+                ( { state | lookDx = state.lookDx + dx, lookDy = state.lookDy + dy }
                 , Cmd.none
                 )
 
@@ -173,12 +199,20 @@ update msg state =
                     state.keys
 
                 keys =
+                    -- Matches both event.code ("keyw") and event.key ("w"),
+                    -- so physical WASD works on any keyboard layout.
                     case String.toLower raw of
+                        "keyw" ->
+                            { k | f = isDown }
+
                         "w" ->
                             { k | f = isDown }
 
                         "arrowup" ->
                             { k | f = isDown }
+
+                        "keys" ->
+                            { k | b = isDown }
 
                         "s" ->
                             { k | b = isDown }
@@ -186,11 +220,17 @@ update msg state =
                         "arrowdown" ->
                             { k | b = isDown }
 
+                        "keya" ->
+                            { k | l = isDown }
+
                         "a" ->
                             { k | l = isDown }
 
                         "arrowleft" ->
                             { k | l = isDown }
+
+                        "keyd" ->
+                            { k | r = isDown }
 
                         "d" ->
                             { k | r = isDown }
@@ -214,15 +254,35 @@ update msg state =
             ( state, Ports.requestPointerLock viewId )
 
         LockChanged locked ->
-            ( { state | locked = locked }, Cmd.none )
+            ( { state | locked = locked, lookDx = 0, lookDy = 0 }, Cmd.none )
 
 
-{-| Advance movement for one frame. -}
+{-| Advance camera and movement for one frame.
+-}
 step : Float -> GameState -> GameState
 step dt state =
     let
+        -- Drain a dt-proportional share of the pending mouse deltas so
+        -- quantized movement events become continuous rotation.
+        drain =
+            1 - Basics.e ^ (-dt / lookSmoothing)
+
+        useDx =
+            state.lookDx * drain
+
+        useDy =
+            state.lookDy * drain
+
+        -- Positive yaw turns left (forward = (sin yaw, cos yaw)),
+        -- so mouse-right must decrease yaw.
+        yaw =
+            state.yaw - useDx * lookSpeed
+
+        pitch =
+            Basics.clamp -1.4 1.4 (state.pitch - useDy * lookSpeed)
+
         fwd =
-            forwardH state.yaw
+            forwardH yaw
 
         right =
             Vec3.normalize (Vec3.cross fwd (vec3 0 1 0))
@@ -266,7 +326,13 @@ step dt state =
             else
                 wantZ
     in
-    { state | camPos = vec3 newX eyeHeight newZ }
+    { state
+        | camPos = vec3 newX eyeHeight newZ
+        , yaw = yaw
+        , pitch = pitch
+        , lookDx = state.lookDx - useDx
+        , lookDy = state.lookDy - useDy
+    }
 
 
 shoot : GameState -> GameState
@@ -563,6 +629,11 @@ viewHud state =
                     "WASD MOVE · CLICK TO CAPTURE MOUSE · ESC BACK"
                 )
             ]
+        , div
+            [ Attr.class "absolute bottom-0 right-0 pa2 f7 tracked"
+            , Attr.style "color" "rgba(170,170,170,0.7)"
+            ]
+            [ text (String.fromInt (round state.fps) ++ " FPS") ]
         ]
 
 
@@ -680,7 +751,17 @@ subscriptions : GameState -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ Browser.Events.onAnimationFrame Tick
-        , Browser.Events.onKeyDown (Decode.map (Key True) (Decode.field "key" Decode.string))
-        , Browser.Events.onKeyUp (Decode.map (Key False) (Decode.field "key" Decode.string))
+        , Browser.Events.onKeyDown (Decode.map (Key True) keyName)
+        , Browser.Events.onKeyUp (Decode.map (Key False) keyName)
         , Ports.pointerLockChanged LockChanged
+        ]
+
+
+{-| Physical key code when available, falling back to the layout-dependent key.
+-}
+keyName : Decode.Decoder String
+keyName =
+    Decode.oneOf
+        [ Decode.field "code" Decode.string
+        , Decode.field "key" Decode.string
         ]
