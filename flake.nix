@@ -45,6 +45,7 @@
           installPhase = ''
             mkdir -p $out
             cp index.html $out/ || true
+            cp favicon.svg $out/ || true
             cp -r blog $out/ || true
             cp elm.min.js $out/elm.js
           '';

@@ -1,0 +1,7 @@
+.git
+elm-stuff
+elm.js
+result
+Dockerfile
+docker-compose.yml
+.dockerignore

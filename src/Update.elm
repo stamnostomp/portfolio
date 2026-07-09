@@ -11,6 +11,7 @@ import Http
 import BlogContent.OrgParser as OrgParser
 import Dict
 import Pages.Games.MissileCommand as MissileCommand
+import Pages.Games.Shooter as Shooter
 import Pages.Links
 
 
@@ -658,15 +659,30 @@ update msg model =
             , Cmd.map MissileGameMsg gameCmd
             )
 
-        OpenGame id ->
-            -- Only Missile Command is playable for now; ignore the others.
-            if id == "missile-command" then
-                ( { model | selectedGame = Just id, missileGame = Tuple.first MissileCommand.init }
-                , Cmd.none
-                )
+        ShooterGameMsg subMsg ->
+            let
+                ( newGameState, gameCmd ) =
+                    Shooter.update subMsg model.shooterGame
+            in
+            ( { model | shooterGame = newGameState }
+            , Cmd.map ShooterGameMsg gameCmd
+            )
 
-            else
-                ( model, Cmd.none )
+        OpenGame id ->
+            -- Start the chosen game fresh; ignore ids without a game yet.
+            case id of
+                "missile-command" ->
+                    ( { model | selectedGame = Just id, missileGame = Tuple.first MissileCommand.init }
+                    , Cmd.none
+                    )
+
+                "shooter" ->
+                    ( { model | selectedGame = Just id, shooterGame = Tuple.first Shooter.init }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         CloseGame ->
             -- Back to the games list (without leaving the Games page)

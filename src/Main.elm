@@ -17,6 +17,7 @@ import Pages.Blog
 import Pages.Contact
 import Pages.Games
 import Pages.Games.MissileCommand as MissileCommand
+import Pages.Games.Shooter as Shooter
 import Pages.Links
 import Pages.Portfolio
 import Pages.Projects
@@ -462,12 +463,23 @@ viewContentSquare model =
             text ""
 
 
+{-| Ids of games that actually have a playable implementation. -}
+playableGames : List String
+playableGames =
+    [ "missile-command", "shooter" ]
+
+
 {-| True when a playable game is open on the Games page. -}
 gameOpen : Model -> Bool
 gameOpen model =
     case model.transitionState of
         ShowingContent Games _ ->
-            model.selectedGame == Just "missile-command"
+            case model.selectedGame of
+                Just id ->
+                    List.member id playableGames
+
+                Nothing ->
+                    False
 
         _ ->
             False
@@ -531,13 +543,23 @@ viewFullscreenGame model =
         , Attr.style "width" (String.fromFloat w ++ "px")
         , Attr.style "height" (String.fromFloat h ++ "px")
         ]
-        [ Html.map MissileGameMsg (MissileCommand.view model.missileGame)
+        [ viewSelectedGame model
         , button
             [ Attr.class "absolute top-1 right-1 z-4 bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer ttu goop-close-button"
             , onClick CloseGame
             ]
             [ text "✕ BACK" ]
         ]
+
+
+viewSelectedGame : Model -> Html Msg
+viewSelectedGame model =
+    case model.selectedGame of
+        Just "shooter" ->
+            Html.map ShooterGameMsg (Shooter.view model.shooterGame)
+
+        _ ->
+            Html.map MissileGameMsg (MissileCommand.view model.missileGame)
 
 
 
@@ -783,9 +805,14 @@ subscriptions model =
         , Browser.Events.onKeyPress keyDecoder
         , Ports.contentBoundsChanged (\bounds -> ContentBoundsChanged bounds.width bounds.height)
 
-        -- Run the game loop only while a game is actually open
+        -- Run the loop for whichever game is actually open
         , if gameOpen model then
-            Sub.map MissileGameMsg (MissileCommand.subscriptions model.missileGame)
+            case model.selectedGame of
+                Just "shooter" ->
+                    Sub.map ShooterGameMsg (Shooter.subscriptions model.shooterGame)
+
+                _ ->
+                    Sub.map MissileGameMsg (MissileCommand.subscriptions model.missileGame)
 
           else
             Sub.none

@@ -19,6 +19,7 @@ import Http
 import Json.Decode as Decode
 import Dict exposing (Dict)
 import Pages.Games.MissileCommand as MissileCommand
+import Pages.Games.Shooter as Shooter
 import Pages.Links exposing (LinkStatus(..))
 
 
@@ -80,6 +81,7 @@ type alias Model =
 
     -- Games
     , missileGame : MissileCommand.GameState
+    , shooterGame : Shooter.GameState
     , selectedGame : Maybe String -- which game is open on the Games page (Nothing = list)
     }
 
@@ -140,6 +142,7 @@ type Msg
     | BlogIndexLoaded (Result Http.Error (List BlogPostIndexItem))
       -- Games
     | MissileGameMsg MissileCommand.Msg
+    | ShooterGameMsg Shooter.Msg
     | OpenGame String
     | CloseGame
     | EscapePressed
@@ -197,6 +200,7 @@ init flags =
 
       -- Initialize games
       , missileGame = Tuple.first MissileCommand.init
+      , shooterGame = Tuple.first Shooter.init
       , selectedGame = Nothing
       }
     , Cmd.none
