@@ -7,6 +7,7 @@ import Html.Events
 import Json.Decode as Decode
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Ports
 import Random
 import Time
 import WebGL
@@ -27,6 +28,7 @@ type alias GameState =
     , score : Int
     , time : Time.Posix
     , seed : Random.Seed
+    , locked : Bool
     }
 
 
@@ -43,6 +45,8 @@ type Msg
     | Look Float Float
     | Fire
     | Key Bool String
+    | RequestLock
+    | LockChanged Bool
 
 
 
@@ -103,6 +107,7 @@ init =
       , score = 0
       , time = Time.millisToPosix 0
       , seed = seed
+      , locked = False
       }
     , Cmd.none
     )
@@ -149,12 +154,18 @@ update msg state =
             )
 
         Look dx dy ->
-            ( { state
-                | yaw = state.yaw + dx * 0.0025
-                , pitch = Basics.clamp -1.4 1.4 (state.pitch - dy * 0.0025)
-              }
-            , Cmd.none
-            )
+            if state.locked then
+                -- Positive yaw turns left (forward = (sin yaw, cos yaw)),
+                -- so mouse-right must decrease yaw.
+                ( { state
+                    | yaw = state.yaw - dx * 0.0025
+                    , pitch = Basics.clamp -1.4 1.4 (state.pitch - dy * 0.0025)
+                  }
+                , Cmd.none
+                )
+
+            else
+                ( state, Cmd.none )
 
         Key isDown raw ->
             let
@@ -193,7 +204,17 @@ update msg state =
             ( { state | keys = keys }, Cmd.none )
 
         Fire ->
-            ( shoot state, Cmd.none )
+            if state.locked then
+                ( shoot state, Cmd.none )
+
+            else
+                ( state, Cmd.none )
+
+        RequestLock ->
+            ( state, Ports.requestPointerLock viewId )
+
+        LockChanged locked ->
+            ( { state | locked = locked }, Cmd.none )
 
 
 {-| Advance movement for one frame. -}
@@ -437,10 +458,25 @@ view state =
                 state.targets
     in
     div
-        [ Attr.class "relative w-100 h-100 overflow-hidden monospace"
-        , Attr.style "cursor" "none"
+        [ Attr.id viewId
+        , Attr.class "relative w-100 h-100 overflow-hidden monospace"
+        , Attr.style "cursor"
+            (if state.locked then
+                "none"
+
+             else
+                "crosshair"
+            )
         , Html.Events.on "mousemove" lookDecoder
-        , Html.Events.on "mousedown" (Decode.succeed Fire)
+        , Html.Events.on "mousedown"
+            (Decode.succeed
+                (if state.locked then
+                    Fire
+
+                 else
+                    RequestLock
+                )
+            )
         ]
         [ WebGL.toHtmlWith
             [ WebGL.depth 1, WebGL.antialias, WebGL.clearColor 0.04 0.04 0.05 1 ]
@@ -453,7 +489,17 @@ view state =
             (floorEntity :: obstacleEntities ++ targetEntities)
         , viewCrosshair
         , viewHud state
+        , if state.locked then
+            text ""
+
+          else
+            viewLockPrompt
         ]
+
+
+viewId : String
+viewId =
+    "shooter-view"
 
 
 lookDecoder : Decode.Decoder Msg
@@ -461,6 +507,22 @@ lookDecoder =
     Decode.map2 Look
         (Decode.field "movementX" Decode.float)
         (Decode.field "movementY" Decode.float)
+
+
+viewLockPrompt : Html msg
+viewLockPrompt =
+    div
+        [ Attr.class "absolute f5 tracked pa2 ph3"
+        , Attr.style "left" "50%"
+        , Attr.style "top" "58%"
+        , Attr.style "transform" "translate(-50%, -50%)"
+        , Attr.style "color" "rgba(228,228,228,0.9)"
+        , Attr.style "border" "1px solid rgba(228,228,228,0.4)"
+        , Attr.style "background" "rgba(0,0,0,0.55)"
+        , Attr.style "text-shadow" "0 0 8px rgba(192,192,192,0.5)"
+        , Attr.style "pointer-events" "none"
+        ]
+        [ text "CLICK TO CAPTURE MOUSE" ]
 
 
 viewCrosshair : Html msg
@@ -493,7 +555,14 @@ viewHud state =
             [ Attr.class "absolute bottom-0 left-0 pa2 f7 tracked"
             , Attr.style "color" "rgba(170,170,170,0.7)"
             ]
-            [ text "WASD MOVE · MOUSE LOOK · CLICK SHOOT · ESC BACK" ]
+            [ text
+                (if state.locked then
+                    "WASD MOVE · MOUSE LOOK · CLICK SHOOT · ESC RELEASE MOUSE"
+
+                 else
+                    "WASD MOVE · CLICK TO CAPTURE MOUSE · ESC BACK"
+                )
+            ]
         ]
 
 
@@ -613,4 +682,5 @@ subscriptions _ =
         [ Browser.Events.onAnimationFrame Tick
         , Browser.Events.onKeyDown (Decode.map (Key True) (Decode.field "key" Decode.string))
         , Browser.Events.onKeyUp (Decode.map (Key False) (Decode.field "key" Decode.string))
+        , Ports.pointerLockChanged LockChanged
         ]

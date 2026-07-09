@@ -360,6 +360,31 @@
         }
       });
 
+      // Pointer lock for the shooter game: Elm asks for capture by element
+      // id, Esc (handled natively by the browser) releases it.
+      if (app.ports && app.ports.requestPointerLock) {
+        app.ports.requestPointerLock.subscribe(function(id) {
+          var el = document.getElementById(id);
+          if (!el || !el.requestPointerLock) {
+            console.warn('requestPointerLock: no element #' + id);
+            return;
+          }
+          var result = el.requestPointerLock();
+          if (result && result.catch) {
+            result.catch(function(err) {
+              console.warn('requestPointerLock failed:', err);
+            });
+          }
+        });
+      } else {
+        console.warn('requestPointerLock port missing from Elm app');
+      }
+      document.addEventListener('pointerlockchange', function() {
+        if (app.ports && app.ports.pointerLockChanged) {
+          app.ports.pointerLockChanged.send(document.pointerLockElement !== null);
+        }
+      });
+
       // Make text elements "glitch" by adding the data-text attribute
       setTimeout(() => {
         const glitchElements = document.querySelectorAll('.glitch');
