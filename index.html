@@ -411,6 +411,13 @@
           app.ports.pointerLockChanged.send(document.pointerLockElement !== null);
         }
       });
+      // While the pointer is locked, game keys must not scroll the page.
+      window.addEventListener('keydown', function(e) {
+        if (document.pointerLockElement &&
+            (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) {
+          e.preventDefault();
+        }
+      });
 
       // Make text elements "glitch" by adding the data-text attribute
       setTimeout(() => {

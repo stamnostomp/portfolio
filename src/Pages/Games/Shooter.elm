@@ -32,11 +32,12 @@ type alias GameState =
     , lookDx : Float
     , lookDy : Float
     , fps : Float
+    , velY : Float
     }
 
 
 type alias Keys =
-    { f : Bool, b : Bool, l : Bool, r : Bool }
+    { f : Bool, b : Bool, l : Bool, r : Bool, jump : Bool }
 
 
 type alias Box =
@@ -88,6 +89,18 @@ lookSmoothing =
     40
 
 
+{-| Downward acceleration in units/ms². -}
+gravity : Float
+gravity =
+    0.000025
+
+
+{-| Initial upward velocity of a jump in units/ms (~1.1 units high). -}
+jumpSpeed : Float
+jumpSpeed =
+    0.0075
+
+
 targetRadius : Float
 targetRadius =
     0.75
@@ -116,7 +129,7 @@ init =
     ( { camPos = vec3 0 eyeHeight 9
       , yaw = pi -- look toward -Z (into the arena)
       , pitch = 0
-      , keys = Keys False False False False
+      , keys = Keys False False False False False
       , targets = targets
       , obstacles = obstacles0
       , score = 0
@@ -126,6 +139,7 @@ init =
       , lookDx = 0
       , lookDy = 0
       , fps = 60
+      , velY = 0
       }
     , Cmd.none
     )
@@ -238,6 +252,12 @@ update msg state =
                         "arrowright" ->
                             { k | r = isDown }
 
+                        "space" ->
+                            { k | jump = isDown }
+
+                        " " ->
+                            { k | jump = isDown }
+
                         _ ->
                             k
             in
@@ -325,13 +345,35 @@ step dt state =
 
             else
                 wantZ
+
+        -- Vertical: jump from the ground, integrate gravity, land on the floor.
+        feet0 =
+            Vec3.getY state.camPos - eyeHeight
+
+        velY =
+            if feet0 <= 0 && state.keys.jump then
+                jumpSpeed
+
+            else
+                state.velY - gravity * dt
+
+        wantY =
+            feet0 + velY * dt
+
+        ( newFeet, newVelY ) =
+            if wantY <= 0 && velY <= 0 then
+                ( 0, 0 )
+
+            else
+                ( wantY, velY )
     in
     { state
-        | camPos = vec3 newX eyeHeight newZ
+        | camPos = vec3 newX (newFeet + eyeHeight) newZ
         , yaw = yaw
         , pitch = pitch
         , lookDx = state.lookDx - useDx
         , lookDy = state.lookDy - useDy
+        , velY = newVelY
     }
 
 
@@ -623,10 +665,10 @@ viewHud state =
             ]
             [ text
                 (if state.locked then
-                    "WASD MOVE · MOUSE LOOK · CLICK SHOOT · ESC RELEASE MOUSE"
+                    "WASD MOVE · SPACE JUMP · CLICK SHOOT · ESC RELEASE MOUSE"
 
                  else
-                    "WASD MOVE · CLICK TO CAPTURE MOUSE · ESC BACK"
+                    "WASD MOVE · SPACE JUMP · CLICK TO CAPTURE MOUSE · ESC BACK"
                 )
             ]
         , div
