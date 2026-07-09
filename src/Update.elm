@@ -488,10 +488,12 @@ update msg model =
                     Pages.Links.allLinks
                         |> List.map (\link ->
                             Http.request
-                                { method = "HEAD"
+                                { method = "GET"
                                 , headers = []
-                                , url = link.url
+                                , url = Maybe.withDefault link.url link.checkUrl
                                 , body = Http.emptyBody
+
+                                -- Result is keyed by link.url, the same key the view uses
                                 , expect = Http.expectWhatever (LinkStatusResult link.url)
                                 , timeout = Just 5000
                                 , tracker = Nothing
@@ -512,7 +514,7 @@ update msg model =
             let
                 checkCmd =
                     Http.request
-                        { method = "HEAD"
+                        { method = "GET"
                         , headers = []
                         , url = url
                         , body = Http.emptyBody

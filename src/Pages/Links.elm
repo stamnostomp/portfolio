@@ -36,6 +36,11 @@ type LinkStatus
 type alias LinkItem =
     { title : String
     , url : String
+
+    -- Some services never send CORS headers on their main page (e.g. Forgejo
+    -- only enables CORS on /api routes), so the status probe can target a
+    -- different URL than the one the tile links to.
+    , checkUrl : Maybe String
     , categories : List LinkFilter
     }
 
@@ -48,50 +53,62 @@ allLinks : List LinkItem
 allLinks =
     [ { title = "MEDIA STREAMING"
       , url = "https://media.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus, MediaCategory ]
       }
     , { title = "MUSIC SERVER"
       , url = "https://music.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus, MediaCategory ]
       }
     , { title = "PHOTO GALLERY"
       , url = "https://photos.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus, MediaCategory ]
       }
     , { title = "CLOUD STORAGE"
       , url = "https://files.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus, StorageCategory ]
       }
     , { title = "DOCUMENTS"
       , url = "https://docs.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus, StorageCategory ]
       }
     , { title = "BACKUP SYSTEM"
       , url = "https://backup.stamno.com"
+      , checkUrl = Nothing
       , categories = [ StorageCategory ]
       }
     , { title = "GIT REPOS"
       , url = "https://git.stamno.com"
+      , checkUrl = Just "https://git.stamno.com/api/v1/version"
       , categories = [ OnlineStatus ]
       }
     , { title = "CODE REVIEW"
       , url = "https://review.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus ]
       }
     , { title = "MONITORING"
       , url = "https://monitor.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus ]
       }
     , { title = "MATRIX CHAT"
       , url = "https://matrix.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus ]
       }
     , { title = "RSS FEEDS"
       , url = "https://feeds.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus ]
       }
     , { title = "BOOKMARKS"
       , url = "https://bookmarks.stamno.com"
+      , checkUrl = Nothing
       , categories = [ OnlineStatus ]
       }
     ]
