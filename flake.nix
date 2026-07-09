@@ -38,9 +38,11 @@
             # Compile Elm to JavaScript
             elm make src/Main.elm --optimize --output=elm.js
 
-            # Minify the output. The Elm guide also suggests 'unsafe_comps,unsafe'
-            # but those break elm-explorations/webgl depth testing - do not re-add.
-            uglifyjs elm.js --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false' | uglifyjs --mangle --output elm.min.js
+            # Minify with mangle only. The Elm guide's --compress flags
+            # (pure_funcs etc.) delete the discarded-result A2 calls that
+            # elm-explorations/webgl uses to apply render settings, which
+            # silently disables depth testing - do not re-add them.
+            uglifyjs elm.js --mangle --output elm.min.js
           '';
 
           installPhase = ''
