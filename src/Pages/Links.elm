@@ -1,11 +1,12 @@
-module Pages.Links exposing (view, LinksMsg(..), allLinks, LinkStatus(..))
+module Pages.Links exposing (LinkStatus(..), LinksMsg(..), allLinks, view)
 
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Types exposing (LinkFilter(..))
-import Dict exposing (Dict)
+
 
 
 -- Links page showcasing live services and platforms
@@ -28,6 +29,7 @@ type LinkStatus
     | CorsError
 
 
+
 -- Link data structure with categories
 
 
@@ -36,6 +38,7 @@ type alias LinkItem =
     , url : String
     , categories : List LinkFilter
     }
+
 
 
 -- All links with categorization
@@ -59,8 +62,8 @@ allLinks =
       , url = "https://files.stamno.com"
       , categories = [ OnlineStatus, StorageCategory ]
       }
-    , { title = "FILE SHARING"
-      , url = "https://share.stamno.com"
+    , { title = "DOCUMENTS"
+      , url = "https://docs.stamno.com"
       , categories = [ OnlineStatus, StorageCategory ]
       }
     , { title = "BACKUP SYSTEM"
@@ -94,12 +97,14 @@ allLinks =
     ]
 
 
+
 -- Helper to check if a filter is in the active filters
 
 
 filterIsActive : LinkFilter -> List LinkFilter -> Bool
 filterIsActive filter activeFilters =
     List.any (\f -> f == filter) activeFilters
+
 
 
 -- Filter links based on active filters
@@ -189,11 +194,14 @@ view activeFilters linkStatuses =
                   div
                     [ Attr.class "links-grid" ]
                     (filteredLinks activeFilters allLinks
-                        |> List.map (\link ->
-                            let
-                                status = Dict.get link.url linkStatuses |> Maybe.withDefault Checking
-                            in
-                            compactLinkItem link.title link.url status)
+                        |> List.map
+                            (\link ->
+                                let
+                                    status =
+                                        Dict.get link.url linkStatuses |> Maybe.withDefault Checking
+                                in
+                                compactLinkItem link.title link.url status
+                            )
                     )
                 ]
 
@@ -543,6 +551,7 @@ linkStatusToString status =
             "cors-error"
 
 
+
 -- Helper to get status display text
 
 
@@ -560,6 +569,7 @@ linkStatusToDisplay status =
 
         CorsError ->
             "blocked"
+
 
 
 -- Compact link item component
