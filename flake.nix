@@ -38,8 +38,9 @@
             # Compile Elm to JavaScript
             elm make src/Main.elm --optimize --output=elm.js
 
-            # Minify the output
-            uglifyjs elm.js --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output elm.min.js
+            # Minify the output. The Elm guide also suggests 'unsafe_comps,unsafe'
+            # but those break elm-explorations/webgl depth testing - do not re-add.
+            uglifyjs elm.js --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false' | uglifyjs --mangle --output elm.min.js
           '';
 
           installPhase = ''
