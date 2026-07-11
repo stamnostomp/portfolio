@@ -1341,8 +1341,8 @@ viewGoblin mvp state p =
         green =
             vec3 0.5 0.95 0.55
 
-        red =
-            vec3 1 0.25 0.25
+        black =
+            vec3 0.05 0.05 0.05
     in
     [ -- legs
       part 0.5 green (vec3 -0.12 0.11 0) (vec3 0.12 0.22 0.14)
@@ -1361,9 +1361,17 @@ viewGoblin mvp state p =
     -- nose
     , part 0.55 green (vec3 0 0.76 0.2) (vec3 0.09 0.09 0.14)
 
-    -- glowing eyes
-    , part 2 red (vec3 -0.1 0.86 0.17) (vec3 0.07 0.07 0.05)
-    , part 2 red (vec3 0.1 0.86 0.17) (vec3 0.07 0.07 0.05)
+    -- arms hanging at the sides
+    , part 0.55 green (vec3 -0.31 0.38 0) (vec3 0.1 0.36 0.12)
+    , part 0.55 green (vec3 0.31 0.38 0) (vec3 0.1 0.36 0.12)
+
+    -- little hands
+    , part 0.7 green (vec3 -0.31 0.16 0) (vec3 0.12 0.1 0.14)
+    , part 0.7 green (vec3 0.31 0.16 0) (vec3 0.12 0.1 0.14)
+
+    -- beady black eyes, poking just out of the face
+    , part 0.05 black (vec3 -0.1 0.86 0.21) (vec3 0.07 0.07 0.06)
+    , part 0.05 black (vec3 0.1 0.86 0.21) (vec3 0.07 0.07 0.06)
     ]
 
 
