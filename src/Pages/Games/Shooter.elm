@@ -35,6 +35,9 @@ type alias GameState =
     , fps : Float
     , velY : Float
     , recoil : Float
+    , ammo : Int
+    , cooldown : Float
+    , reloading : Float
     }
 
 
@@ -119,6 +122,23 @@ gravity =
 jumpSpeed : Float
 jumpSpeed =
     0.0075
+
+
+magSize : Int
+magSize =
+    6
+
+
+{-| Minimum ms between shots (lets the recoil animation play out). -}
+shotCooldown : Float
+shotCooldown =
+    350
+
+
+{-| Reload duration in ms. -}
+reloadTime : Float
+reloadTime =
+    1100
 
 
 targetRadius : Float
@@ -405,6 +425,9 @@ init =
       , fps = 60
       , velY = 0
       , recoil = 0
+      , ammo = magSize
+      , cooldown = 0
+      , reloading = 0
       }
     , Cmd.none
     )
@@ -515,15 +538,40 @@ update msg state =
 
                         _ ->
                             k
-            in
-            ( { state | keys = keys }, Cmd.none )
 
-        Fire ->
-            if state.locked then
-                ( shoot { state | recoil = 1 }, Cmd.none )
+                reloadRequested =
+                    isDown
+                        && state.locked
+                        && List.member (String.toLower raw) [ "r", "keyr" ]
+                        && state.ammo < magSize
+                        && state.reloading <= 0
+            in
+            if reloadRequested then
+                ( { state | keys = keys, reloading = reloadTime }, Cmd.none )
 
             else
+                ( { state | keys = keys }, Cmd.none )
+
+        Fire ->
+            if not state.locked then
                 ( state, Cmd.none )
+
+            else if state.cooldown > 0 || state.reloading > 0 then
+                -- Still cycling or reloading; the trigger does nothing.
+                ( state, Cmd.none )
+
+            else if state.ammo <= 0 then
+                ( { state | reloading = reloadTime }, Cmd.none )
+
+            else
+                ( shoot
+                    { state
+                        | recoil = 1
+                        , ammo = state.ammo - 1
+                        , cooldown = shotCooldown
+                    }
+                , Cmd.none
+                )
 
         RequestLock ->
             ( state, Ports.requestPointerLock viewId )
@@ -634,6 +682,21 @@ step dt state =
 
             else
                 ( wantY, velY )
+
+        ( newReloading, newAmmo ) =
+            if state.reloading > 0 then
+                let
+                    remaining =
+                        state.reloading - dt
+                in
+                if remaining <= 0 then
+                    ( 0, magSize )
+
+                else
+                    ( remaining, state.ammo )
+
+            else
+                ( 0, state.ammo )
     in
     { state
         | camPos = vec3 newX (newFeet + eyeHeight) newZ
@@ -643,6 +706,9 @@ step dt state =
         , lookDy = state.lookDy - useDy
         , velY = newVelY
         , recoil = state.recoil * Basics.e ^ (-dt / 90)
+        , cooldown = Basics.max 0 (state.cooldown - dt)
+        , ammo = newAmmo
+        , reloading = newReloading
     }
 
 
@@ -964,16 +1030,31 @@ viewGun proj state =
         kick =
             state.recoil
 
+        -- 0 -> 1 over the course of a reload, 0 when not reloading.
+        reloadP =
+            if state.reloading > 0 then
+                1 - state.reloading / reloadTime
+
+            else
+                0
+
+        -- Dip the gun down and back while reloading.
+        dip =
+            sin (pi * reloadP)
+
         -- Gun space: origin low-right of the view, barrel toward -Z.
         vm =
             Mat4.mul
-                (Mat4.makeTranslate (vec3 0.32 (-0.34 + bob) (-1.05 + kick * 0.09)))
-                (Mat4.makeRotate (kick * 0.5) (vec3 1 0 0))
+                (Mat4.makeTranslate (vec3 0.32 (-0.34 + bob - dip * 0.1) (-1.05 + kick * 0.09 + dip * 0.06)))
+                (Mat4.makeRotate (kick * 0.5 - dip * 0.35) (vec3 1 0 0))
 
-        part mesh shade pos size =
+        partRot mesh shade pos rot size =
             let
                 model =
-                    Mat4.mul vm (Mat4.mul (Mat4.makeTranslate pos) (Mat4.makeScale size))
+                    Mat4.mul vm
+                        (Mat4.mul (Mat4.makeTranslate pos)
+                            (Mat4.mul rot (Mat4.makeScale size))
+                        )
             in
             WebGL.entityWith
                 [ DepthTest.less { write = True, near = 0, far = 0.1 } ]
@@ -981,6 +1062,13 @@ viewGun proj state =
                 fragmentShader
                 mesh
                 { mvp = Mat4.mul proj model, model = model, shade = shade, grid = 0 }
+
+        part mesh shade pos size =
+            partRot mesh shade pos Mat4.identity size
+
+        -- The cylinder advances a chamber per shot and spins on reload.
+        cylAngle =
+            toFloat (magSize - state.ammo) * (pi / 3) + reloadP * 4 * pi
 
         flash =
             if kick > 0.8 then
@@ -999,7 +1087,7 @@ viewGun proj state =
     , part cubeMesh 0.75 (vec3 0 0.02 0) (vec3 0.08 0.16 0.42)
 
     -- oversized cylinder
-    , part prismMesh 0.9 (vec3 0 0.03 -0.06) (vec3 0.21 0.21 0.2)
+    , partRot prismMesh 0.9 (vec3 0 0.03 -0.06) (Mat4.makeRotate cylAngle (vec3 0 0 1)) (vec3 0.21 0.21 0.2)
 
     -- long octagonal barrel
     , part prismMesh 0.8 (vec3 0 0.06 -0.52) (vec3 0.1 0.1 0.75)
@@ -1064,7 +1152,7 @@ viewHud state =
             ]
             [ text
                 (if state.locked then
-                    "WASD MOVE · SPACE JUMP · CLICK SHOOT · ESC RELEASE MOUSE"
+                    "WASD MOVE · SPACE JUMP · CLICK SHOOT · R RELOAD · ESC RELEASE MOUSE"
 
                  else
                     "WASD MOVE · SPACE JUMP · CLICK TO CAPTURE MOUSE · ESC BACK"
@@ -1075,6 +1163,29 @@ viewHud state =
             , Attr.style "color" "rgba(170,170,170,0.7)"
             ]
             [ text (String.fromInt (round state.fps) ++ " FPS") ]
+        , div
+            [ Attr.class
+                ("absolute bottom-0 pa2 f5 tracked"
+                    ++ (if state.reloading > 0 then
+                            " blink"
+
+                        else
+                            ""
+                       )
+                )
+            , Attr.style "left" "50%"
+            , Attr.style "transform" "translateX(-50%)"
+            , Attr.style "color" "rgba(210,210,210,0.85)"
+            , Attr.style "text-shadow" "0 0 8px rgba(192,192,192,0.4)"
+            ]
+            [ text
+                (if state.reloading > 0 then
+                    "RELOADING"
+
+                 else
+                    String.repeat state.ammo "●" ++ String.repeat (magSize - state.ammo) "○"
+                )
+            ]
         ]
 
 
