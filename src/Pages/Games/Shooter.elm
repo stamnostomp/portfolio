@@ -749,10 +749,6 @@ step dt state =
                 -- Landed, or near enough a surface to stay glued walking down it.
                 ( support, 0 )
 
-            else if wantY > wallHeight - 1.85 then
-                -- Bumped the roof.
-                ( wallHeight - 1.85, 0 )
-
             else
                 ( wantY, velY )
 
@@ -1281,8 +1277,17 @@ view state =
         floorEntity =
             entity (mvp Mat4.identity) Mat4.identity 0.22 1 white floorMesh
 
-        ceilingEntity =
-            entity (mvp Mat4.identity) Mat4.identity 0.12 0 white ceilingMesh
+        skyEntity =
+            let
+                model =
+                    Mat4.mul (Mat4.makeTranslate state.camPos) (Mat4.makeScale (vec3 90 90 90))
+            in
+            WebGL.entityWith
+                [ DepthTest.always { write = False, near = 0, far = 1 } ]
+                skyVertexShader
+                skyFragmentShader
+                cubeMesh
+                { mvp = mvp model, time = toFloat (Time.posixToMillis state.time) * 0.001 }
 
         boxEntity shade grid o =
             let
@@ -1357,7 +1362,7 @@ view state =
             , Attr.style "height" "100%"
             , Attr.style "display" "block"
             ]
-            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ bulletEntities ++ gibEntities ++ viewGun proj state)
+            (skyEntity :: floorEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ bulletEntities ++ gibEntities ++ viewGun proj state)
         , viewCrosshair
         , viewHud state
         , if state.locked then
@@ -1647,7 +1652,7 @@ type alias Uniforms =
 
 
 type alias Varyings =
-    { vNormal : Vec3, vWorld : Vec3 }
+    { vNormal : Vec3, vWorld : Vec3, vDepth : Float }
 
 
 white : Vec3
@@ -1757,27 +1762,6 @@ rampTriangles r =
         ]
 
 
-ceilingMesh : WebGL.Mesh Vertex
-ceilingMesh =
-    let
-        w =
-            levelData.halfW
-
-        d =
-            levelData.halfD
-
-        h =
-            wallHeight
-
-        down =
-            vec3 0 -1 0
-    in
-    WebGL.triangles
-        [ ( Vertex (vec3 -w h -d) down, Vertex (vec3 w h d) down, Vertex (vec3 w h -d) down )
-        , ( Vertex (vec3 -w h -d) down, Vertex (vec3 -w h d) down, Vertex (vec3 w h d) down )
-        ]
-
-
 cubeMesh : WebGL.Mesh Vertex
 cubeMesh =
     let
@@ -1858,6 +1842,64 @@ prismMesh =
         )
 
 
+type alias SkyUniforms =
+    { mvp : Mat4, time : Float }
+
+
+skyVertexShader : WebGL.Shader Vertex SkyUniforms { vDir : Vec3 }
+skyVertexShader =
+    [glsl|
+        precision mediump float;
+        attribute vec3 position;
+        attribute vec3 normal;
+        uniform mat4 mvp;
+        varying vec3 vDir;
+
+        void main () {
+            gl_Position = mvp * vec4(position, 1.0);
+            vDir = position + normal * 0.0;
+        }
+    |]
+
+
+skyFragmentShader : WebGL.Shader {} SkyUniforms { vDir : Vec3 }
+skyFragmentShader =
+    [glsl|
+        precision mediump float;
+        uniform float time;
+        varying vec3 vDir;
+
+        // Soft glowing orb: a faint core lost inside a wide diffuse halo.
+        float orb(vec3 d, vec3 dir, float tight, float amt) {
+            float o = max(dot(d, normalize(dir)), 0.0);
+            return (pow(o, tight * 40.0) * 0.45 + pow(o, tight * 4.0) * 0.3) * amt;
+        }
+
+        void main () {
+            vec3 d = normalize(vDir);
+
+            // each orb wanders slowly on its own wide path
+            float t = time * 0.02;
+            vec3 w1 = vec3(sin(t) * 0.14, cos(t * 0.7) * 0.10, 0.0);
+            vec3 w2 = vec3(cos(t * 0.6) * 0.16, sin(t * 0.5) * 0.12, 0.0);
+            vec3 w3 = vec3(sin(t * 0.8 + 2.1) * 0.14, sin(t * 0.4 + 1.0) * 0.11, 0.0);
+
+            float glow = 0.0;
+            glow += orb(d, vec3(0.35, 0.55, -0.60) + w1, 5.0, 0.9);
+            glow += orb(d, vec3(-0.60, 0.35, -0.30) + w2, 8.0, 0.7);
+            glow += orb(d, vec3(0.10, 0.30, 0.90) + w3, 11.0, 0.65);
+            glow += orb(d, vec3(-0.30, 0.70, 0.50) + w1.yxz, 6.5, 0.7);
+            glow += orb(d, vec3(0.80, 0.45, 0.25) + w2.yxz, 12.0, 0.55);
+            glow += orb(d, vec3(0.05, 0.90, -0.15) + w3.yxz, 9.0, 0.5);
+
+            // black sky, faintly cool-white light
+            vec3 col = vec3(0.004, 0.004, 0.006) + vec3(0.88, 0.91, 1.0) * glow;
+
+            gl_FragColor = vec4(col, 1.0);
+        }
+    |]
+
+
 vertexShader : WebGL.Shader Vertex Uniforms Varyings
 vertexShader =
     [glsl|
@@ -1868,11 +1910,13 @@ vertexShader =
         uniform mat4 model;
         varying vec3 vNormal;
         varying vec3 vWorld;
+        varying float vDepth;
 
         void main () {
             gl_Position = mvp * vec4(position, 1.0);
             vWorld = (model * vec4(position, 1.0)).xyz;
             vNormal = (model * vec4(normal, 0.0)).xyz;
+            vDepth = gl_Position.w;
         }
     |]
 
@@ -1886,6 +1930,7 @@ fragmentShader =
         uniform vec3 tint;
         varying vec3 vNormal;
         varying vec3 vWorld;
+        varying float vDepth;
 
         void main () {
             vec3 L = normalize(vec3(0.4, 0.9, 0.35));
@@ -1896,7 +1941,10 @@ fragmentShader =
                 float line = 1.0 - smoothstep(0.0, 0.04, min(g.x, g.y));
                 c = mix(c, 0.55, line * 0.5);
             }
-            gl_FragColor = vec4(vec3(c) * tint, 1.0);
+            // Diffuse distance fog into the clear color.
+            float fog = 1.0 - exp(-(vDepth * vDepth) / 36.0);
+            vec3 col = mix(vec3(c) * tint, vec3(0.04, 0.04, 0.05), fog);
+            gl_FragColor = vec4(col, 1.0);
         }
     |]
 
