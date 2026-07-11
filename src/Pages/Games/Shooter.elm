@@ -141,9 +141,10 @@ reloadTime =
     1100
 
 
+{-| Radius of a goblin's hit sphere (centered on its body). -}
 targetRadius : Float
 targetRadius =
-    0.75
+    0.55
 
 
 -- LEVEL
@@ -277,7 +278,7 @@ parseLevel rows =
                     addOpen i j 0 acc
 
                 'T' ->
-                    addOpen i j 0 { acc | targetSpawns = vec3 (cellX i) 1.2 (cellZ j) :: acc.targetSpawns }
+                    addOpen i j 0 { acc | targetSpawns = vec3 (cellX i) 0 (cellZ j) :: acc.targetSpawns }
 
                 'P' ->
                     addOpen i j 0 { acc | playerSpawn = vec3 (cellX i) 0 (cellZ j) }
@@ -448,7 +449,7 @@ spawnOne seed =
                 |> List.head
                 |> Maybe.withDefault ( 0, 0, 0 )
     in
-    ( vec3 x (h + 1.2) z, s1 )
+    ( vec3 x h z, s1 )
 
 
 
@@ -729,7 +730,11 @@ shoot state =
 
         hit =
             state.targets
-                |> List.filterMap (\c -> Maybe.map (\t -> ( t, c )) (raySphere origin dir c targetRadius))
+                |> List.filterMap
+                    (\c ->
+                        raySphere origin dir (Vec3.add c (vec3 0 0.55 0)) targetRadius
+                            |> Maybe.map (\t -> ( t, c ))
+                    )
                 |> List.filter (\( t, _ ) -> Maybe.withDefault True (Maybe.map (\w -> t < w) wallT))
                 |> List.sortBy Tuple.first
                 |> List.head
@@ -923,17 +928,17 @@ view state =
             Mat4.mul proj (Mat4.mul viewM model)
 
         floorEntity =
-            entity (mvp Mat4.identity) Mat4.identity 0.22 1 floorMesh
+            entity (mvp Mat4.identity) Mat4.identity 0.22 1 white floorMesh
 
         ceilingEntity =
-            entity (mvp Mat4.identity) Mat4.identity 0.12 0 ceilingMesh
+            entity (mvp Mat4.identity) Mat4.identity 0.12 0 white ceilingMesh
 
         boxEntity shade grid o =
             let
                 model =
                     Mat4.mul (Mat4.makeTranslate o.center) (Mat4.makeScale (Vec3.scale 2 o.half))
             in
-            entity (mvp model) model shade grid cubeMesh
+            entity (mvp model) model shade grid white cubeMesh
 
         wallEntities =
             List.map (boxEntity 0.5 0) levelData.walls
@@ -942,18 +947,10 @@ view state =
             List.map (boxEntity 0.38 1) levelData.platforms
 
         rampEntity =
-            entity (mvp Mat4.identity) Mat4.identity 0.45 1 rampMesh
+            entity (mvp Mat4.identity) Mat4.identity 0.45 1 white rampMesh
 
-        targetEntities =
-            List.map
-                (\c ->
-                    let
-                        model =
-                            Mat4.mul (Mat4.makeTranslate c) (Mat4.makeScale (vec3 1.2 1.2 1.2))
-                    in
-                    entity (mvp model) model 0.85 0 cubeMesh
-                )
-                state.targets
+        goblinEntities =
+            List.concatMap (viewGoblin mvp state) state.targets
     in
     div
         [ Attr.id viewId
@@ -984,7 +981,7 @@ view state =
             , Attr.style "height" "100%"
             , Attr.style "display" "block"
             ]
-            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ targetEntities ++ viewGun proj state)
+            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ viewGun proj state)
         , viewCrosshair
         , viewHud state
         , if state.locked then
@@ -1005,6 +1002,70 @@ lookDecoder =
     Decode.map2 Look
         (Decode.field "movementX" Decode.float)
         (Decode.field "movementY" Decode.float)
+
+
+{-| A little goblin standing at a spawn point: it bobs in place and
+always turns to face the player. Built from tinted boxes.
+-}
+viewGoblin : (Mat4 -> Mat4) -> GameState -> Vec3 -> List WebGL.Entity
+viewGoblin mvp state p =
+    let
+        ms =
+            toFloat (Time.posixToMillis state.time)
+
+        gx =
+            Vec3.getX p
+
+        gy =
+            Vec3.getY p
+
+        gz =
+            Vec3.getZ p
+
+        yawG =
+            atan2 (Vec3.getX state.camPos - gx) (Vec3.getZ state.camPos - gz)
+
+        bob =
+            sin (ms * 0.004 + (gx + gz) * 3) * 0.04
+
+        root =
+            Mat4.mul (Mat4.makeTranslate (vec3 gx (gy + bob) gz))
+                (Mat4.makeRotate yawG (vec3 0 1 0))
+
+        part shade tint pos size =
+            let
+                model =
+                    Mat4.mul root (Mat4.mul (Mat4.makeTranslate pos) (Mat4.makeScale size))
+            in
+            entity (mvp model) model shade 0 tint cubeMesh
+
+        green =
+            vec3 0.5 0.95 0.55
+
+        red =
+            vec3 1 0.25 0.25
+    in
+    [ -- legs
+      part 0.5 green (vec3 -0.12 0.11 0) (vec3 0.12 0.22 0.14)
+    , part 0.5 green (vec3 0.12 0.11 0) (vec3 0.12 0.22 0.14)
+
+    -- body
+    , part 0.6 green (vec3 0 0.42 0) (vec3 0.5 0.42 0.34)
+
+    -- head
+    , part 0.7 green (vec3 0 0.8 0.02) (vec3 0.42 0.34 0.36)
+
+    -- pointy ears
+    , part 0.6 green (vec3 -0.24 1.02 0) (vec3 0.1 0.28 0.06)
+    , part 0.6 green (vec3 0.24 1.02 0) (vec3 0.1 0.28 0.06)
+
+    -- nose
+    , part 0.55 green (vec3 0 0.76 0.2) (vec3 0.09 0.09 0.14)
+
+    -- glowing eyes
+    , part 2 red (vec3 -0.1 0.86 0.17) (vec3 0.07 0.07 0.05)
+    , part 2 red (vec3 0.1 0.86 0.17) (vec3 0.07 0.07 0.05)
+    ]
 
 
 {-| First-person arm and revolver, rendered in view space (no view
@@ -1048,7 +1109,7 @@ viewGun proj state =
                 (Mat4.makeTranslate (vec3 0.32 (-0.34 + bob - dip * 0.1) (-1.05 + kick * 0.09 + dip * 0.06)))
                 (Mat4.makeRotate (kick * 0.5 - dip * 0.35) (vec3 1 0 0))
 
-        partRot mesh shade pos rot size =
+        partRot mesh shade tint pos rot size =
             let
                 model =
                     Mat4.mul vm
@@ -1061,10 +1122,10 @@ viewGun proj state =
                 vertexShader
                 fragmentShader
                 mesh
-                { mvp = Mat4.mul proj model, model = model, shade = shade, grid = 0 }
+                { mvp = Mat4.mul proj model, model = model, shade = shade, grid = 0, tint = tint }
 
         part mesh shade pos size =
-            partRot mesh shade pos Mat4.identity size
+            partRot mesh shade white pos Mat4.identity size
 
         -- The cylinder advances a chamber per shot and spins on reload.
         cylAngle =
@@ -1072,7 +1133,7 @@ viewGun proj state =
 
         flash =
             if kick > 0.8 then
-                [ part prismMesh 2.5 (vec3 0 0.06 -0.92) (vec3 0.2 0.2 0.12) ]
+                [ partRot prismMesh 2.5 (vec3 1 0.85 0.4) (vec3 0 0.06 -0.92) Mat4.identity (vec3 0.2 0.2 0.12) ]
 
             else
                 []
@@ -1087,7 +1148,7 @@ viewGun proj state =
     , part cubeMesh 0.75 (vec3 0 0.02 0) (vec3 0.08 0.16 0.42)
 
     -- oversized cylinder
-    , partRot prismMesh 0.9 (vec3 0 0.03 -0.06) (Mat4.makeRotate cylAngle (vec3 0 0 1)) (vec3 0.21 0.21 0.2)
+    , partRot prismMesh 0.9 white (vec3 0 0.03 -0.06) (Mat4.makeRotate cylAngle (vec3 0 0 1)) (vec3 0.21 0.21 0.2)
 
     -- long octagonal barrel
     , part prismMesh 0.8 (vec3 0 0.06 -0.52) (vec3 0.1 0.1 0.75)
@@ -1198,20 +1259,25 @@ type alias Vertex =
 
 
 type alias Uniforms =
-    { mvp : Mat4, model : Mat4, shade : Float, grid : Float }
+    { mvp : Mat4, model : Mat4, shade : Float, grid : Float, tint : Vec3 }
 
 
 type alias Varyings =
     { vNormal : Vec3, vWorld : Vec3 }
 
 
-entity : Mat4 -> Mat4 -> Float -> Float -> WebGL.Mesh Vertex -> WebGL.Entity
-entity mvp model shade grid mesh =
+white : Vec3
+white =
+    vec3 1 1 1
+
+
+entity : Mat4 -> Mat4 -> Float -> Float -> Vec3 -> WebGL.Mesh Vertex -> WebGL.Entity
+entity mvp model shade grid tint mesh =
     WebGL.entityWith [ DepthTest.default ]
         vertexShader
         fragmentShader
         mesh
-        { mvp = mvp, model = model, shade = shade, grid = grid }
+        { mvp = mvp, model = model, shade = shade, grid = grid, tint = tint }
 
 
 floorMesh : WebGL.Mesh Vertex
@@ -1433,6 +1499,7 @@ fragmentShader =
         precision mediump float;
         uniform float shade;
         uniform float grid;
+        uniform vec3 tint;
         varying vec3 vNormal;
         varying vec3 vWorld;
 
@@ -1445,7 +1512,7 @@ fragmentShader =
                 float line = 1.0 - smoothstep(0.0, 0.04, min(g.x, g.y));
                 c = mix(c, 0.55, line * 0.5);
             }
-            gl_FragColor = vec4(vec3(c), 1.0);
+            gl_FragColor = vec4(vec3(c) * tint, 1.0);
         }
     |]
 
