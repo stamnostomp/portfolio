@@ -83,6 +83,7 @@ type alias Model =
     , missileGame : MissileCommand.GameState
     , shooterGame : Shooter.GameState
     , selectedGame : Maybe String -- which game is open on the Games page (Nothing = list)
+    , gameExpand : Float -- eases 0 -> 1 while a game is open; grows the goop rectangle to frame it
     }
 
 
@@ -202,6 +203,7 @@ init flags =
       , missileGame = Tuple.first MissileCommand.init
       , shooterGame = Tuple.first Shooter.init
       , selectedGame = Nothing
+      , gameExpand = 0
       }
     , Cmd.none
     )

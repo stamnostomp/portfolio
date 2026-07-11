@@ -179,20 +179,8 @@ view =
                 [ -- Games grid with water-drop hover effects
                   div
                     [ Attr.class "image-games" ]
-                    [ -- Missile Command (playable)
-                      gameItem "MISSILE COMMAND" "missile-command" "Defend your cities"
-                    , gameItem "3D SHOOTER" "shooter" "A retro-style 3D shooter with WebGL"
-                    , gameItem "SPACE INVADERS" "invaders" "Classic arcade shooter"
-                    , gameItem "SNAKE" "snake" "Retro snake game"
-                    , gameItem "PONG" "pong" "The classic paddle game"
-                    , gameItem "BREAKOUT" "breakout" "Brick breaking action"
-                    , gameItem "ASTEROIDS" "asteroids" "Space rock dodging"
-                    , gameItem "TETRIS" "tetris" "Block stacking puzzle"
-                    , gameItem "PACMAN" "pacman" "Maze chasing classic"
-                    , gameItem "TIC-TAC-TOE" "tictactoe" "Simple strategy game"
-                    , gameItem "MEMORY" "memory" "Card matching game"
-                    , gameItem "SIMON" "simon" "Color sequence memory"
-                    , gameItem "FLAPPY" "flappy" "Endless flyer game"
+                    [ gameItem "MISSILE COMMAND" "missile-command" "Defend your cities"
+                    , gameItem "GOB KILLER" "shooter" "Hunt goblins in a foggy arena"
                     ]
 
                 -- Bottom fade overlay

@@ -149,6 +149,25 @@ update msg model =
                 -- Handle transition state updates with organic easing
                 updatedTransitionState =
                     updateTransitionStateOrganic delta model.transitionState model.transitionSpeed model.organicVariation newTime
+
+                -- Ease the goop rectangle out to the game panel's border
+                -- while a game is open, and back when it closes.
+                expandTarget =
+                    case ( model.transitionState, model.selectedGame ) of
+                        ( ShowingContent Games _, Just id ) ->
+                            if List.member id [ "missile-command", "shooter" ] then
+                                1
+
+                            else
+                                0
+
+                        _ ->
+                            0
+
+                newGameExpand =
+                    model.gameExpand
+                        + (expandTarget - model.gameExpand)
+                        * Basics.min 1 (1 - Basics.e ^ (-delta / 150))
             in
             case updatedTransitionState of
                 TransitioningOut progress targetPage ->
@@ -159,6 +178,7 @@ update msg model =
                             , goopNavState = updatedGoopState
                             , transitionState = ShowingContent targetPage 0.0
                             , currentPage = targetPage
+                            , gameExpand = newGameExpand
                           }
                         , Cmd.none
                         )
@@ -168,6 +188,7 @@ update msg model =
                             | time = newTime
                             , goopNavState = updatedGoopState
                             , transitionState = updatedTransitionState
+                            , gameExpand = newGameExpand
                           }
                         , Cmd.none
                         )
@@ -179,6 +200,7 @@ update msg model =
                             | time = newTime
                             , goopNavState = updatedGoopState
                             , transitionState = NoTransition
+                            , gameExpand = newGameExpand
                           }
                         , Cmd.none
                         )
@@ -188,6 +210,7 @@ update msg model =
                             | time = newTime
                             , goopNavState = updatedGoopState
                             , transitionState = updatedTransitionState
+                            , gameExpand = newGameExpand
                           }
                         , Cmd.none
                         )
@@ -197,6 +220,7 @@ update msg model =
                         | time = newTime
                         , goopNavState = updatedGoopState
                         , transitionState = ShowingContent page (contentTime + delta * 0.001)
+                        , gameExpand = newGameExpand
                       }
                     , Cmd.none
                     )
@@ -206,6 +230,7 @@ update msg model =
                         | time = newTime
                         , goopNavState = updatedGoopState
                         , transitionState = updatedTransitionState
+                        , gameExpand = newGameExpand
                       }
                     , Cmd.none
                     )

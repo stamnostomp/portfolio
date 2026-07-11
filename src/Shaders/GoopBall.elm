@@ -46,6 +46,7 @@ fragmentShader =
         uniform vec2 centerPosition;
         uniform float transitionProgress;
         uniform float transitionType;
+        uniform float gameExpand;
         varying vec2 vUV;
 
         // Smooth minimum function for organic blending
@@ -174,7 +175,11 @@ fragmentShader =
                 float currentCenterRadius = baseRadius + centerGrowProgress * 0.2; // Slight circle growth
                 // Rectangle sized to match content square (85% of viewport)
                 float aspectRatio = resolution.x / resolution.y;
-                vec2 rectSize = vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71) * centerGrowProgress; // Rectangle target size
+                // Rectangle target size; grows out to the game panel's
+                // border (96vw x 96vh) while a game is open.
+                vec2 baseRect = vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71);
+                vec2 gameRect = vec2(0.96 * aspectRatio, 0.96);
+                vec2 rectSize = mix(baseRect, gameRect, gameExpand) * centerGrowProgress;
 
                 float circleShape = deformableCircle(p, center, currentCenterRadius);
                 float rectangleShape = deformableRectangle(p, center, rectSize, 0.05);
@@ -220,7 +225,8 @@ fragmentShader =
 
                 // Start with organic rectangle, morph to circle, then shrink
                 float aspectRatio = resolution.x / resolution.y;
-                vec2 rectSize = vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71) * (1.0 - centerShrinkProgress);
+                vec2 rectSizeBase = mix(vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71), vec2(0.96 * aspectRatio, 0.96), gameExpand);
+                vec2 rectSize = rectSizeBase * (1.0 - centerShrinkProgress);
                 float rectangleShape = deformableRectangle(p, center, rectSize, 0.05);
 
                 float currentCenterRadius = mix(baseRadius + 0.2, baseRadius, centerShrinkProgress);

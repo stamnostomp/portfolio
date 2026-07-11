@@ -43,6 +43,10 @@ type alias GameState =
     , flowFrom : ( Int, Int )
     , bullets : List Bullet
     , gibs : List Gib
+    , hp : Int
+    , hurtT : Float
+    , hurtFlash : Float
+    , dead : Bool
     }
 
 
@@ -56,7 +60,17 @@ type alias Gib =
 
 
 type alias Goblin =
-    { pos : Vec3, yaw : Float }
+    { pos : Vec3
+    , yaw : Float
+    , scatter : Float
+    , scatterDir : ( Float, Float )
+    , calm : Float
+    }
+
+
+newGoblin : Vec3 -> Goblin
+newGoblin p =
+    { pos = p, yaw = 0, scatter = 0, scatterDir = ( 0, 0 ), calm = 0 }
 
 
 type alias Keys =
@@ -169,6 +183,59 @@ goblinSpeed =
 goblinStopDist : Float
 goblinStopDist =
     1.4
+
+
+{-| How long a goblin panics after a nearby kill, in ms. -}
+scatterTime : Float
+scatterTime =
+    900
+
+
+{-| Kills panic other goblins within this range. -}
+scatterRadius : Float
+scatterRadius =
+    5
+
+
+{-| After a scatter, a goblin can't be panicked again for this long (ms). -}
+calmTime : Float
+calmTime =
+    2200
+
+
+{-| Goblins push each other apart to at least this distance. -}
+goblinSpacing : Float
+goblinSpacing =
+    0.7
+
+
+maxHp : Int
+maxHp =
+    100
+
+
+{-| Goblins this close (and on the same level) bite the player. -}
+touchRange : Float
+touchRange =
+    1.7
+
+
+{-| Damage per touching goblin per damage tick. -}
+touchDamage : Int
+touchDamage =
+    5
+
+
+{-| Ms between damage ticks while being touched. -}
+damageTickMs : Float
+damageTickMs =
+    500
+
+
+{-| Hard cap on how many goblins the score can summon. -}
+maxGoblins : Int
+maxGoblins =
+    24
 
 
 {-| Bullet speed in units/ms. -}
@@ -467,7 +534,7 @@ init =
       , yaw = pi -- look toward -Z ("up" the map)
       , pitch = 0
       , keys = Keys False False False False False
-      , targets = List.map (\p -> Goblin p 0) levelData.targetSpawns
+      , targets = List.map newGoblin levelData.targetSpawns
       , obstacles = levelData.walls ++ levelData.platforms ++ levelData.rampBoxes
       , score = 0
       , time = Time.millisToPosix 0
@@ -485,6 +552,10 @@ init =
       , flowFrom = spawnTile
       , bullets = []
       , gibs = []
+      , hp = maxHp
+      , hurtT = 0
+      , hurtFlash = 0
+      , dead = False
       }
     , Cmd.none
     )
@@ -527,9 +598,20 @@ update msg state =
                     else
                         state.fps
             in
-            ( step (toFloat (Basics.clamp 0 32 raw)) { state | time = newTime, fps = fps }
-            , Cmd.none
-            )
+            if state.dead then
+                -- Frozen on the death screen; only the vignette fades.
+                ( { state
+                    | time = newTime
+                    , fps = fps
+                    , hurtFlash = state.hurtFlash * Basics.e ^ (negate (toFloat (Basics.clamp 0 32 raw)) / 180)
+                  }
+                , Cmd.none
+                )
+
+            else
+                ( step (toFloat (Basics.clamp 0 32 raw)) { state | time = newTime, fps = fps }
+                , Cmd.none
+                )
 
         Look dx dy ->
             -- Deltas are accumulated here and drained smoothly in `step`,
@@ -610,7 +692,15 @@ update msg state =
                 ( { state | keys = keys }, Cmd.none )
 
         Fire ->
-            if not state.locked then
+            if state.dead then
+                -- Click to restart, keeping the pointer lock and clock.
+                let
+                    ( fresh, cmd ) =
+                        init
+                in
+                ( { fresh | locked = state.locked, time = state.time }, cmd )
+
+            else if not state.locked then
                 ( state, Cmd.none )
 
             else if state.cooldown > 0 || state.reloading > 0 then
@@ -789,6 +879,82 @@ step dt state =
         shots =
             stepBullets dt state.obstacles goblins state.seed state.bullets
 
+        -- Survivors near a kill scatter away from it.
+        panicked =
+            List.foldl
+                (\k gs ->
+                    List.map
+                        (\g ->
+                            let
+                                dx =
+                                    Vec3.getX g.pos - Vec3.getX k
+
+                                dz =
+                                    Vec3.getZ g.pos - Vec3.getZ k
+
+                                d2 =
+                                    dx * dx + dz * dz
+                            in
+                            if d2 < scatterRadius * scatterRadius && d2 > 1.0e-6 && g.scatter <= 0 && g.calm <= 0 then
+                                { g
+                                    | scatter = scatterTime
+                                    , scatterDir = ( dx / sqrt d2, dz / sqrt d2 )
+                                }
+
+                            else
+                                g
+                        )
+                        gs
+                )
+                shots.goblins
+                shots.killed
+
+        -- The score summons ever more goblins, one per frame up to quota.
+        quota =
+            Basics.min maxGoblins
+                (List.length levelData.targetSpawns + state.score // 500)
+
+        ( finalGoblins, finalSeed ) =
+            if List.length panicked < quota then
+                let
+                    ( fresh, s3 ) =
+                        spawnOne shots.seed
+                in
+                ( separate (newGoblin fresh :: panicked), s3 )
+
+            else
+                ( separate panicked, shots.seed )
+
+        -- Contact damage: every goblin in biting range hurts on a shared tick.
+        touching =
+            finalGoblins
+                |> List.filter
+                    (\g ->
+                        let
+                            dxg =
+                                Vec3.getX g.pos - newX
+
+                            dzg =
+                                Vec3.getZ g.pos - newZ
+
+                            dyg =
+                                Vec3.getY g.pos - newFeet
+                        in
+                        (dxg * dxg + dzg * dzg <= touchRange * touchRange)
+                            && (abs dyg <= 1.2)
+                    )
+                |> List.length
+
+        ( newHp, newHurtT, newFlash ) =
+            if state.hurtT - dt <= 0 && touching > 0 then
+                ( state.hp - touchDamage * touching, damageTickMs, 1 )
+
+            else
+                ( state.hp
+                , Basics.max 0 (state.hurtT - dt)
+                , state.hurtFlash * Basics.e ^ (-dt / 180)
+                )
+
         gibs =
             List.concatMap spawnGibs shots.killed
                 ++ List.filterMap
@@ -820,13 +986,17 @@ step dt state =
         , cooldown = Basics.max 0 (state.cooldown - dt)
         , ammo = newAmmo
         , reloading = newReloading
-        , targets = shots.goblins
+        , targets = finalGoblins
         , flow = flow
         , flowFrom = playerTile
         , bullets = shots.bullets
-        , seed = shots.seed
+        , seed = finalSeed
         , score = state.score + 100 * List.length shots.killed
         , gibs = gibs
+        , hp = Basics.max 0 newHp
+        , hurtT = newHurtT
+        , hurtFlash = newFlash
+        , dead = newHp <= 0
     }
 
 
@@ -874,7 +1044,7 @@ stepBullets dt obstacles goblins0 seed0 bullets0 =
                             spawnOne acc.seed
                     in
                     { acc
-                        | goblins = Goblin fresh 0 :: List.filter (\o -> o /= g) acc.goblins
+                        | goblins = newGoblin fresh :: List.filter (\o -> o /= g) acc.goblins
                         , seed = s2
                         , killed = g.pos :: acc.killed
                     }
@@ -1139,6 +1309,73 @@ goblinWaypoint cam flow p =
                 )
 
 
+{-| Push overlapping goblins apart so they can't share the same spot.
+Each pair closer than goblinSpacing shoves both halves of the overlap.
+-}
+separate : List Goblin -> List Goblin
+separate goblins =
+    List.indexedMap
+        (\i g ->
+            let
+                ( px, pz ) =
+                    List.foldl
+                        (\( j, o ) acc ->
+                            if j == i then
+                                acc
+
+                            else
+                                let
+                                    dx =
+                                        Vec3.getX g.pos - Vec3.getX o.pos
+
+                                    dz =
+                                        Vec3.getZ g.pos - Vec3.getZ o.pos
+
+                                    d2 =
+                                        dx * dx + dz * dz
+                                in
+                                if d2 >= goblinSpacing * goblinSpacing then
+                                    acc
+
+                                else if d2 < 1.0e-6 then
+                                    -- Perfectly stacked: nudge apart by index.
+                                    ( Tuple.first acc + cos (toFloat i) * 0.03
+                                    , Tuple.second acc + sin (toFloat i) * 0.03
+                                    )
+
+                                else
+                                    let
+                                        d =
+                                            sqrt d2
+
+                                        f =
+                                            (goblinSpacing - d) / d * 0.5
+                                    in
+                                    ( Tuple.first acc + dx * f
+                                    , Tuple.second acc + dz * f
+                                    )
+                        )
+                        ( 0, 0 )
+                        (List.indexedMap Tuple.pair goblins)
+
+                nx =
+                    Vec3.getX g.pos + px
+
+                nz =
+                    Vec3.getZ g.pos + pz
+            in
+            if px == 0 && pz == 0 then
+                g
+
+            else if abs (supportAt nx nz - Vec3.getY g.pos) <= stepUp then
+                { g | pos = vec3 nx (supportAt nx nz) nz }
+
+            else
+                g
+        )
+        goblins
+
+
 {-| Ease one angle toward another along the shortest arc. -}
 angleLerp : Float -> Float -> Float -> Float
 angleLerp k from to =
@@ -1168,15 +1405,53 @@ moveGoblin dt cam flow g =
 
         faceToward =
             angleLerp turnK g.yaw
+
+        calmed =
+            Basics.max 0 (g.calm - dt)
     in
-    if sqrt (dxp * dxp + dzp * dzp) <= goblinStopDist then
+    if g.scatter > 0 then
+        -- Panic: bolt away from the kill until something blocks the way.
+        let
+            ( sx, sz ) =
+                g.scatterDir
+
+            nx =
+                gx + sx * goblinSpeed * 1.6 * dt
+
+            nz =
+                gz + sz * goblinSpeed * 1.6 * dt
+
+            passable =
+                abs (supportAt nx nz - Vec3.getY g.pos) <= stepUp
+
+            remaining =
+                Basics.max 0 (g.scatter - dt)
+        in
+        { g
+            | scatter = remaining
+            , calm =
+                if remaining <= 0 then
+                    calmTime
+
+                else
+                    g.calm
+            , yaw = faceToward (atan2 sx sz)
+            , pos =
+                if passable then
+                    vec3 nx (supportAt nx nz) nz
+
+                else
+                    g.pos
+        }
+
+    else if sqrt (dxp * dxp + dzp * dzp) <= goblinStopDist then
         -- Arrived: stand still and glare at the player.
         { g | yaw = faceToward (atan2 dxp dzp) }
 
     else
         case goblinWaypoint cam flow g.pos of
             Nothing ->
-                { g | yaw = faceToward (atan2 dxp dzp) }
+                { g | yaw = faceToward (atan2 dxp dzp), calm = calmed }
 
             Just ( wx, wz ) ->
                 let
@@ -1193,7 +1468,7 @@ moveGoblin dt cam flow g =
                         Basics.min len (goblinSpeed * dt)
                 in
                 if len < 1.0e-6 then
-                    g
+                    { g | calm = calmed }
 
                 else
                     let
@@ -1206,6 +1481,7 @@ moveGoblin dt cam flow g =
                     { g
                         | pos = vec3 nx (supportAt nx nz) nz
                         , yaw = faceToward (atan2 dx dz)
+                        , calm = calmed
                     }
 
 
@@ -1390,7 +1666,24 @@ view state =
             (skyEntity :: floorEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ bulletEntities ++ gibEntities ++ viewGun proj state)
         , viewCrosshair
         , viewHud state
-        , if state.locked then
+        , if state.hurtFlash > 0.01 then
+            div
+                [ Attr.class "absolute absolute--fill"
+                , Attr.style "pointer-events" "none"
+                , Attr.style "background"
+                    ("radial-gradient(ellipse at center, rgba(160,0,0,0) 55%, rgba(160,0,0,"
+                        ++ String.fromFloat (state.hurtFlash * 0.55)
+                        ++ ") 100%)"
+                    )
+                ]
+                []
+
+          else
+            text ""
+        , if state.dead then
+            viewDeathScreen state.score
+
+          else if state.locked then
             text ""
 
           else
@@ -1579,6 +1872,31 @@ viewGun proj state =
         ++ flash
 
 
+viewDeathScreen : Int -> Html msg
+viewDeathScreen score =
+    div
+        [ Attr.class "absolute absolute--fill flex flex-column items-center justify-center tracked"
+        , Attr.style "background" "rgba(0,0,0,0.7)"
+        ]
+        [ div
+            [ Attr.class "f1 fw6"
+            , Attr.style "color" "#ff4040"
+            , Attr.style "text-shadow" "0 0 18px rgba(255,0,0,0.6)"
+            ]
+            [ text "YOU DIED" ]
+        , div
+            [ Attr.class "f4 mt3"
+            , Attr.style "color" "rgba(220,220,220,0.9)"
+            ]
+            [ text ("SCORE " ++ String.fromInt score) ]
+        , div
+            [ Attr.class "f6 mt4 blink"
+            , Attr.style "color" "rgba(180,180,180,0.8)"
+            ]
+            [ text "CLICK TO RESTART" ]
+        ]
+
+
 viewLockPrompt : Html msg
 viewLockPrompt =
     div
@@ -1621,6 +1939,18 @@ viewHud state =
             , Attr.style "text-shadow" "0 0 8px rgba(192,192,192,0.35)"
             ]
             [ text ("SCORE " ++ String.fromInt state.score) ]
+        , div
+            [ Attr.class "absolute top-0 right-0 pa2 f6 tracked"
+            , Attr.style "color"
+                (if state.hp <= 30 then
+                    "rgba(255,80,80,0.95)"
+
+                 else
+                    "rgba(192,192,192,0.9)"
+                )
+            , Attr.style "text-shadow" "0 0 8px rgba(192,192,192,0.35)"
+            ]
+            [ text ("HP " ++ String.fromInt state.hp) ]
         , div
             [ Attr.class "absolute bottom-0 left-0 pa2 f7 tracked"
             , Attr.style "color" "rgba(170,170,170,0.7)"

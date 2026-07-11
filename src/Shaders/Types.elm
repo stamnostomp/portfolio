@@ -16,4 +16,8 @@ type alias Uniforms =
     -- NEW: Transition uniforms
     , transitionProgress : Float -- 0.0 to 1.0
     , transitionType : Float -- 1.0 = out, -1.0 = in, 0.0 = none
+
+    -- 1.0 when a game is open: the content rectangle grows to hug the
+    -- game panel's border (96vw x 96vh) so the goop frames the game.
+    , gameExpand : Float
     }

@@ -281,6 +281,7 @@ viewGoopNavigation model =
                 , centerPosition = model.goopNavState.centerPosition
                 , transitionProgress = transitionProgress
                 , transitionType = transitionType
+                , gameExpand = model.gameExpand
                 }
             ]
         , -- Hover labels (only when not transitioning)
