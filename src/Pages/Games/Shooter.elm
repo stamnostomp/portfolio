@@ -34,6 +34,7 @@ type alias GameState =
     , lookDy : Float
     , fps : Float
     , velY : Float
+    , recoil : Float
     }
 
 
@@ -403,6 +404,7 @@ init =
       , lookDy = 0
       , fps = 60
       , velY = 0
+      , recoil = 0
       }
     , Cmd.none
     )
@@ -518,7 +520,7 @@ update msg state =
 
         Fire ->
             if state.locked then
-                ( shoot state, Cmd.none )
+                ( shoot { state | recoil = 1 }, Cmd.none )
 
             else
                 ( state, Cmd.none )
@@ -640,6 +642,7 @@ step dt state =
         , lookDx = state.lookDx - useDx
         , lookDy = state.lookDy - useDy
         , velY = newVelY
+        , recoil = state.recoil * Basics.e ^ (-dt / 90)
     }
 
 
@@ -915,7 +918,7 @@ view state =
             , Attr.style "height" "100%"
             , Attr.style "display" "block"
             ]
-            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ targetEntities)
+            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ targetEntities ++ viewGun proj state)
         , viewCrosshair
         , viewHud state
         , if state.locked then
@@ -936,6 +939,81 @@ lookDecoder =
     Decode.map2 Look
         (Decode.field "movementX" Decode.float)
         (Decode.field "movementY" Decode.float)
+
+
+{-| First-person arm and revolver, rendered in view space (no view
+matrix) so it sticks to the camera. A squashed depth range draws it
+over the scene while it still occludes itself correctly.
+-}
+viewGun : Mat4 -> GameState -> List WebGL.Entity
+viewGun proj state =
+    let
+        ms =
+            toFloat (Time.posixToMillis state.time)
+
+        moving =
+            state.keys.f || state.keys.b || state.keys.l || state.keys.r
+
+        bob =
+            if moving then
+                sin (ms * 0.012) * 0.018
+
+            else
+                sin (ms * 0.003) * 0.006
+
+        kick =
+            state.recoil
+
+        -- Gun space: origin low-right of the view, barrel toward -Z.
+        vm =
+            Mat4.mul
+                (Mat4.makeTranslate (vec3 0.28 (-0.3 + bob) (-0.65 + kick * 0.09)))
+                (Mat4.makeRotate (kick * 0.5) (vec3 1 0 0))
+
+        part mesh shade pos size =
+            let
+                model =
+                    Mat4.mul vm (Mat4.mul (Mat4.makeTranslate pos) (Mat4.makeScale size))
+            in
+            WebGL.entityWith
+                [ DepthTest.less { write = True, near = 0, far = 0.1 } ]
+                vertexShader
+                fragmentShader
+                mesh
+                { mvp = Mat4.mul proj model, model = model, shade = shade, grid = 0 }
+
+        flash =
+            if kick > 0.8 then
+                [ part prismMesh 2.5 (vec3 0 0.06 -0.92) (vec3 0.2 0.2 0.12) ]
+
+            else
+                []
+    in
+    [ -- sleeve reaching in from the bottom right
+      part cubeMesh 0.3 (vec3 0.07 -0.13 0.34) (vec3 0.17 0.16 0.5)
+
+    -- hand around the grip
+    , part cubeMesh 0.62 (vec3 0 -0.08 0.12) (vec3 0.13 0.17 0.14)
+
+    -- frame
+    , part cubeMesh 0.75 (vec3 0 0.02 0) (vec3 0.08 0.16 0.42)
+
+    -- comically oversized cylinder
+    , part prismMesh 0.9 (vec3 0 0.05 -0.06) (vec3 0.32 0.32 0.22)
+
+    -- long octagonal barrel
+    , part prismMesh 0.8 (vec3 0 0.06 -0.52) (vec3 0.1 0.1 0.75)
+
+    -- muzzle ring
+    , part prismMesh 0.9 (vec3 0 0.06 -0.87) (vec3 0.15 0.15 0.06)
+
+    -- hammer
+    , part cubeMesh 0.85 (vec3 0 0.14 0.18) (vec3 0.03 0.1 0.06)
+
+    -- front sight
+    , part cubeMesh 0.85 (vec3 0 0.14 -0.84) (vec3 0.02 0.06 0.04)
+    ]
+        ++ flash
 
 
 viewLockPrompt : Html msg
@@ -1160,6 +1238,62 @@ cubeMesh =
             , face (vec3 0 1 0) (vec3 -p p p) (vec3 p p p) (vec3 p p -p) (vec3 -p p -p)
             , face (vec3 0 -1 0) (vec3 -p -p -p) (vec3 p -p -p) (vec3 p -p p) (vec3 -p -p p)
             ]
+        )
+
+
+{-| Octagonal prism along the Z axis, radius and length 1 like cubeMesh,
+so makeScale gives full extents.
+-}
+prismMesh : WebGL.Mesh Vertex
+prismMesh =
+    let
+        n =
+            8
+
+        point k =
+            let
+                a =
+                    turns (toFloat k / toFloat n)
+            in
+            ( 0.5 * cos a, 0.5 * sin a )
+
+        side k =
+            let
+                ( xa, ya ) =
+                    point k
+
+                ( xb, yb ) =
+                    point (k + 1)
+
+                normal =
+                    Vec3.normalize (vec3 (xa + xb) (ya + yb) 0)
+            in
+            [ ( Vertex (vec3 xa ya -0.5) normal, Vertex (vec3 xb yb -0.5) normal, Vertex (vec3 xb yb 0.5) normal )
+            , ( Vertex (vec3 xa ya -0.5) normal, Vertex (vec3 xb yb 0.5) normal, Vertex (vec3 xa ya 0.5) normal )
+            ]
+
+        cap z nz =
+            List.concatMap
+                (\k ->
+                    let
+                        ( xa, ya ) =
+                            point k
+
+                        ( xb, yb ) =
+                            point (k + 1)
+                    in
+                    [ ( Vertex (vec3 0 0 z) (vec3 0 0 nz)
+                      , Vertex (vec3 xa ya z) (vec3 0 0 nz)
+                      , Vertex (vec3 xb yb z) (vec3 0 0 nz)
+                      )
+                    ]
+                )
+                (List.range 0 (n - 1))
+    in
+    WebGL.triangles
+        (List.concatMap side (List.range 0 (n - 1))
+            ++ cap -0.5 -1
+            ++ cap 0.5 1
         )
 
 
