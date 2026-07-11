@@ -2,6 +2,7 @@ module Pages.Games.Shooter exposing (GameState, Msg, init, subscriptions, update
 
 import Array exposing (Array)
 import Browser.Events
+import Dict exposing (Dict)
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr
 import Html.Events
@@ -38,7 +39,14 @@ type alias GameState =
     , ammo : Int
     , cooldown : Float
     , reloading : Float
+    , flow : Dict ( Int, Int ) Int
+    , flowFrom : ( Int, Int )
+    , bullets : List Bullet
     }
+
+
+type alias Bullet =
+    { pos : Vec3, dir : Vec3, ttl : Float }
 
 
 type alias Keys =
@@ -139,6 +147,30 @@ shotCooldown =
 reloadTime : Float
 reloadTime =
     1100
+
+
+{-| Goblin walk speed in units/ms (player moves at 0.006). -}
+goblinSpeed : Float
+goblinSpeed =
+    0.0025
+
+
+{-| Goblins stop chasing once this close to the player. -}
+goblinStopDist : Float
+goblinStopDist =
+    1.4
+
+
+{-| Bullet speed in units/ms. -}
+bulletSpeed : Float
+bulletSpeed =
+    0.03
+
+
+{-| Bullet lifetime in ms. -}
+bulletTtl : Float
+bulletTtl =
+    1500
 
 
 {-| Radius of a goblin's hit sphere (centered on its body). -}
@@ -411,6 +443,10 @@ wallRuns row =
 
 init : ( GameState, Cmd Msg )
 init =
+    let
+        spawnTile =
+            tileIndexAt (Vec3.getX levelData.playerSpawn) (Vec3.getZ levelData.playerSpawn)
+    in
     ( { camPos = Vec3.add levelData.playerSpawn (vec3 0 eyeHeight 0)
       , yaw = pi -- look toward -Z ("up" the map)
       , pitch = 0
@@ -429,6 +465,9 @@ init =
       , ammo = magSize
       , cooldown = 0
       , reloading = 0
+      , flow = computeFlow spawnTile
+      , flowFrom = spawnTile
+      , bullets = []
       }
     , Cmd.none
     )
@@ -565,12 +604,32 @@ update msg state =
                 ( { state | reloading = reloadTime }, Cmd.none )
 
             else
-                ( shoot
-                    { state
-                        | recoil = 1
-                        , ammo = state.ammo - 1
-                        , cooldown = shotCooldown
-                    }
+                let
+                    look =
+                        lookDir state.yaw state.pitch
+
+                    right =
+                        Vec3.normalize (Vec3.cross look (vec3 0 1 0))
+
+                    -- Leave from the gun barrel, converging on the aim point.
+                    origin =
+                        state.camPos
+                            |> Vec3.add (Vec3.scale 0.35 look)
+                            |> Vec3.add (Vec3.scale 0.12 right)
+                            |> Vec3.add (vec3 0 -0.12 0)
+
+                    aim =
+                        Vec3.add state.camPos (Vec3.scale 50 look)
+
+                    dir =
+                        Vec3.normalize (Vec3.sub aim origin)
+                in
+                ( { state
+                    | recoil = 1
+                    , ammo = state.ammo - 1
+                    , cooldown = shotCooldown
+                    , bullets = Bullet origin dir bulletTtl :: state.bullets
+                  }
                 , Cmd.none
                 )
 
@@ -698,6 +757,24 @@ step dt state =
 
             else
                 ( 0, state.ammo )
+
+        -- Chase: refresh the flow field when the player changes tile,
+        -- then let every goblin walk one step along it.
+        playerTile =
+            tileIndexAt newX newZ
+
+        flow =
+            if playerTile == state.flowFrom then
+                state.flow
+
+            else
+                computeFlow playerTile
+
+        goblins =
+            List.map (moveGoblin dt (vec3 newX 0 newZ) flow) state.targets
+
+        shots =
+            stepBullets dt state.obstacles goblins state.seed state.bullets
     in
     { state
         | camPos = vec3 newX (newFeet + eyeHeight) newZ
@@ -710,49 +787,80 @@ step dt state =
         , cooldown = Basics.max 0 (state.cooldown - dt)
         , ammo = newAmmo
         , reloading = newReloading
+        , targets = shots.goblins
+        , flow = flow
+        , flowFrom = playerTile
+        , bullets = shots.bullets
+        , seed = shots.seed
+        , score = state.score + 100 * shots.kills
     }
 
 
-shoot : GameState -> GameState
-shoot state =
-    let
-        origin =
-            state.camPos
-
-        dir =
-            lookDir state.yaw state.pitch
-
-        -- Nearest obstacle distance along the ray (shots are blocked by walls).
-        wallT =
-            state.obstacles
-                |> List.filterMap (rayBox origin dir)
-                |> List.minimum
-
-        hit =
-            state.targets
-                |> List.filterMap
-                    (\c ->
-                        raySphere origin dir (Vec3.add c (vec3 0 0.55 0)) targetRadius
-                            |> Maybe.map (\t -> ( t, c ))
-                    )
-                |> List.filter (\( t, _ ) -> Maybe.withDefault True (Maybe.map (\w -> t < w) wallT))
-                |> List.sortBy Tuple.first
-                |> List.head
-    in
-    case hit of
-        Nothing ->
-            state
-
-        Just ( _, c ) ->
+{-| Advance every bullet one frame: die on level geometry or timeout,
+kill the first goblin crossed (which respawns elsewhere).
+-}
+stepBullets :
+    Float
+    -> List Box
+    -> List Vec3
+    -> Random.Seed
+    -> List Bullet
+    -> { bullets : List Bullet, goblins : List Vec3, seed : Random.Seed, kills : Int }
+stepBullets dt obstacles goblins0 seed0 bullets0 =
+    List.foldl
+        (\b acc ->
             let
-                ( fresh, seed ) =
-                    spawnOne state.seed
+                travel =
+                    bulletSpeed * dt
+
+                wallT =
+                    obstacles
+                        |> List.filterMap (rayBox b.pos b.dir)
+                        |> List.minimum
+                        |> Maybe.withDefault 1.0e9
+
+                reach =
+                    Basics.min travel wallT
+
+                hit =
+                    acc.goblins
+                        |> List.filterMap
+                            (\g ->
+                                raySphere b.pos b.dir (Vec3.add g (vec3 0 0.55 0)) targetRadius
+                                    |> Maybe.map (\t -> ( t, g ))
+                            )
+                        |> List.filter (\( t, _ ) -> t <= reach)
+                        |> List.sortBy Tuple.first
+                        |> List.head
             in
-            { state
-                | targets = fresh :: List.filter (\o -> o /= c) state.targets
-                , score = state.score + 100
-                , seed = seed
-            }
+            case hit of
+                Just ( _, g ) ->
+                    let
+                        ( fresh, s2 ) =
+                            spawnOne acc.seed
+                    in
+                    { acc
+                        | goblins = fresh :: List.filter (\o -> o /= g) acc.goblins
+                        , seed = s2
+                        , kills = acc.kills + 1
+                    }
+
+                Nothing ->
+                    if wallT <= travel || b.ttl <= dt then
+                        acc
+
+                    else
+                        { acc
+                            | bullets =
+                                { b
+                                    | pos = Vec3.add b.pos (Vec3.scale travel b.dir)
+                                    , ttl = b.ttl - dt
+                                }
+                                    :: acc.bullets
+                        }
+        )
+        { bullets = [], goblins = goblins0, seed = seed0, kills = 0 }
+        bullets0
 
 
 
@@ -835,6 +943,186 @@ cornerSupport x z =
         , supportAt (x - playerRadius) (z + playerRadius)
         , supportAt (x + playerRadius) (z + playerRadius)
         ]
+
+
+
+-- PATHFINDING
+
+
+tileIndexAt : Float -> Float -> ( Int, Int )
+tileIndexAt x z =
+    ( floor ((x + levelData.halfW) / cellSize)
+    , floor ((z + levelData.halfD) / cellSize)
+    )
+
+
+cellCenter : ( Int, Int ) -> ( Float, Float )
+cellCenter ( i, j ) =
+    ( (toFloat i + 0.5) * cellSize - levelData.halfW
+    , (toFloat j + 0.5) * cellSize - levelData.halfD
+    )
+
+
+{-| Floor height at the edge of a tile faced when stepping toward
+(di, dj); Nothing when that edge can't be crossed (walls, ramp sides).
+-}
+exitHeight : ( Int, Int ) -> ( Int, Int ) -> Maybe Float
+exitHeight ( i, j ) ( di, dj ) =
+    let
+        ch =
+            tileAt i j
+    in
+    case flatHeight ch of
+        Just h ->
+            Just h
+
+        Nothing ->
+            if List.member ch [ '>', '<', '^', 'v' ] then
+                let
+                    ( ti, tj ) =
+                        rampTailDir ch
+
+                    base =
+                        flatHeight (tileAt (i + ti) (j + tj))
+                            |> Maybe.withDefault 0
+                in
+                if ( di, dj ) == ( ti, tj ) then
+                    Just base
+
+                else if ( di, dj ) == ( -ti, -tj ) then
+                    Just (base + platformUnit)
+
+                else
+                    Nothing
+
+            else
+                Nothing
+
+
+{-| Whether something walking (not jumping) can cross between two
+adjacent tiles, using the same step-height rule as the player.
+-}
+canWalk : ( Int, Int ) -> ( Int, Int ) -> Bool
+canWalk (( i1, j1 ) as a) (( i2, j2 ) as b) =
+    case ( exitHeight a ( i2 - i1, j2 - j1 ), exitHeight b ( i1 - i2, j1 - j2 ) ) of
+        ( Just ha, Just hb ) ->
+            abs (ha - hb) <= stepUp
+
+        _ ->
+            False
+
+
+{-| Breadth-first walking distance (in tiles) from a start tile to every
+reachable tile. Goblins descend this field to chase the player.
+-}
+computeFlow : ( Int, Int ) -> Dict ( Int, Int ) Int
+computeFlow start =
+    bfsFlow (Dict.singleton start 0) [ start ]
+
+
+bfsFlow : Dict ( Int, Int ) Int -> List ( Int, Int ) -> Dict ( Int, Int ) Int
+bfsFlow dist frontier =
+    case frontier of
+        [] ->
+            dist
+
+        (( i, j ) as cur) :: rest ->
+            let
+                d =
+                    Dict.get cur dist |> Maybe.withDefault 0
+
+                fresh =
+                    [ ( i + 1, j ), ( i - 1, j ), ( i, j + 1 ), ( i, j - 1 ) ]
+                        |> List.filter (\n -> not (Dict.member n dist) && canWalk cur n)
+
+                dist2 =
+                    List.foldl (\n acc -> Dict.insert n (d + 1) acc) dist fresh
+            in
+            bfsFlow dist2 (rest ++ fresh)
+
+
+{-| Walk one goblin toward the player: head for the neighboring tile
+with the lowest flow distance (or straight at the player when sharing a
+tile), gluing to the floor so ramps carry it up and down.
+-}
+moveGoblin : Float -> Vec3 -> Dict ( Int, Int ) Int -> Vec3 -> Vec3
+moveGoblin dt cam flow p =
+    let
+        gx =
+            Vec3.getX p
+
+        gz =
+            Vec3.getZ p
+
+        dxp =
+            Vec3.getX cam - gx
+
+        dzp =
+            Vec3.getZ cam - gz
+
+        gTile =
+            tileIndexAt gx gz
+
+        here =
+            Dict.get gTile flow |> Maybe.withDefault 99999
+
+        waypoint =
+            if here == 0 then
+                Just ( Vec3.getX cam, Vec3.getZ cam )
+
+            else
+                let
+                    ( gi, gj ) =
+                        gTile
+                in
+                [ ( gi + 1, gj ), ( gi - 1, gj ), ( gi, gj + 1 ), ( gi, gj - 1 ) ]
+                    |> List.filter (canWalk gTile)
+                    |> List.filterMap (\n -> Dict.get n flow |> Maybe.map (\d -> ( d, n )))
+                    |> List.sortBy Tuple.first
+                    |> List.head
+                    |> Maybe.andThen
+                        (\( d, n ) ->
+                            if d < here then
+                                Just (cellCenter n)
+
+                            else
+                                Nothing
+                        )
+    in
+    if sqrt (dxp * dxp + dzp * dzp) <= goblinStopDist then
+        p
+
+    else
+        case waypoint of
+            Nothing ->
+                p
+
+            Just ( wx, wz ) ->
+                let
+                    dx =
+                        wx - gx
+
+                    dz =
+                        wz - gz
+
+                    len =
+                        sqrt (dx * dx + dz * dz)
+
+                    stepLen =
+                        Basics.min len (goblinSpeed * dt)
+                in
+                if len < 1.0e-6 then
+                    p
+
+                else
+                    let
+                        nx =
+                            gx + dx / len * stepLen
+
+                        nz =
+                            gz + dz / len * stepLen
+                    in
+                    vec3 nx (supportAt nx nz) nz
 
 
 raySphere : Vec3 -> Vec3 -> Vec3 -> Float -> Maybe Float
@@ -951,6 +1239,17 @@ view state =
 
         goblinEntities =
             List.concatMap (viewGoblin mvp state) state.targets
+
+        bulletEntities =
+            List.map
+                (\b ->
+                    let
+                        model =
+                            Mat4.mul (Mat4.makeTranslate b.pos) (Mat4.makeScale (vec3 0.09 0.09 0.09))
+                    in
+                    entity (mvp model) model 2.5 0 (vec3 1 0.85 0.4) cubeMesh
+                )
+                state.bullets
     in
     div
         [ Attr.id viewId
@@ -981,7 +1280,7 @@ view state =
             , Attr.style "height" "100%"
             , Attr.style "display" "block"
             ]
-            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ viewGun proj state)
+            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ bulletEntities ++ viewGun proj state)
         , viewCrosshair
         , viewHud state
         , if state.locked then
