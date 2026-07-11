@@ -25,7 +25,7 @@ type alias GameState =
     , yaw : Float
     , pitch : Float
     , keys : Keys
-    , targets : List Vec3
+    , targets : List Goblin
     , obstacles : List Box
     , score : Int
     , time : Time.Posix
@@ -53,6 +53,10 @@ type alias Bullet =
 {-| A burst fragment from a killed goblin. -}
 type alias Gib =
     { pos : Vec3, vel : Vec3, t : Float }
+
+
+type alias Goblin =
+    { pos : Vec3, yaw : Float }
 
 
 type alias Keys =
@@ -463,7 +467,7 @@ init =
       , yaw = pi -- look toward -Z ("up" the map)
       , pitch = 0
       , keys = Keys False False False False False
-      , targets = levelData.targetSpawns
+      , targets = List.map (\p -> Goblin p 0) levelData.targetSpawns
       , obstacles = levelData.walls ++ levelData.platforms ++ levelData.rampBoxes
       , score = 0
       , time = Time.millisToPosix 0
@@ -832,10 +836,10 @@ kill the first goblin crossed (which respawns elsewhere).
 stepBullets :
     Float
     -> List Box
-    -> List Vec3
+    -> List Goblin
     -> Random.Seed
     -> List Bullet
-    -> { bullets : List Bullet, goblins : List Vec3, seed : Random.Seed, killed : List Vec3 }
+    -> { bullets : List Bullet, goblins : List Goblin, seed : Random.Seed, killed : List Vec3 }
 stepBullets dt obstacles goblins0 seed0 bullets0 =
     List.foldl
         (\b acc ->
@@ -856,7 +860,7 @@ stepBullets dt obstacles goblins0 seed0 bullets0 =
                     acc.goblins
                         |> List.filterMap
                             (\g ->
-                                raySphere b.pos b.dir (Vec3.add g (vec3 0 0.55 0)) targetRadius
+                                raySphere b.pos b.dir (Vec3.add g.pos (vec3 0 0.55 0)) targetRadius
                                     |> Maybe.map (\t -> ( t, g ))
                             )
                         |> List.filter (\( t, _ ) -> t <= reach)
@@ -870,9 +874,9 @@ stepBullets dt obstacles goblins0 seed0 bullets0 =
                             spawnOne acc.seed
                     in
                     { acc
-                        | goblins = fresh :: List.filter (\o -> o /= g) acc.goblins
+                        | goblins = Goblin fresh 0 :: List.filter (\o -> o /= g) acc.goblins
                         , seed = s2
-                        , killed = g :: acc.killed
+                        , killed = g.pos :: acc.killed
                     }
 
                 Nothing ->
@@ -1100,18 +1104,58 @@ bfsFlow dist frontier =
             bfsFlow dist2 (rest ++ fresh)
 
 
-{-| Walk one goblin toward the player: head for the neighboring tile
-with the lowest flow distance (or straight at the player when sharing a
-tile), gluing to the floor so ramps carry it up and down.
+{-| Where a goblin is headed: the neighboring tile with the lowest flow
+distance, or the player itself when they share a tile.
 -}
-moveGoblin : Float -> Vec3 -> Dict ( Int, Int ) Int -> Vec3 -> Vec3
-moveGoblin dt cam flow p =
+goblinWaypoint : Vec3 -> Dict ( Int, Int ) Int -> Vec3 -> Maybe ( Float, Float )
+goblinWaypoint cam flow p =
+    let
+        gTile =
+            tileIndexAt (Vec3.getX p) (Vec3.getZ p)
+
+        here =
+            Dict.get gTile flow |> Maybe.withDefault 99999
+    in
+    if here == 0 then
+        Just ( Vec3.getX cam, Vec3.getZ cam )
+
+    else
+        let
+            ( gi, gj ) =
+                gTile
+        in
+        [ ( gi + 1, gj ), ( gi - 1, gj ), ( gi, gj + 1 ), ( gi, gj - 1 ) ]
+            |> List.filter (canWalk gTile)
+            |> List.filterMap (\n -> Dict.get n flow |> Maybe.map (\d -> ( d, n )))
+            |> List.sortBy Tuple.first
+            |> List.head
+            |> Maybe.andThen
+                (\( d, n ) ->
+                    if d < here then
+                        Just (cellCenter n)
+
+                    else
+                        Nothing
+                )
+
+
+{-| Ease one angle toward another along the shortest arc. -}
+angleLerp : Float -> Float -> Float -> Float
+angleLerp k from to =
+    from + k * atan2 (sin (to - from)) (cos (to - from))
+
+
+{-| Walk one goblin toward the player: head for its waypoint, gluing to
+the floor so ramps carry it up and down, turning smoothly as it goes.
+-}
+moveGoblin : Float -> Vec3 -> Dict ( Int, Int ) Int -> Goblin -> Goblin
+moveGoblin dt cam flow g =
     let
         gx =
-            Vec3.getX p
+            Vec3.getX g.pos
 
         gz =
-            Vec3.getZ p
+            Vec3.getZ g.pos
 
         dxp =
             Vec3.getX cam - gx
@@ -1119,42 +1163,20 @@ moveGoblin dt cam flow p =
         dzp =
             Vec3.getZ cam - gz
 
-        gTile =
-            tileIndexAt gx gz
+        turnK =
+            1 - Basics.e ^ (-dt / 120)
 
-        here =
-            Dict.get gTile flow |> Maybe.withDefault 99999
-
-        waypoint =
-            if here == 0 then
-                Just ( Vec3.getX cam, Vec3.getZ cam )
-
-            else
-                let
-                    ( gi, gj ) =
-                        gTile
-                in
-                [ ( gi + 1, gj ), ( gi - 1, gj ), ( gi, gj + 1 ), ( gi, gj - 1 ) ]
-                    |> List.filter (canWalk gTile)
-                    |> List.filterMap (\n -> Dict.get n flow |> Maybe.map (\d -> ( d, n )))
-                    |> List.sortBy Tuple.first
-                    |> List.head
-                    |> Maybe.andThen
-                        (\( d, n ) ->
-                            if d < here then
-                                Just (cellCenter n)
-
-                            else
-                                Nothing
-                        )
+        faceToward =
+            angleLerp turnK g.yaw
     in
     if sqrt (dxp * dxp + dzp * dzp) <= goblinStopDist then
-        p
+        -- Arrived: stand still and glare at the player.
+        { g | yaw = faceToward (atan2 dxp dzp) }
 
     else
-        case waypoint of
+        case goblinWaypoint cam flow g.pos of
             Nothing ->
-                p
+                { g | yaw = faceToward (atan2 dxp dzp) }
 
             Just ( wx, wz ) ->
                 let
@@ -1171,7 +1193,7 @@ moveGoblin dt cam flow p =
                         Basics.min len (goblinSpeed * dt)
                 in
                 if len < 1.0e-6 then
-                    p
+                    g
 
                 else
                     let
@@ -1181,7 +1203,10 @@ moveGoblin dt cam flow p =
                         nz =
                             gz + dz / len * stepLen
                     in
-                    vec3 nx (supportAt nx nz) nz
+                    { g
+                        | pos = vec3 nx (supportAt nx nz) nz
+                        , yaw = faceToward (atan2 dx dz)
+                    }
 
 
 raySphere : Vec3 -> Vec3 -> Vec3 -> Float -> Maybe Float
@@ -1388,23 +1413,23 @@ lookDecoder =
 {-| A little goblin standing at a spawn point: it bobs in place and
 always turns to face the player. Built from tinted boxes.
 -}
-viewGoblin : (Mat4 -> Mat4) -> GameState -> Vec3 -> List WebGL.Entity
-viewGoblin mvp state p =
+viewGoblin : (Mat4 -> Mat4) -> GameState -> Goblin -> List WebGL.Entity
+viewGoblin mvp state g =
     let
         ms =
             toFloat (Time.posixToMillis state.time)
 
         gx =
-            Vec3.getX p
+            Vec3.getX g.pos
 
         gy =
-            Vec3.getY p
+            Vec3.getY g.pos
 
         gz =
-            Vec3.getZ p
+            Vec3.getZ g.pos
 
         yawG =
-            atan2 (Vec3.getX state.camPos - gx) (Vec3.getZ state.camPos - gz)
+            g.yaw
 
         bob =
             sin (ms * 0.004 + (gx + gz) * 3) * 0.04
