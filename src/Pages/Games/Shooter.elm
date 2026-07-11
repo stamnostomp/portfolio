@@ -967,7 +967,7 @@ viewGun proj state =
         -- Gun space: origin low-right of the view, barrel toward -Z.
         vm =
             Mat4.mul
-                (Mat4.makeTranslate (vec3 0.28 (-0.3 + bob) (-0.65 + kick * 0.09)))
+                (Mat4.makeTranslate (vec3 0.32 (-0.34 + bob) (-1.05 + kick * 0.09)))
                 (Mat4.makeRotate (kick * 0.5) (vec3 1 0 0))
 
         part mesh shade pos size =
@@ -989,17 +989,17 @@ viewGun proj state =
             else
                 []
     in
-    [ -- sleeve reaching in from the bottom right
-      part cubeMesh 0.3 (vec3 0.07 -0.13 0.34) (vec3 0.17 0.16 0.5)
+    [ -- arm reaching in from the bottom right
+      part prismMesh 0.3 (vec3 0.07 -0.13 0.34) (vec3 0.16 0.16 0.55)
 
-    -- hand around the grip
-    , part cubeMesh 0.62 (vec3 0 -0.08 0.12) (vec3 0.13 0.17 0.14)
+    -- grip
+    , part cubeMesh 0.62 (vec3 0 -0.13 0.12) (vec3 0.09 0.22 0.1)
 
     -- frame
     , part cubeMesh 0.75 (vec3 0 0.02 0) (vec3 0.08 0.16 0.42)
 
-    -- comically oversized cylinder
-    , part prismMesh 0.9 (vec3 0 0.05 -0.06) (vec3 0.32 0.32 0.22)
+    -- oversized cylinder
+    , part prismMesh 0.9 (vec3 0 0.03 -0.06) (vec3 0.21 0.21 0.2)
 
     -- long octagonal barrel
     , part prismMesh 0.8 (vec3 0 0.06 -0.52) (vec3 0.1 0.1 0.75)
