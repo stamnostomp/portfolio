@@ -1,5 +1,6 @@
 module Pages.Games.Shooter exposing (GameState, Msg, init, subscriptions, update, view)
 
+import Array exposing (Array)
 import Browser.Events
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr
@@ -65,7 +66,19 @@ cellSize =
 
 wallHeight : Float
 wallHeight =
-    3
+    4.5
+
+
+{-| Height gained by one platform level (and by one ramp tile). -}
+platformUnit : Float
+platformUnit =
+    1.1
+
+
+{-| Largest rise the player can walk up without jumping. -}
+stepUp : Float
+stepUp =
+    0.45
 
 
 playerRadius : Float
@@ -115,42 +128,59 @@ targetRadius =
 -- LEVEL
 --
 -- The map is a tile grid, one character per cell:
---   '#' wall (floor to ceiling)   '.' open floor
+--   '#' wall (floor to roof)      '.' open floor
 --   'T' target spawn              'P' player start
+--   '1' '2' raised platform (n * platformUnit high, walkable on top)
+--   '>' '<' '^' 'v' ramp rising one level toward the arrow, starting
+--   from the height of the tile behind it (which must be flat)
 
 
 levelMap : List String
 levelMap =
-    [ "#########################"
-    , "#.......#.......#.......#"
-    , "#..T....#..T....#..T....#"
-    , "#.......#.......#.......#"
-    , "####.#######.#######.####"
-    , "#.......................#"
-    , "#.......................#"
-    , "######.###########.######"
-    , "#.......#.......#.......#"
-    , "#..T....#...T...#....T..#"
-    , "#.......#.......#.......#"
-    , "####.#######.#######.####"
-    , "#.......................#"
-    , "#..................P....#"
-    , "######.#####.#####.######"
-    , "#.......#.......#.......#"
-    , "#..T....#..T....#..T....#"
-    , "#.......#.......#.......#"
-    , "#########################"
+    [ "#################################"
+    , "#.......#...........#...........#"
+    , "#..T....#...........#.....T.....#"
+    , "#.......#...........#...........#"
+    , "####.#########.###########.######"
+    , "#...T...........................#"
+    , "#...............................#"
+    , "######.#########.###########.####"
+    , "#.......#...............#.......#"
+    , "#..T....#...............#..T....#"
+    , "#.......#....1111111....#.......#"
+    , "#.......#....111v111....#.......#"
+    , "#.......#...>1122211<...#.......#"
+    , "#.......#....1111111....#.......#"
+    , "#.......#....1111111....#.......#"
+    , "#..T....#...............#..T....#"
+    , "#.......#...............#.......#"
+    , "######.#########.###########.####"
+    , "#...............................#"
+    , "#..........................P....#"
+    , "####.#########.###########.######"
+    , "#.......#...........#...........#"
+    , "#..T....#.....T.....#........T..#"
+    , "#.......#...........#...........#"
+    , "#################################"
     ]
 
 
 type alias Level =
     { walls : List Box
-    , openCells : List ( Float, Float )
+    , platforms : List Box
+    , ramps : List Ramp
+    , rampBoxes : List Box
+    , openCells : List ( Float, Float, Float )
     , targetSpawns : List Vec3
     , playerSpawn : Vec3
+    , tiles : Array (Array Char)
     , halfW : Float
     , halfD : Float
     }
+
+
+type alias Ramp =
+    { i : Int, j : Int, dir : Char, base : Float }
 
 
 levelData : Level
@@ -161,6 +191,9 @@ levelData =
 parseLevel : List String -> Level
 parseLevel rows =
     let
+        tiles =
+            Array.fromList (List.map (String.toList >> Array.fromList) rows)
+
         width =
             List.foldl (\r m -> Basics.max (String.length r) m) 0 rows
 
@@ -176,6 +209,11 @@ parseLevel rows =
         cellZ j =
             (toFloat j + 0.5) * cellSize - halfD
 
+        tile i j =
+            Array.get j tiles
+                |> Maybe.andThen (Array.get i)
+                |> Maybe.withDefault '#'
+
         -- One box per horizontal run of '#' keeps the wall count low.
         runBox j ( s, e ) =
             let
@@ -188,22 +226,58 @@ parseLevel rows =
             Box (vec3 ((x1 + x2) / 2) (wallHeight / 2) (cellZ j))
                 (vec3 ((x2 - x1) / 2) (wallHeight / 2) (cellSize / 2))
 
+        cellBox i j h =
+            Box (vec3 (cellX i) (h / 2) (cellZ j))
+                (vec3 (cellSize / 2) (h / 2) (cellSize / 2))
+
+        addOpen i j h acc =
+            { acc | openCells = ( cellX i, cellZ j, h ) :: acc.openCells }
+
+        addPlatform i j h acc =
+            addOpen i j h { acc | platforms = cellBox i j h :: acc.platforms }
+
+        addRamp i j dir acc =
+            let
+                ( di, dj ) =
+                    rampTailDir dir
+
+                base =
+                    flatHeight (tile (i + di) (j + dj))
+                        |> Maybe.withDefault 0
+            in
+            { acc
+                | ramps = Ramp i j dir base :: acc.ramps
+                , rampBoxes = cellBox i j (base + platformUnit) :: acc.rampBoxes
+            }
+
         collectCell j ( i, ch ) acc =
             case ch of
                 '.' ->
-                    { acc | openCells = ( cellX i, cellZ j ) :: acc.openCells }
+                    addOpen i j 0 acc
 
                 'T' ->
-                    { acc
-                        | openCells = ( cellX i, cellZ j ) :: acc.openCells
-                        , targetSpawns = vec3 (cellX i) 1.2 (cellZ j) :: acc.targetSpawns
-                    }
+                    addOpen i j 0 { acc | targetSpawns = vec3 (cellX i) 1.2 (cellZ j) :: acc.targetSpawns }
 
                 'P' ->
-                    { acc
-                        | openCells = ( cellX i, cellZ j ) :: acc.openCells
-                        , playerSpawn = vec3 (cellX i) 0 (cellZ j)
-                    }
+                    addOpen i j 0 { acc | playerSpawn = vec3 (cellX i) 0 (cellZ j) }
+
+                '1' ->
+                    addPlatform i j platformUnit acc
+
+                '2' ->
+                    addPlatform i j (2 * platformUnit) acc
+
+                '>' ->
+                    addRamp i j ch acc
+
+                '<' ->
+                    addRamp i j ch acc
+
+                '^' ->
+                    addRamp i j ch acc
+
+                'v' ->
+                    addRamp i j ch acc
 
                 _ ->
                     acc
@@ -218,9 +292,61 @@ parseLevel rows =
             { withCells | walls = List.map (runBox j) (wallRuns row) ++ withCells.walls }
     in
     List.foldl (\row ( j, acc ) -> ( j + 1, collectRow j row acc ))
-        ( 0, Level [] [] [] (vec3 0 0 0) halfW halfD )
+        ( 0
+        , { walls = []
+          , platforms = []
+          , ramps = []
+          , rampBoxes = []
+          , openCells = []
+          , targetSpawns = []
+          , playerSpawn = vec3 0 0 0
+          , tiles = tiles
+          , halfW = halfW
+          , halfD = halfD
+          }
+        )
         rows
         |> Tuple.second
+
+
+{-| Grid offset toward the tile a ramp rises from (opposite the arrow). -}
+rampTailDir : Char -> ( Int, Int )
+rampTailDir dir =
+    case dir of
+        '>' ->
+            ( -1, 0 )
+
+        '<' ->
+            ( 1, 0 )
+
+        'v' ->
+            ( 0, -1 )
+
+        _ ->
+            ( 0, 1 )
+
+
+{-| Floor height of a flat walkable tile; Nothing for walls and ramps. -}
+flatHeight : Char -> Maybe Float
+flatHeight ch =
+    case ch of
+        '.' ->
+            Just 0
+
+        'T' ->
+            Just 0
+
+        'P' ->
+            Just 0
+
+        '1' ->
+            Just platformUnit
+
+        '2' ->
+            Just (2 * platformUnit)
+
+        _ ->
+            Nothing
 
 
 {-| Start/end column indices of each consecutive run of '#'. -}
@@ -268,7 +394,7 @@ init =
       , pitch = 0
       , keys = Keys False False False False False
       , targets = levelData.targetSpawns
-      , obstacles = levelData.walls
+      , obstacles = levelData.walls ++ levelData.platforms ++ levelData.rampBoxes
       , score = 0
       , time = Time.millisToPosix 0
       , seed = Random.initialSeed 11
@@ -292,12 +418,12 @@ spawnOne seed =
         ( idx, s1 ) =
             Random.step (Random.int 0 (List.length cells - 1)) seed
 
-        ( x, z ) =
+        ( x, z, h ) =
             List.drop idx cells
                 |> List.head
-                |> Maybe.withDefault ( 0, 0 )
+                |> Maybe.withDefault ( 0, 0, 0 )
     in
-    ( vec3 x 1.2 z, s1 )
+    ( vec3 x (h + 1.2) z, s1 )
 
 
 
@@ -458,27 +584,35 @@ step dt state =
         wantZ =
             z0 + Vec3.getZ move
 
-        -- Resolve each axis independently so you slide along walls.
-        newX =
-            if blocked state.obstacles wantX z0 then
-                x0
-
-            else
-                wantX
-
-        newZ =
-            if blocked state.obstacles newX wantZ then
-                z0
-
-            else
-                wantZ
-
-        -- Vertical: jump from the ground, integrate gravity, land on the floor.
         feet0 =
             Vec3.getY state.camPos - eyeHeight
 
+        -- A move is allowed when the floor there doesn't rise more than a
+        -- step above the feet (walls report height 99, so they block).
+        canStand x z =
+            cornerSupport x z <= feet0 + stepUp
+
+        -- Resolve each axis independently so you slide along walls.
+        newX =
+            if canStand wantX z0 then
+                wantX
+
+            else
+                x0
+
+        newZ =
+            if canStand newX wantZ then
+                wantZ
+
+            else
+                z0
+
+        -- Vertical: jump, integrate gravity, follow ramps, land on floors.
+        support =
+            cornerSupport newX newZ
+
         velY =
-            if feet0 <= 0 && state.keys.jump then
+            if feet0 <= support + 0.02 && state.keys.jump then
                 jumpSpeed
 
             else
@@ -488,12 +622,13 @@ step dt state =
             feet0 + velY * dt
 
         ( newFeet, newVelY ) =
-            if wantY <= 0 && velY <= 0 then
-                ( 0, 0 )
+            if velY <= 0 && (wantY <= support || feet0 - support <= stepUp) then
+                -- Landed, or near enough a surface to stay glued walking down it.
+                ( support, 0 )
 
-            else if wantY > wallHeight - 1.8 then
-                -- Bumped the ceiling.
-                ( wallHeight - 1.8, 0 )
+            else if wantY > wallHeight - 1.85 then
+                -- Bumped the roof.
+                ( wallHeight - 1.85, 0 )
 
             else
                 ( wantY, velY )
@@ -569,16 +704,63 @@ lookDir yaw pitch =
     Vec3.normalize (vec3 (cos pitch * sin yaw) (sin pitch) (cos pitch * cos yaw))
 
 
-blocked : List Box -> Float -> Float -> Bool
-blocked obstacles x z =
-    (abs x > levelData.halfW)
-        || (abs z > levelData.halfD)
-        || List.any
-            (\o ->
-                (abs (x - Vec3.getX o.center) < Vec3.getX o.half + playerRadius)
-                    && (abs (z - Vec3.getZ o.center) < Vec3.getZ o.half + playerRadius)
-            )
-            obstacles
+tileAt : Int -> Int -> Char
+tileAt i j =
+    Array.get j levelData.tiles
+        |> Maybe.andThen (Array.get i)
+        |> Maybe.withDefault '#'
+
+
+{-| Floor height under a world point. Ramps interpolate from the height
+of their tail tile; walls and void report 99 so they block everything.
+-}
+supportAt : Float -> Float -> Float
+supportAt x z =
+    let
+        i =
+            floor ((x + levelData.halfW) / cellSize)
+
+        j =
+            floor ((z + levelData.halfD) / cellSize)
+
+        fracX =
+            (x + levelData.halfW) / cellSize - toFloat i
+
+        fracZ =
+            (z + levelData.halfD) / cellSize - toFloat j
+
+        rampH di dj frac =
+            (flatHeight (tileAt (i + di) (j + dj)) |> Maybe.withDefault 0)
+                + platformUnit
+                * frac
+    in
+    case tileAt i j of
+        '>' ->
+            rampH (-1) 0 fracX
+
+        '<' ->
+            rampH 1 0 (1 - fracX)
+
+        'v' ->
+            rampH 0 (-1) fracZ
+
+        '^' ->
+            rampH 0 1 (1 - fracZ)
+
+        ch ->
+            flatHeight ch |> Maybe.withDefault 99
+
+
+{-| Highest floor under the player's four corners at a position. -}
+cornerSupport : Float -> Float -> Float
+cornerSupport x z =
+    List.foldl Basics.max
+        0
+        [ supportAt (x - playerRadius) (z - playerRadius)
+        , supportAt (x + playerRadius) (z - playerRadius)
+        , supportAt (x - playerRadius) (z + playerRadius)
+        , supportAt (x + playerRadius) (z + playerRadius)
+        ]
 
 
 raySphere : Vec3 -> Vec3 -> Vec3 -> Float -> Maybe Float
@@ -677,16 +859,21 @@ view state =
         ceilingEntity =
             entity (mvp Mat4.identity) Mat4.identity 0.12 0 ceilingMesh
 
-        obstacleEntities =
-            List.map
-                (\o ->
-                    let
-                        model =
-                            Mat4.mul (Mat4.makeTranslate o.center) (Mat4.makeScale (Vec3.scale 2 o.half))
-                    in
-                    entity (mvp model) model 0.5 0 cubeMesh
-                )
-                state.obstacles
+        boxEntity shade grid o =
+            let
+                model =
+                    Mat4.mul (Mat4.makeTranslate o.center) (Mat4.makeScale (Vec3.scale 2 o.half))
+            in
+            entity (mvp model) model shade grid cubeMesh
+
+        wallEntities =
+            List.map (boxEntity 0.5 0) levelData.walls
+
+        platformEntities =
+            List.map (boxEntity 0.38 1) levelData.platforms
+
+        rampEntity =
+            entity (mvp Mat4.identity) Mat4.identity 0.45 1 rampMesh
 
         targetEntities =
             List.map
@@ -728,7 +915,7 @@ view state =
             , Attr.style "height" "100%"
             , Attr.style "display" "block"
             ]
-            (floorEntity :: ceilingEntity :: obstacleEntities ++ targetEntities)
+            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ targetEntities)
         , viewCrosshair
         , viewHud state
         , if state.locked then
@@ -853,6 +1040,81 @@ floorMesh =
     WebGL.triangles
         [ ( Vertex (vec3 -w 0 -d) up, Vertex (vec3 w 0 -d) up, Vertex (vec3 w 0 d) up )
         , ( Vertex (vec3 -w 0 -d) up, Vertex (vec3 w 0 d) up, Vertex (vec3 -w 0 d) up )
+        ]
+
+
+rampMesh : WebGL.Mesh Vertex
+rampMesh =
+    WebGL.triangles (List.concatMap rampTriangles levelData.ramps)
+
+
+{-| A solid wedge filling the ramp's cell: sloped top, side skirts down
+to the ground, and a full back face under the high edge.
+-}
+rampTriangles : Ramp -> List ( Vertex, Vertex, Vertex )
+rampTriangles r =
+    let
+        x1 =
+            toFloat r.i * cellSize - levelData.halfW
+
+        z1 =
+            toFloat r.j * cellSize - levelData.halfD
+
+        s =
+            cellSize
+
+        b =
+            r.base
+
+        t =
+            b + platformUnit
+
+        -- Local frame: u ascends the slope, w runs across it.
+        pos u y w =
+            case r.dir of
+                '>' ->
+                    vec3 (x1 + u) y (z1 + w)
+
+                '<' ->
+                    vec3 (x1 + s - u) y (z1 + w)
+
+                'v' ->
+                    vec3 (x1 + w) y (z1 + u)
+
+                _ ->
+                    -- '^'
+                    vec3 (x1 + w) y (z1 + s - u)
+
+        tri a b_ c =
+            let
+                n0 =
+                    Vec3.cross (Vec3.sub b_ a) (Vec3.sub c a)
+            in
+            if Vec3.length n0 < 1.0e-6 then
+                Nothing
+
+            else
+                let
+                    n1 =
+                        Vec3.normalize n0
+
+                    n =
+                        if Vec3.getY n1 < 0 then
+                            Vec3.scale -1 n1
+
+                        else
+                            n1
+                in
+                Just ( Vertex a n, Vertex b_ n, Vertex c n )
+
+        quad a b_ c d =
+            List.filterMap identity [ tri a b_ c, tri a c d ]
+    in
+    List.concat
+        [ quad (pos 0 b 0) (pos s t 0) (pos s t s) (pos 0 b s)
+        , quad (pos 0 0 0) (pos s 0 0) (pos s t 0) (pos 0 b 0)
+        , quad (pos 0 0 s) (pos s 0 s) (pos s t s) (pos 0 b s)
+        , quad (pos s 0 0) (pos s 0 s) (pos s t s) (pos s t 0)
         ]
 
 
