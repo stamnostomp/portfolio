@@ -42,11 +42,17 @@ type alias GameState =
     , flow : Dict ( Int, Int ) Int
     , flowFrom : ( Int, Int )
     , bullets : List Bullet
+    , gibs : List Gib
     }
 
 
 type alias Bullet =
     { pos : Vec3, dir : Vec3, ttl : Float }
+
+
+{-| A burst fragment from a killed goblin. -}
+type alias Gib =
+    { pos : Vec3, vel : Vec3, t : Float }
 
 
 type alias Keys =
@@ -171,6 +177,12 @@ bulletSpeed =
 bulletTtl : Float
 bulletTtl =
     1500
+
+
+{-| How long goblin burst fragments live, in ms. -}
+gibTtl : Float
+gibTtl =
+    600
 
 
 {-| Radius of a goblin's hit sphere (centered on its body). -}
@@ -468,6 +480,7 @@ init =
       , flow = computeFlow spawnTile
       , flowFrom = spawnTile
       , bullets = []
+      , gibs = []
       }
     , Cmd.none
     )
@@ -775,6 +788,26 @@ step dt state =
 
         shots =
             stepBullets dt state.obstacles goblins state.seed state.bullets
+
+        gibs =
+            List.concatMap spawnGibs shots.killed
+                ++ List.filterMap
+                    (\g ->
+                        let
+                            t2 =
+                                g.t - dt
+                        in
+                        if t2 <= 0 then
+                            Nothing
+
+                        else
+                            Just
+                                { pos = Vec3.add g.pos (Vec3.scale dt g.vel)
+                                , vel = Vec3.add g.vel (vec3 0 (-gravity * dt) 0)
+                                , t = t2
+                                }
+                    )
+                    state.gibs
     in
     { state
         | camPos = vec3 newX (newFeet + eyeHeight) newZ
@@ -792,7 +825,8 @@ step dt state =
         , flowFrom = playerTile
         , bullets = shots.bullets
         , seed = shots.seed
-        , score = state.score + 100 * shots.kills
+        , score = state.score + 100 * List.length shots.killed
+        , gibs = gibs
     }
 
 
@@ -805,7 +839,7 @@ stepBullets :
     -> List Vec3
     -> Random.Seed
     -> List Bullet
-    -> { bullets : List Bullet, goblins : List Vec3, seed : Random.Seed, kills : Int }
+    -> { bullets : List Bullet, goblins : List Vec3, seed : Random.Seed, killed : List Vec3 }
 stepBullets dt obstacles goblins0 seed0 bullets0 =
     List.foldl
         (\b acc ->
@@ -842,7 +876,7 @@ stepBullets dt obstacles goblins0 seed0 bullets0 =
                     { acc
                         | goblins = fresh :: List.filter (\o -> o /= g) acc.goblins
                         , seed = s2
-                        , kills = acc.kills + 1
+                        , killed = g :: acc.killed
                     }
 
                 Nothing ->
@@ -859,8 +893,37 @@ stepBullets dt obstacles goblins0 seed0 bullets0 =
                                     :: acc.bullets
                         }
         )
-        { bullets = [], goblins = goblins0, seed = seed0, kills = 0 }
+        { bullets = [], goblins = goblins0, seed = seed0, killed = [] }
         bullets0
+
+
+{-| Fragments flung outward and up from a killed goblin's center. -}
+spawnGibs : Vec3 -> List Gib
+spawnGibs p =
+    let
+        center =
+            Vec3.add p (vec3 0 0.55 0)
+    in
+    List.map
+        (\( dx, dy, dz ) ->
+            { pos = center
+            , vel = Vec3.scale 0.0045 (Vec3.normalize (vec3 dx dy dz))
+            , t = gibTtl
+            }
+        )
+        [ ( 1, 0.4, 0 )
+        , ( -1, 0.4, 0 )
+        , ( 0, 0.4, 1 )
+        , ( 0, 0.4, -1 )
+        , ( 0.7, 0.9, 0.7 )
+        , ( -0.7, 0.9, 0.7 )
+        , ( 0.7, 0.9, -0.7 )
+        , ( -0.7, 0.9, -0.7 )
+        , ( 0.35, 1.3, 0 )
+        , ( -0.35, 1.3, 0 )
+        , ( 0, 1.3, 0.35 )
+        , ( 0, 1.3, -0.35 )
+        ]
 
 
 
@@ -1250,6 +1313,20 @@ view state =
                     entity (mvp model) model 2.5 0 (vec3 1 0.85 0.4) cubeMesh
                 )
                 state.bullets
+
+        gibEntities =
+            List.map
+                (\g ->
+                    let
+                        s =
+                            0.02 + 0.15 * (g.t / gibTtl)
+
+                        model =
+                            Mat4.mul (Mat4.makeTranslate g.pos) (Mat4.makeScale (vec3 s s s))
+                    in
+                    entity (mvp model) model 0.9 0 (vec3 0.5 0.95 0.55) cubeMesh
+                )
+                state.gibs
     in
     div
         [ Attr.id viewId
@@ -1280,7 +1357,7 @@ view state =
             , Attr.style "height" "100%"
             , Attr.style "display" "block"
             ]
-            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ bulletEntities ++ viewGun proj state)
+            (floorEntity :: ceilingEntity :: rampEntity :: wallEntities ++ platformEntities ++ goblinEntities ++ bulletEntities ++ gibEntities ++ viewGun proj state)
         , viewCrosshair
         , viewHud state
         , if state.locked then
