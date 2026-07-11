@@ -848,7 +848,7 @@ view : GameState -> Html Msg
 view state =
     let
         proj =
-            Mat4.makePerspective 70 (960 / 600) 0.1 100
+            Mat4.makePerspective 70 (1600 / 900) 0.1 100
 
         viewM =
             Mat4.makeLookAt state.camPos (Vec3.add state.camPos (lookDir state.yaw state.pitch)) (vec3 0 1 0)
@@ -912,8 +912,8 @@ view state =
         ]
         [ WebGL.toHtmlWith
             [ WebGL.depth 1, WebGL.antialias, WebGL.clearColor 0.04 0.04 0.05 1 ]
-            [ Attr.width 960
-            , Attr.height 600
+            [ Attr.width 1600
+            , Attr.height 900
             , Attr.style "width" "100%"
             , Attr.style "height" "100%"
             , Attr.style "display" "block"

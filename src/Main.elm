@@ -510,38 +510,17 @@ viewContentPanel page model =
         ]
 
 
-{-| The game sits a bit inside the shader's metallic rectangle so the spinning
-metal effect frames it (and shows faintly through the transparent playfield).
-Closed with Esc or the corner button.
+{-| The game fills nearly the whole window, leaving a thin border so the
+page's shader backdrop still frames it. Closed with Esc or the corner button.
 -}
 viewFullscreenGame : Model -> Html Msg
 viewFullscreenGame model =
-    let
-        dims =
-            calculateContentSquareDimensions model.resolution
-
-        -- A touch smaller than the metal rectangle, centered within it.
-        scale =
-            0.9
-
-        w =
-            dims.width * scale
-
-        h =
-            dims.height * scale
-
-        left =
-            dims.left + (dims.width - w) / 2
-
-        top =
-            dims.top + (dims.height - h) / 2
-    in
     div
         [ Attr.class "fixed z-3 overflow-hidden monospace white"
-        , Attr.style "left" (String.fromFloat left ++ "px")
-        , Attr.style "top" (String.fromFloat top ++ "px")
-        , Attr.style "width" (String.fromFloat w ++ "px")
-        , Attr.style "height" (String.fromFloat h ++ "px")
+        , Attr.style "left" "2vw"
+        , Attr.style "top" "2vh"
+        , Attr.style "width" "96vw"
+        , Attr.style "height" "96vh"
         ]
         [ viewSelectedGame model
         , button
