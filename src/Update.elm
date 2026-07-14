@@ -11,6 +11,7 @@ import Http
 import BlogContent.OrgParser as OrgParser
 import Dict
 import Pages.Games.MissileCommand as MissileCommand
+import Pages.Games.RatSnatcher as RatSnatcher
 import Pages.Games.Shooter as Shooter
 import Pages.Links
 
@@ -155,7 +156,7 @@ update msg model =
                 expandTarget =
                     case ( model.transitionState, model.selectedGame ) of
                         ( ShowingContent Games _, Just id ) ->
-                            if List.member id [ "missile-command", "shooter" ] then
+                            if List.member id [ "missile-command", "shooter", "rat-snatcher" ] then
                                 1
 
                             else
@@ -695,6 +696,15 @@ update msg model =
             , Cmd.map ShooterGameMsg gameCmd
             )
 
+        RatGameMsg subMsg ->
+            let
+                ( newGameState, gameCmd ) =
+                    RatSnatcher.update subMsg model.ratGame
+            in
+            ( { model | ratGame = newGameState }
+            , Cmd.map RatGameMsg gameCmd
+            )
+
         OpenGame id ->
             -- Start the chosen game fresh; ignore ids without a game yet.
             case id of
@@ -705,6 +715,11 @@ update msg model =
 
                 "shooter" ->
                     ( { model | selectedGame = Just id, shooterGame = Tuple.first Shooter.init }
+                    , Cmd.none
+                    )
+
+                "rat-snatcher" ->
+                    ( { model | selectedGame = Just id, ratGame = Tuple.first RatSnatcher.init }
                     , Cmd.none
                     )
 

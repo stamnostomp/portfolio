@@ -181,6 +181,7 @@ view =
                     [ Attr.class "image-games" ]
                     [ gameItem "MISSILE COMMAND" "missile-command" "Defend your cities"
                     , gameItem "GOB KILLER" "shooter" "Hunt goblins in a foggy arena"
+                    , gameItem "RAT SNATCHER" "rat-snatcher" "Dump the box, whack the rats"
                     ]
 
                 -- Bottom fade overlay

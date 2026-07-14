@@ -19,6 +19,7 @@ import Http
 import Json.Decode as Decode
 import Dict exposing (Dict)
 import Pages.Games.MissileCommand as MissileCommand
+import Pages.Games.RatSnatcher as RatSnatcher
 import Pages.Games.Shooter as Shooter
 import Pages.Links exposing (LinkStatus(..))
 
@@ -82,6 +83,7 @@ type alias Model =
     -- Games
     , missileGame : MissileCommand.GameState
     , shooterGame : Shooter.GameState
+    , ratGame : RatSnatcher.GameState
     , selectedGame : Maybe String -- which game is open on the Games page (Nothing = list)
     , gameExpand : Float -- eases 0 -> 1 while a game is open; grows the goop rectangle to frame it
     }
@@ -144,6 +146,7 @@ type Msg
       -- Games
     | MissileGameMsg MissileCommand.Msg
     | ShooterGameMsg Shooter.Msg
+    | RatGameMsg RatSnatcher.Msg
     | OpenGame String
     | CloseGame
     | EscapePressed
@@ -202,6 +205,7 @@ init flags =
       -- Initialize games
       , missileGame = Tuple.first MissileCommand.init
       , shooterGame = Tuple.first Shooter.init
+      , ratGame = Tuple.first RatSnatcher.init
       , selectedGame = Nothing
       , gameExpand = 0
       }

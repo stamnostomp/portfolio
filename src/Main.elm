@@ -17,6 +17,7 @@ import Pages.Blog
 import Pages.Contact
 import Pages.Games
 import Pages.Games.MissileCommand as MissileCommand
+import Pages.Games.RatSnatcher as RatSnatcher
 import Pages.Games.Shooter as Shooter
 import Pages.Links
 import Pages.Portfolio
@@ -467,7 +468,7 @@ viewContentSquare model =
 {-| Ids of games that actually have a playable implementation. -}
 playableGames : List String
 playableGames =
-    [ "missile-command", "shooter" ]
+    [ "missile-command", "shooter", "rat-snatcher" ]
 
 
 {-| True when a playable game is open on the Games page. -}
@@ -537,6 +538,9 @@ viewSelectedGame model =
     case model.selectedGame of
         Just "shooter" ->
             Html.map ShooterGameMsg (Shooter.view model.shooterGame)
+
+        Just "rat-snatcher" ->
+            Html.map RatGameMsg (RatSnatcher.view model.ratGame)
 
         _ ->
             Html.map MissileGameMsg (MissileCommand.view model.missileGame)
@@ -790,6 +794,9 @@ subscriptions model =
             case model.selectedGame of
                 Just "shooter" ->
                     Sub.map ShooterGameMsg (Shooter.subscriptions model.shooterGame)
+
+                Just "rat-snatcher" ->
+                    Sub.map RatGameMsg (RatSnatcher.subscriptions model.ratGame)
 
                 _ ->
                     Sub.map MissileGameMsg (MissileCommand.subscriptions model.missileGame)
