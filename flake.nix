@@ -129,6 +129,7 @@ EOF
             cp favicon.svg $out/ || true
             cp -r blog $out/ || true
             cp -r sfx $out/ || true
+            cp -r assets $out/ || true
             cp elm.min.js $out/elm.js
           '';
         };

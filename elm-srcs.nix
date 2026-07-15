@@ -50,6 +50,26 @@
         version = "1.0.0";
       };
 
+      "ianmackenzie/elm-geometry" = {
+        sha256 = "1z7vpdrd2pkckcnnal5pa2psgc8w3mwhxjv8wjzfgy0n84hi2vf7";
+        version = "4.0.0";
+      };
+
+      "ianmackenzie/elm-triangular-mesh" = {
+        sha256 = "00n08cc3qj610g2f7f77qpl6b6pwr456czf3prkz6iddmi52h3gp";
+        version = "1.1.0";
+      };
+
+      "ianmackenzie/elm-units" = {
+        sha256 = "053nibhpkf906c7g14z48pvinzzfhnrnk5hkj4mjvjnv3r457h97";
+        version = "2.10.0";
+      };
+
+      "w0rm/elm-obj-file" = {
+        sha256 = "15q4nlq7ajbrh6b9x5kx04by81nsis4z6fmw26xk067fy24dqnf1";
+        version = "1.4.0";
+      };
+
       "elm/bytes" = {
         sha256 = "02ywbf52akvxclpxwj9n04jydajcbsbcbsnjs53yjc5lwck3abwj";
         version = "1.0.8";
@@ -68,5 +88,25 @@
       "elm/virtual-dom" = {
         sha256 = "1yvb8px2z62xd578ag2q0r5hd1vkz9y7dfkx05355iiy1d7jwq4v";
         version = "1.0.3";
+      };
+
+      "ianmackenzie/elm-1d-parameter" = {
+        sha256 = "08r1q80k7w2kyasqk54k1xzd5d1607wj4ahx66jdh7gkrni9m8n5";
+        version = "1.0.1";
+      };
+
+      "ianmackenzie/elm-float-extra" = {
+        sha256 = "0l499d14iabyigdysvx3xa572izmqqki7b1ym2gc7kv4sprrq194";
+        version = "1.1.0";
+      };
+
+      "ianmackenzie/elm-interval" = {
+        sha256 = "086x40s9gnl2r7700ff75w0p3wfrxh144ks24ni5cwhirxwwf0pq";
+        version = "3.1.0";
+      };
+
+      "ianmackenzie/elm-units-interval" = {
+        sha256 = "0xwb5vj8jcnn88cnwniibgncfvyaxnmwwkrbk1n7ji3aj6w8f8dj";
+        version = "3.2.0";
       };
 }

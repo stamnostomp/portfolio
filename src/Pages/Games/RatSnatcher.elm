@@ -4,14 +4,23 @@ import Browser.Events
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr
 import Html.Events
+import Http
 import Json.Decode as Decode
+import Length
 import Math.Matrix4 as Mat4 exposing (Mat4)
+import Math.Vector2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Obj.Decode
+import Point3d
 import Ports
 import Random
+import Task
 import Time
+import TriangularMesh
+import Vector3d
 import WebGL
 import WebGL.Settings.DepthTest as DepthTest
+import WebGL.Texture as Texture exposing (Texture)
 
 
 
@@ -39,6 +48,8 @@ type alias GameState =
     , hits : Int -- swings that connected with at least one rat
     , elapsed : Float
     , splats : List Splat
+    , hammerMesh : Maybe (WebGL.Mesh TexturedVertex)
+    , hammerTexture : Maybe Texture
     }
 
 
@@ -77,6 +88,8 @@ type Msg
     | Key Bool String
     | RequestLock
     | LockChanged Bool
+    | GotHammerMesh (Result Http.Error (WebGL.Mesh TexturedVertex))
+    | GotHammerTexture (Result Texture.Error Texture)
 
 
 
@@ -239,6 +252,29 @@ hitSfxUrl =
     "sfx/EEnE Bite 2.wav"
 
 
+{-| Blender-made hammer model and its palette texture. -}
+hammerObjUrl : String
+hammerObjUrl =
+    "assets/rat hammer.obj"
+
+
+hammerTextureUrl : String
+hammerTextureUrl =
+    "assets/hammer.png"
+
+
+{-| Table units per Blender unit: fits the ~9-unit model to the scene. -}
+hammerModelScale : Float
+hammerModelScale =
+    0.09
+
+
+{-| Slide along the handle so the grip end sits at the swing pivot. -}
+hammerModelShift : Float
+hammerModelShift =
+    -0.27
+
+
 init : ( GameState, Cmd Msg )
 init =
     ( { camPos = vec3 0 eyeHeight 4.6
@@ -261,9 +297,62 @@ init =
       , hits = 0
       , elapsed = 0
       , splats = []
+      , hammerMesh = Nothing
+      , hammerTexture = Nothing
       }
-    , Ports.preloadSound hitSfxUrl
+    , Cmd.batch
+        [ Ports.preloadSound hitSfxUrl
+        , Http.get
+            { url = hammerObjUrl
+            , expect = Obj.Decode.expectObj GotHammerMesh Length.meters hammerMeshDecoder
+            }
+        , Texture.loadWith hammerTextureOptions hammerTextureUrl
+            |> Task.attempt GotHammerTexture
+        ]
     )
+
+
+{-| Decode the OBJ's triangles straight into a WebGL mesh. -}
+hammerMeshDecoder : Obj.Decode.Decoder (WebGL.Mesh TexturedVertex)
+hammerMeshDecoder =
+    let
+        toVertex v =
+            let
+                p =
+                    Point3d.unwrap v.position
+
+                n =
+                    Vector3d.unwrap v.normal
+
+                ( u, t ) =
+                    v.uv
+            in
+            TexturedVertex (vec3 p.x p.y p.z) (vec3 n.x n.y n.z) (vec2 u t)
+    in
+    Obj.Decode.map
+        (\mesh ->
+            TriangularMesh.faceVertices mesh
+                |> List.map (\( a, b, c ) -> ( toVertex a, toVertex b, toVertex c ))
+                |> WebGL.triangles
+        )
+        Obj.Decode.texturedFaces
+
+
+{-| The palette texture is 2x1 pixels; nearest filtering keeps the two
+colors from bleeding into each other at the texel boundary.
+-}
+hammerTextureOptions : Texture.Options
+hammerTextureOptions =
+    let
+        defaults =
+            Texture.defaultOptions
+    in
+    { defaults
+        | magnify = Texture.nearest
+        , minify = Texture.nearest
+        , horizontalWrap = Texture.clampToEdge
+        , verticalWrap = Texture.clampToEdge
+    }
 
 
 ratGen : Random.Generator Rat
@@ -405,6 +494,13 @@ update msg state =
         LockChanged locked ->
             ( { state | locked = locked, lookDx = 0, lookDy = 0 }, Cmd.none )
 
+        GotHammerMesh result ->
+            -- On failure keep Nothing: the built-in hammer is the fallback.
+            ( { state | hammerMesh = Result.toMaybe result }, Cmd.none )
+
+        GotHammerTexture result ->
+            ( { state | hammerTexture = Result.toMaybe result }, Cmd.none )
+
 
 fire : GameState -> ( GameState, Cmd Msg )
 fire state =
@@ -473,12 +569,20 @@ fire state =
                 )
 
         Cleared ->
-            -- Click to restart, keeping the pointer lock and clock.
+            -- Click to restart, keeping the pointer lock, clock and
+            -- already-loaded assets (so nothing refetches or pops in).
             let
-                ( fresh, cmd ) =
+                ( fresh, _ ) =
                     init
             in
-            ( { fresh | locked = state.locked, time = state.time }, cmd )
+            ( { fresh
+                | locked = state.locked
+                , time = state.time
+                , hammerMesh = state.hammerMesh
+                , hammerTexture = state.hammerTexture
+              }
+            , Cmd.none
+            )
 
 
 {-| Flatten every live rat under the mark; panic the near misses. -}
@@ -1176,31 +1280,53 @@ viewHammer mvp state =
         steel =
             vec3 0.6 0.62 0.68
     in
-    [ -- round landing mark on the tabletop, matching the hammer's face
-      entity (mvp markModel) markModel 0.1 0 white discMesh
+    -- round landing mark on the tabletop, matching the hammer's face
+    entity (mvp markModel) markModel 0.1 0 white discMesh
+        :: (case ( state.hammerMesh, state.hammerTexture ) of
+                ( Just hammerMesh, Just hammerTexture ) ->
+                    -- The Blender model: handle up +Y, striking face -X.
+                    -- Rotate the handle onto -Z and the face downward,
+                    -- then shift the grip back to the swing pivot.
+                    let
+                        model =
+                            Mat4.mul root
+                                (Mat4.mul (Mat4.makeTranslate (vec3 0 0 hammerModelShift))
+                                    (Mat4.mul (Mat4.makeRotate (pi / 2) (vec3 0 0 1))
+                                        (Mat4.mul (Mat4.makeRotate (-pi / 2) (vec3 1 0 0))
+                                            (Mat4.makeScale
+                                                (vec3 hammerModelScale hammerModelScale hammerModelScale)
+                                            )
+                                        )
+                                    )
+                                )
+                    in
+                    [ texturedEntity (mvp model) model 0.85 hammerTexture hammerMesh ]
 
-    -- wooden handle
-    , part prismMesh 0.7 wood (vec3 0 0 -0.34) (vec3 0.06 0.06 0.68)
+                _ ->
+                    -- Boxy stand-in until the model and texture arrive.
+                    [ -- wooden handle
+                      part prismMesh 0.7 wood (vec3 0 0 -0.34) (vec3 0.06 0.06 0.68)
 
-    -- grip band
-    , part cubeMesh 0.4 wood (vec3 0 0 -0.06) (vec3 0.07 0.07 0.12)
+                    -- grip band
+                    , part cubeMesh 0.4 wood (vec3 0 0 -0.06) (vec3 0.07 0.07 0.12)
 
-    -- eye of the head, seated on the handle's end
-    , part cubeMesh 0.85 steel (vec3 0 0.01 -0.72) (vec3 0.09 0.12 0.13)
+                    -- eye of the head, seated on the handle's end
+                    , part cubeMesh 0.85 steel (vec3 0 0.01 -0.72) (vec3 0.09 0.12 0.13)
 
-    -- short neck dropping to the striking face
-    , partRot prismMesh 0.85 steel (vec3 0 -0.1 -0.72) upright (vec3 0.09 0.09 0.14)
+                    -- short neck dropping to the striking face
+                    , partRot prismMesh 0.85 steel (vec3 0 -0.1 -0.72) upright (vec3 0.09 0.09 0.14)
 
-    -- striking face, slightly flared
-    , partRot prismMesh 0.9 steel (vec3 0 -0.19 -0.72) upright (vec3 0.13 0.13 0.05)
+                    -- striking face, slightly flared
+                    , partRot prismMesh 0.9 steel (vec3 0 -0.19 -0.72) upright (vec3 0.13 0.13 0.05)
 
-    -- claw root
-    , part cubeMesh 0.8 steel (vec3 0 0.08 -0.69) (vec3 0.08 0.08 0.09)
+                    -- claw root
+                    , part cubeMesh 0.8 steel (vec3 0 0.08 -0.69) (vec3 0.08 0.08 0.09)
 
-    -- nail puller: two prongs curving up and back with a gap between
-    , partRot cubeMesh 0.8 steel (vec3 -0.035 0.14 -0.63) clawTilt (vec3 0.03 0.2 0.05)
-    , partRot cubeMesh 0.8 steel (vec3 0.035 0.14 -0.63) clawTilt (vec3 0.03 0.2 0.05)
-    ]
+                    -- nail puller: two prongs curving up and back with a gap between
+                    , partRot cubeMesh 0.8 steel (vec3 -0.035 0.14 -0.63) clawTilt (vec3 0.03 0.2 0.05)
+                    , partRot cubeMesh 0.8 steel (vec3 0.035 0.14 -0.63) clawTilt (vec3 0.03 0.2 0.05)
+                    ]
+           )
 
 
 {-| First-person cardboard box full of rats, rendered in view space so
@@ -1410,12 +1536,24 @@ type alias Vertex =
     { position : Vec3, normal : Vec3 }
 
 
+type alias TexturedVertex =
+    { position : Vec3, normal : Vec3, uv : Vec2 }
+
+
 type alias Uniforms =
     { mvp : Mat4, model : Mat4, shade : Float, grid : Float, tint : Vec3 }
 
 
+type alias TexturedUniforms =
+    { mvp : Mat4, model : Mat4, shade : Float, texture : Texture }
+
+
 type alias Varyings =
     { vNormal : Vec3, vWorld : Vec3, vDepth : Float }
+
+
+type alias TexturedVaryings =
+    { vNormal : Vec3, vWorld : Vec3, vDepth : Float, vUv : Vec2 }
 
 
 white : Vec3
@@ -1430,6 +1568,15 @@ entity mvp model shade grid tint mesh =
         fragmentShader
         mesh
         { mvp = mvp, model = model, shade = shade, grid = grid, tint = tint }
+
+
+texturedEntity : Mat4 -> Mat4 -> Float -> Texture -> WebGL.Mesh TexturedVertex -> WebGL.Entity
+texturedEntity mvp model shade texture mesh =
+    WebGL.entityWith [ DepthTest.default ]
+        texturedVertexShader
+        texturedFragmentShader
+        mesh
+        { mvp = mvp, model = model, shade = shade, texture = texture }
 
 
 floorMesh : WebGL.Mesh Vertex
@@ -1595,6 +1742,57 @@ fragmentShader =
                 float line = 1.0 - smoothstep(0.0, 0.04, min(g.x, g.y));
                 c = mix(c, 0.55, line * 0.5);
             }
+            // Gentle indoor haze into the clear color.
+            float fog = 1.0 - exp(-(vDepth * vDepth) / 140.0);
+            vec3 col = mix(vec3(c) * tint, vec3(0.04, 0.04, 0.05), fog);
+            gl_FragColor = vec4(col, 1.0);
+        }
+    |]
+
+
+texturedVertexShader : WebGL.Shader TexturedVertex TexturedUniforms TexturedVaryings
+texturedVertexShader =
+    [glsl|
+        precision mediump float;
+        attribute vec3 position;
+        attribute vec3 normal;
+        attribute vec2 uv;
+        uniform mat4 mvp;
+        uniform mat4 model;
+        varying vec3 vNormal;
+        varying vec3 vWorld;
+        varying float vDepth;
+        varying vec2 vUv;
+
+        void main () {
+            gl_Position = mvp * vec4(position, 1.0);
+            vWorld = (model * vec4(position, 1.0)).xyz;
+            vNormal = (model * vec4(normal, 0.0)).xyz;
+            vDepth = gl_Position.w;
+            vUv = uv;
+        }
+    |]
+
+
+{-| Same lighting and haze as `fragmentShader`, with the tint sampled
+from the texture instead of passed as a uniform.
+-}
+texturedFragmentShader : WebGL.Shader {} TexturedUniforms TexturedVaryings
+texturedFragmentShader =
+    [glsl|
+        precision mediump float;
+        uniform float shade;
+        uniform sampler2D texture;
+        varying vec3 vNormal;
+        varying vec3 vWorld;
+        varying float vDepth;
+        varying vec2 vUv;
+
+        void main () {
+            vec3 L = normalize(vec3(0.4, 0.9, 0.35));
+            float d = max(dot(normalize(vNormal), L), 0.0);
+            float c = shade * (0.35 + 0.65 * d);
+            vec3 tint = texture2D(texture, vUv).rgb;
             // Gentle indoor haze into the clear color.
             float fog = 1.0 - exp(-(vDepth * vDepth) / 140.0);
             vec3 col = mix(vec3(c) * tint, vec3(0.04, 0.04, 0.05), fog);
