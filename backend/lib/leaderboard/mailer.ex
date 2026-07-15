@@ -99,21 +99,31 @@ defmodule Leaderboard.Mailer do
   end
 
   defp config do
-    username = System.get_env("SMTP_USERNAME")
-    password = System.get_env("SMTP_PASSWORD")
+    username = env("SMTP_USERNAME", nil)
+    password = env("SMTP_PASSWORD", nil)
 
-    if username in [nil, ""] or password in [nil, ""] do
+    if username == nil or password == nil do
       :not_configured
     else
       {:ok,
        %{
-         host: System.get_env("SMTP_HOST", "smtp.protonmail.ch"),
-         port: String.to_integer(System.get_env("SMTP_PORT", "587")),
+         host: env("SMTP_HOST", "smtp.protonmail.ch"),
+         port: String.to_integer(env("SMTP_PORT", "587")),
          username: username,
          password: password,
-         from: System.get_env("CONTACT_FROM", username),
-         to: System.get_env("CONTACT_TO", username)
+         from: env("CONTACT_FROM", username),
+         to: env("CONTACT_TO", username)
        }}
+    end
+  end
+
+  # docker-compose passes optional vars through as empty strings when they are
+  # not defined in .env; treat those the same as unset.
+  defp env(name, default) do
+    case System.get_env(name) do
+      nil -> default
+      "" -> default
+      value -> value
     end
   end
 end

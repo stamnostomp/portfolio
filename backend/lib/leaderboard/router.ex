@@ -43,7 +43,9 @@ defmodule Leaderboard.Router do
       case Leaderboard.Mailer.send_contact(name, email, message) do
         :ok -> send_json(conn, 201, %{status: "sent"})
         {:error, :not_configured} -> send_json(conn, 503, %{error: "contact form is not configured"})
-        {:error, :send_failed} -> send_json(conn, 502, %{error: "failed to send message"})
+        # 500 rather than 502/504: Cloudflare replaces those with its own
+        # error page, which hides the JSON body from the frontend.
+        {:error, :send_failed} -> send_json(conn, 500, %{error: "failed to send message"})
       end
     else
       # Filled honeypot: report success so bots have nothing to learn from.
