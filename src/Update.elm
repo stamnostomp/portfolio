@@ -10,6 +10,7 @@ import Types exposing (Page(..))
 import Http
 import BlogContent.OrgParser as OrgParser
 import Dict
+import Pages.Contact
 import Pages.Games.Leaderboard as Leaderboard
 import Pages.Games.MissileCommand as MissileCommand
 import Pages.Games.RatSnatcher as RatSnatcher
@@ -724,6 +725,20 @@ update msg model =
             ( { model | leaderboard = leaderboard }
             , Cmd.map LeaderboardMsg lbCmd
             )
+
+        ContactPageMsg subMsg ->
+            case subMsg of
+                Pages.Contact.Close ->
+                    update CloseContent model
+
+                _ ->
+                    let
+                        ( contactForm, contactCmd ) =
+                            Pages.Contact.update subMsg model.contactForm
+                    in
+                    ( { model | contactForm = contactForm }
+                    , Cmd.map ContactPageMsg contactCmd
+                    )
 
         OpenGame id ->
             -- Start the chosen game fresh; ignore ids without a game yet.

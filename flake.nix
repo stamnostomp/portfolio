@@ -26,6 +26,13 @@
         '';
 
         startBackend = pkgs.writeShellScriptBin "start-backend" ''
+          # Load SMTP/contact-form secrets; docker-compose reads .env itself,
+          # but a local mix run does not.
+          if [ -f .env ]; then
+            set -a
+            . ./.env
+            set +a
+          fi
           cd backend && mix deps.get && mix run --no-halt
         '';
 

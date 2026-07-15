@@ -7,6 +7,7 @@ defmodule Leaderboard.Application do
 
     children = [
       Leaderboard.Store,
+      Leaderboard.RateLimit,
       {Bandit, plug: Leaderboard.Router, port: port}
     ]
 

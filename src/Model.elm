@@ -18,6 +18,7 @@ import BlogContent.Types exposing (BlogPost)
 import Http
 import Json.Decode as Decode
 import Dict exposing (Dict)
+import Pages.Contact
 import Pages.Games.Leaderboard as Leaderboard
 import Pages.Games.MissileCommand as MissileCommand
 import Pages.Games.RatSnatcher as RatSnatcher
@@ -88,6 +89,9 @@ type alias Model =
     , selectedGame : Maybe String -- which game is open on the Games page (Nothing = list)
     , gameExpand : Float -- eases 0 -> 1 while a game is open; grows the goop rectangle to frame it
     , leaderboard : Leaderboard.Model -- game-over name entry + high scores overlay
+
+    -- Contact form
+    , contactForm : Pages.Contact.Model
     }
 
 
@@ -153,6 +157,8 @@ type Msg
     | CloseGame
     | EscapePressed
     | LeaderboardMsg Leaderboard.Msg
+      -- Contact form
+    | ContactPageMsg Pages.Contact.Msg
 
 
 
@@ -212,6 +218,9 @@ init flags =
       , selectedGame = Nothing
       , gameExpand = 0
       , leaderboard = Leaderboard.init
+
+      -- Initialize contact form
+      , contactForm = Pages.Contact.init
       }
     , Cmd.none
     )

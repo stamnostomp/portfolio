@@ -1,23 +1,140 @@
-module Pages.Contact exposing (view)
+module Pages.Contact exposing (Model, Msg(..), init, update, view)
 
 import Html exposing (..)
 import Html.Attributes as Attr
-import Html.Events exposing (onClick, onFocus, onInput, stopPropagationOn)
+import Html.Events exposing (onInput, stopPropagationOn)
+import Http
 import Json.Decode as Decode
+import Json.Encode as Encode
 
 
 
 -- Compact goop-themed contact page with Tachyons CSS
--- Define a message type for internal use
+-- Form state + submission to POST /api/contact
 
 
-type ContactMsg
+type Status
+    = Idle
+    | Sending
+    | Sent
+    | Failed String
+
+
+type alias Model =
+    { name : String
+    , email : String
+    , message : String
+    , website : String -- honeypot: hidden field, stays empty for humans
+    , status : Status
+    }
+
+
+type Msg
     = NoOp
     | Close
+    | NameChanged String
+    | EmailChanged String
+    | MessageChanged String
+    | WebsiteChanged String
+    | Submit
+    | GotResult (Result Http.Error ())
 
 
-view : Html ContactMsg
-view =
+init : Model
+init =
+    { name = ""
+    , email = ""
+    , message = ""
+    , website = ""
+    , status = Idle
+    }
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        Close ->
+            -- Handled by the main update (closes the page)
+            ( model, Cmd.none )
+
+        NameChanged value ->
+            ( { model | name = value }, Cmd.none )
+
+        EmailChanged value ->
+            ( { model | email = value }, Cmd.none )
+
+        MessageChanged value ->
+            ( { model | message = value }, Cmd.none )
+
+        WebsiteChanged value ->
+            ( { model | website = value }, Cmd.none )
+
+        Submit ->
+            if model.status == Sending then
+                ( model, Cmd.none )
+
+            else if
+                String.isEmpty (String.trim model.name)
+                    || String.isEmpty (String.trim model.email)
+                    || String.isEmpty (String.trim model.message)
+            then
+                ( { model | status = Failed "ALL FIELDS REQUIRED" }, Cmd.none )
+
+            else
+                ( { model | status = Sending }
+                , Http.post
+                    { url = "/api/contact"
+                    , body = Http.jsonBody (encodeForm model)
+                    , expect = Http.expectWhatever GotResult
+                    }
+                )
+
+        GotResult (Ok ()) ->
+            ( { model | status = Sent, name = "", email = "", message = "" }
+            , Cmd.none
+            )
+
+        GotResult (Err err) ->
+            ( { model | status = Failed (errorText err) }, Cmd.none )
+
+
+encodeForm : Model -> Encode.Value
+encodeForm model =
+    Encode.object
+        [ ( "name", Encode.string (String.trim model.name) )
+        , ( "email", Encode.string (String.trim model.email) )
+        , ( "message", Encode.string (String.trim model.message) )
+        , ( "website", Encode.string model.website )
+        ]
+
+
+errorText : Http.Error -> String
+errorText err =
+    case err of
+        Http.BadStatus 429 ->
+            "TOO MANY MESSAGES — TRY AGAIN LATER"
+
+        Http.BadStatus 422 ->
+            "CHECK YOUR EMAIL ADDRESS"
+
+        Http.BadStatus 503 ->
+            "MAIL OFFLINE — EMAIL DIRECTLY INSTEAD"
+
+        Http.Timeout ->
+            "TRANSMISSION TIMED OUT — TRY AGAIN"
+
+        Http.NetworkError ->
+            "NETWORK ERROR — TRY AGAIN"
+
+        _ ->
+            "TRANSMISSION FAILED — TRY AGAIN"
+
+
+view : Model -> Html Msg
+view model =
     div
         [ Attr.class "flex flex-column items-center justify-center h-100 pa3 monospace bg-transparent relative"
         ]
@@ -39,7 +156,6 @@ view =
                 [ Attr.class "bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer relative overflow-hidden ttu goop-close-button fr"
                 , Attr.style "min-width" "70px"
                 , Attr.style "height" "32px"
-                , onClick Close
                 , stopPropagationOn "click" (Decode.succeed ( Close, True ))
                 ]
                 [ text "✕ CLOSE" ]
@@ -68,9 +184,24 @@ view =
                 , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
                 ]
                 [ -- Form fields with proper event handling
-                  goopFormField "NAME" "text" "Your name..." "field-1"
-                , goopFormField "EMAIL" "email" "your@email.com..." "field-2"
-                , goopTextArea "MESSAGE" "Your message..." "field-3"
+                  goopFormField "NAME" "text" "Your name..." "field-1" model.name NameChanged
+                , goopFormField "EMAIL" "email" "your@email.com..." "field-2" model.email EmailChanged
+                , goopTextArea "MESSAGE" "Your message..." "field-3" model.message MessageChanged
+
+                -- Honeypot: invisible to humans, bots fill it in
+                , input
+                    [ Attr.type_ "text"
+                    , Attr.id "field-website"
+                    , Attr.tabindex -1
+                    , Attr.autocomplete False
+                    , Attr.value model.website
+                    , Attr.style "position" "absolute"
+                    , Attr.style "left" "-9999px"
+                    , Attr.style "opacity" "0"
+                    , Attr.attribute "aria-hidden" "true"
+                    , onInput WebsiteChanged
+                    ]
+                    []
 
                 -- Send button with click event blocking
                 , div
@@ -81,9 +212,18 @@ view =
                         [ Attr.class "bg-transparent pa3 ph4 f6 fw6 monospace tracked pointer relative overflow-hidden ttu transition-all transmit-button"
                         , Attr.style "color" "rgba(192, 192, 192, 0.9)"
                         , Attr.style "border" "2px solid rgba(192, 192, 192, 0.3)"
-                        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                        , Attr.disabled (model.status == Sending)
+                        , stopPropagationOn "click" (Decode.succeed ( Submit, True ))
                         ]
-                        [ text "SEND" ]
+                        [ text
+                            (if model.status == Sending then
+                                "SENDING..."
+
+                             else
+                                "SEND"
+                            )
+                        ]
+                    , viewStatus model.status
                     ]
                 ]
             ]
@@ -268,6 +408,11 @@ view =
                         rgba(0, 0, 0, 0.05) 100%) !important;
                 }
 
+                .transmit-button:disabled {
+                    opacity: 0.5;
+                    cursor: wait;
+                }
+
                 .transmit-button::before {
                     content: '';
                     position: absolute;
@@ -320,6 +465,17 @@ view =
                     background: rgba(192, 192, 192, 0.3);
                 }
 
+                /* Transmission status line */
+                .transmit-status {
+                    letter-spacing: 0.1em;
+                    animation: status-flicker 2s ease-in-out infinite;
+                }
+
+                @keyframes status-flicker {
+                    0%, 100% { opacity: 0.85; }
+                    50% { opacity: 1; }
+                }
+
                 /* Breathing animation */
                 .transmission-interface {
                     animation: interface-breathe 6s ease-in-out infinite;
@@ -339,10 +495,39 @@ view =
 
 
 
+-- Status line under the send button
+
+
+viewStatus : Status -> Html Msg
+viewStatus status =
+    case status of
+        Idle ->
+            text ""
+
+        Sending ->
+            statusLine "rgba(192, 192, 192, 0.7)" "TRANSMITTING..."
+
+        Sent ->
+            statusLine "rgba(140, 220, 160, 0.9)" "MESSAGE SENT"
+
+        Failed reason ->
+            statusLine "rgba(230, 130, 130, 0.9)" reason
+
+
+statusLine : String -> String -> Html Msg
+statusLine color message =
+    p
+        [ Attr.class "f7 mt3 mb0 monospace ttu transmit-status"
+        , Attr.style "color" color
+        ]
+        [ text message ]
+
+
+
 -- Contact node with Tachyons
 
 
-goopContactNode : String -> String -> String -> String -> Html ContactMsg
+goopContactNode : String -> String -> String -> String -> Html Msg
 goopContactNode title value link nodeId =
     a
         [ Attr.href link
@@ -370,8 +555,8 @@ goopContactNode title value link nodeId =
 -- Form field with click event blocking
 
 
-goopFormField : String -> String -> String -> String -> Html ContactMsg
-goopFormField labelText inputType placeholder fieldId =
+goopFormField : String -> String -> String -> String -> String -> (String -> Msg) -> Html Msg
+goopFormField labelText inputType placeholder fieldId value toMsg =
     div
         [ Attr.class "mb3"
         , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
@@ -385,7 +570,9 @@ goopFormField labelText inputType placeholder fieldId =
             [ Attr.type_ inputType
             , Attr.placeholder placeholder
             , Attr.id fieldId
+            , Attr.value value
             , Attr.class "w-100 pa3 monospace f6 goop-field"
+            , onInput toMsg
             , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
             , stopPropagationOn "focus" (Decode.succeed ( NoOp, True ))
             ]
@@ -397,8 +584,8 @@ goopFormField labelText inputType placeholder fieldId =
 -- Textarea with click event blocking
 
 
-goopTextArea : String -> String -> String -> Html ContactMsg
-goopTextArea labelText placeholder fieldId =
+goopTextArea : String -> String -> String -> String -> (String -> Msg) -> Html Msg
+goopTextArea labelText placeholder fieldId value toMsg =
     div
         [ Attr.class "mb3"
         , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
@@ -412,8 +599,10 @@ goopTextArea labelText placeholder fieldId =
             [ Attr.placeholder placeholder
             , Attr.id fieldId
             , Attr.rows 3
+            , Attr.value value
             , Attr.class "w-100 pa3 monospace f6 goop-field"
             , Attr.style "resize" "vertical"
+            , onInput toMsg
             , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
             , stopPropagationOn "focus" (Decode.succeed ( NoOp, True ))
             ]

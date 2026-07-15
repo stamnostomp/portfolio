@@ -12,6 +12,14 @@ services:
     restart: unless-stopped
     volumes:
       - leaderboard-data:/data
+    environment:
+      # Contact form SMTP relay; secrets come from .env (see .env.example).
+      SMTP_HOST: ${SMTP_HOST:-smtp.protonmail.ch}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      CONTACT_TO: ${CONTACT_TO:-}
+      CONTACT_FROM: ${CONTACT_FROM:-}
 
 volumes:
   leaderboard-data:

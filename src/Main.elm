@@ -712,7 +712,7 @@ viewPageContent page model =
             Html.map (\_ -> CloseContent) Pages.About.view
 
         Contact ->
-            Html.map (\_ -> CloseContent) Pages.Contact.view
+            Html.map ContactPageMsg (Pages.Contact.view model.contactForm)
 
         Services ->
             Html.map (\_ -> CloseContent) Pages.Services.view
