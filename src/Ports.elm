@@ -1,7 +1,7 @@
 -- src/Ports.elm - Port for content bounds detection
 
 
-port module Ports exposing (contentBoundsChanged, exitPointerLock, playSound, pointerLockChanged, preloadSound, requestPointerLock)
+port module Ports exposing (contentBoundsChanged, exitPointerLock, playMusic, playSound, pointerLockChanged, preloadSound, requestPointerLock, stopMusic)
 
 -- Port to receive content bounds changes from JavaScript
 
@@ -42,3 +42,17 @@ port playSound : String -> Cmd msg
 
 
 port preloadSound : String -> Cmd msg
+
+
+
+-- Loop the track at the given URL as background music (one at a time)
+
+
+port playMusic : String -> Cmd msg
+
+
+
+-- Stop the looping background music, if any
+
+
+port stopMusic : () -> Cmd msg

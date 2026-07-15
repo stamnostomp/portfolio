@@ -445,7 +445,13 @@ update msg model =
             -- Start transition back to goop nav (and clear any open game)
             case model.transitionState of
                 ShowingContent fromPage _ ->
-                    ( { model | transitionState = TransitioningIn 0.0 fromPage, selectedGame = Nothing }, Cmd.none )
+                    ( { model | transitionState = TransitioningIn 0.0 fromPage, selectedGame = Nothing }
+                    , if model.selectedGame /= Nothing then
+                        Ports.stopMusic ()
+
+                      else
+                        Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -767,7 +773,9 @@ update msg model =
 
         CloseGame ->
             -- Back to the games list (without leaving the Games page)
-            ( { model | selectedGame = Nothing, leaderboard = Leaderboard.init }, Cmd.none )
+            ( { model | selectedGame = Nothing, leaderboard = Leaderboard.init }
+            , Ports.stopMusic ()
+            )
 
         EscapePressed ->
             -- Esc backs out of an open game to the list, otherwise closes the page.

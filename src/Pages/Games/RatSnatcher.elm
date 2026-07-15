@@ -252,6 +252,12 @@ hitSfxUrl =
     "sfx/EEnE Bite 2.wav"
 
 
+{-| Looping background track, stopped by Update.elm when the game closes. -}
+musicUrl : String
+musicUrl =
+    "sfx/rat_background_music.mp3"
+
+
 {-| Blender-made hammer model and its palette texture. -}
 hammerObjUrl : String
 hammerObjUrl =
@@ -273,6 +279,12 @@ hammerModelScale =
 hammerModelShift : Float
 hammerModelShift =
     -0.27
+
+
+{-| Nudge right (screen-wise) so the face centers on the landing mark. -}
+hammerModelSideOffset : Float
+hammerModelSideOffset =
+    0.05
 
 
 init : ( GameState, Cmd Msg )
@@ -302,6 +314,7 @@ init =
       }
     , Cmd.batch
         [ Ports.preloadSound hitSfxUrl
+        , Ports.playMusic musicUrl
         , Http.get
             { url = hammerObjUrl
             , expect = Obj.Decode.expectObj GotHammerMesh Length.meters hammerMeshDecoder
@@ -1290,7 +1303,7 @@ viewHammer mvp state =
                     let
                         model =
                             Mat4.mul root
-                                (Mat4.mul (Mat4.makeTranslate (vec3 0 0 hammerModelShift))
+                                (Mat4.mul (Mat4.makeTranslate (vec3 hammerModelSideOffset 0 hammerModelShift))
                                     (Mat4.mul (Mat4.makeRotate (pi / 2) (vec3 0 0 1))
                                         (Mat4.mul (Mat4.makeRotate (-pi / 2) (vec3 1 0 0))
                                             (Mat4.makeScale

@@ -431,6 +431,39 @@
           });
         });
       }
+      // Looping background music: one track at a time, quiet under the sfx.
+      var musicSource = null;
+      function stopMusic() {
+        if (musicSource) {
+          musicSource.stop();
+          musicSource = null;
+        }
+      }
+      if (app.ports && app.ports.playMusic) {
+        app.ports.playMusic.subscribe(function(url) {
+          loadSfx(url).then(function(buffer) {
+            stopMusic();
+            var ctx = sfxContext();
+            if (ctx.state === 'suspended') {
+              ctx.resume();
+            }
+            var source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.loop = true;
+            var gain = ctx.createGain();
+            gain.gain.value = 0.15;
+            source.connect(gain);
+            gain.connect(ctx.destination);
+            source.start();
+            musicSource = source;
+          }).catch(function(err) {
+            console.warn('playMusic failed:', err);
+          });
+        });
+      }
+      if (app.ports && app.ports.stopMusic) {
+        app.ports.stopMusic.subscribe(stopMusic);
+      }
       if (app.ports && app.ports.playSound) {
         app.ports.playSound.subscribe(function(url) {
           loadSfx(url).then(function(buffer) {
@@ -440,7 +473,10 @@
             }
             var source = ctx.createBufferSource();
             source.buffer = buffer;
-            source.connect(ctx.destination);
+            var gain = ctx.createGain();
+            gain.gain.value = 0.4;
+            source.connect(gain);
+            gain.connect(ctx.destination);
             source.start();
           }).catch(function(err) {
             console.warn('playSound failed:', err);
