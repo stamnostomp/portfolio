@@ -233,6 +233,12 @@ vantagePitch =
 -- INIT
 
 
+{-| Sound effect for the hammer strike. -}
+hitSfxUrl : String
+hitSfxUrl =
+    "sfx/EEnE Bite 2.wav"
+
+
 init : ( GameState, Cmd Msg )
 init =
     ( { camPos = vec3 0 eyeHeight 4.6
@@ -256,7 +262,7 @@ init =
       , elapsed = 0
       , splats = []
       }
-    , Cmd.none
+    , Ports.preloadSound hitSfxUrl
     )
 
 
@@ -463,7 +469,7 @@ fire state =
                     , rats = rats2
                     , splats = List.concatMap spawnSplats killed ++ state.splats
                   }
-                , Ports.playSound "sfx/EEnE Bite 2.wav"
+                , Ports.playSound hitSfxUrl
                 )
 
         Cleared ->

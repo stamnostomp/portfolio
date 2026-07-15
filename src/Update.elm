@@ -754,8 +754,12 @@ update msg model =
                     )
 
                 "rat-snatcher" ->
-                    ( { model | selectedGame = Just id, ratGame = Tuple.first RatSnatcher.init, leaderboard = Leaderboard.init }
-                    , Cmd.none
+                    let
+                        ( ratGame, ratCmd ) =
+                            RatSnatcher.init
+                    in
+                    ( { model | selectedGame = Just id, ratGame = ratGame, leaderboard = Leaderboard.init }
+                    , Cmd.map RatGameMsg ratCmd
                     )
 
                 _ ->

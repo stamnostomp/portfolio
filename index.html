@@ -406,15 +406,43 @@
       } else {
         console.warn('requestPointerLock port missing from Elm app');
       }
+      // Sound effects via Web Audio: decoded buffers start instantly,
+      // unlike <audio> elements which can lag on their first play.
+      var sfxCtx = null;
+      var sfxBuffers = {};
+      function sfxContext() {
+        if (!sfxCtx) {
+          sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return sfxCtx;
+      }
+      function loadSfx(url) {
+        if (!sfxBuffers[url]) {
+          sfxBuffers[url] = fetch(encodeURI(url))
+            .then(function(res) { return res.arrayBuffer(); })
+            .then(function(data) { return sfxContext().decodeAudioData(data); });
+        }
+        return sfxBuffers[url];
+      }
+      if (app.ports && app.ports.preloadSound) {
+        app.ports.preloadSound.subscribe(function(url) {
+          loadSfx(url).catch(function(err) {
+            console.warn('preloadSound failed:', err);
+          });
+        });
+      }
       if (app.ports && app.ports.playSound) {
-        var sfxCache = {};
         app.ports.playSound.subscribe(function(url) {
-          if (!sfxCache[url]) {
-            sfxCache[url] = new Audio(encodeURI(url));
-          }
-          // Clone so rapid triggers overlap instead of cutting off.
-          var sound = sfxCache[url].cloneNode();
-          sound.play().catch(function(err) {
+          loadSfx(url).then(function(buffer) {
+            var ctx = sfxContext();
+            if (ctx.state === 'suspended') {
+              ctx.resume();
+            }
+            var source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            source.start();
+          }).catch(function(err) {
             console.warn('playSound failed:', err);
           });
         });
