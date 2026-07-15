@@ -173,11 +173,11 @@ fragmentShader =
 
                 // Calculate shapes - morph from circle to organic rectangle
                 float currentCenterRadius = baseRadius + centerGrowProgress * 0.2; // Slight circle growth
-                // Rectangle sized to match content square (85% of viewport)
+                // Rectangle sized to match content square (80vw x 76vh)
                 float aspectRatio = resolution.x / resolution.y;
                 // Rectangle target size; grows out to the game panel's
                 // border (96vw x 96vh) while a game is open.
-                vec2 baseRect = vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71);
+                vec2 baseRect = vec2(0.80 * aspectRatio, 0.76);
                 vec2 gameRect = vec2(0.96 * aspectRatio, 0.96);
                 vec2 rectSize = mix(baseRect, gameRect, gameExpand) * centerGrowProgress;
 
@@ -225,7 +225,7 @@ fragmentShader =
 
                 // Start with organic rectangle, morph to circle, then shrink
                 float aspectRatio = resolution.x / resolution.y;
-                vec2 rectSizeBase = mix(vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71), vec2(0.96 * aspectRatio, 0.96), gameExpand);
+                vec2 rectSizeBase = mix(vec2(0.80 * aspectRatio, 0.76), vec2(0.96 * aspectRatio, 0.96), gameExpand);
                 vec2 rectSize = rectSizeBase * (1.0 - centerShrinkProgress);
                 float rectangleShape = deformableRectangle(p, center, rectSize, 0.05);
 

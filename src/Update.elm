@@ -342,13 +342,13 @@ update msg model =
                     Vec2.getY model.resolution
 
                 -- Match shader's rectangle calculation exactly
-                -- Rectangle half-height in shader units: 0.85 * 0.71 = 0.6035
+                -- Rectangle half-height in shader units: 0.76
                 squareHeight =
-                    viewportHeight * 0.6035
+                    viewportHeight * 0.76
 
-                -- Rectangle half-width in shader units: 0.85 * aspectRatio * 0.85 = 0.7225 * aspectRatio
+                -- Rectangle half-width in shader units: 0.80 * aspectRatio
                 squareWidth =
-                    viewportWidth * 0.7225
+                    viewportWidth * 0.80
 
                 leftPos =
                     centerX - squareWidth / 2

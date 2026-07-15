@@ -206,19 +206,19 @@ calculateContentSquareDimensions resolution =
             Vec2.getY resolution
 
         -- Match the shader's rectangle calculation exactly
-        -- Shader draws: vec2(0.85 * aspectRatio * 0.85, 0.85 * 0.71)
+        -- Shader draws: vec2(0.80 * aspectRatio, 0.76)
         -- These are half-extents in shader coordinates
         -- Shader coordinate system: vertical [-1,1] maps to viewport height
         -- So 1 shader unit = viewport height / 2
-        -- Rectangle half-height in shader units: 0.85 * 0.71 = 0.6035
-        -- Full height: 2 * 0.6035 * (viewport height / 2) = 0.6035 * viewport height
+        -- Rectangle half-height in shader units: 0.76
+        -- Full height: 2 * 0.76 * (viewport height / 2) = 0.76 * viewport height
         squareHeight =
-            viewportHeight * 0.6035
+            viewportHeight * 0.76
 
-        -- Rectangle half-width in shader units: 0.85 * aspectRatio * 0.85 = 0.7225 * aspectRatio
-        -- Full width: 2 * 0.7225 * aspectRatio * (viewport width / (2 * aspectRatio)) = 0.7225 * viewport width
+        -- Rectangle half-width in shader units: 0.80 * aspectRatio
+        -- Full width: 2 * 0.80 * aspectRatio * (viewport width / (2 * aspectRatio)) = 0.80 * viewport width
         squareWidth =
-            viewportWidth * 0.7225
+            viewportWidth * 0.80
 
         -- Center the content
         leftPos =
