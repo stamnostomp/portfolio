@@ -1,4 +1,4 @@
-module Pages.Games.Shooter exposing (GameState, Msg, init, subscriptions, update, view)
+module Pages.Games.Shooter exposing (GameState, Msg, finalScore, init, subscriptions, update, view)
 
 import Array exposing (Array)
 import Browser.Events
@@ -88,6 +88,16 @@ type Msg
     | Key Bool String
     | RequestLock
     | LockChanged Bool
+
+
+{-| The run's score once the player is dead; Nothing while still playing. -}
+finalScore : GameState -> Maybe Int
+finalScore state =
+    if state.dead then
+        Just state.score
+
+    else
+        Nothing
 
 
 
@@ -1647,7 +1657,9 @@ view state =
         , Html.Events.on "mousemove" lookDecoder
         , Html.Events.on "mousedown"
             (Decode.succeed
-                (if state.locked then
+                -- Dead accepts the restart click even without pointer lock
+                -- (the lock is released for the game-over screen).
+                (if state.locked || state.dead then
                     Fire
 
                  else
@@ -1680,10 +1692,8 @@ view state =
 
           else
             text ""
-        , if state.dead then
-            viewDeathScreen state.score
-
-          else if state.locked then
+        , if state.dead || state.locked then
+            -- The shared leaderboard overlay is the death screen.
             text ""
 
           else
@@ -1870,31 +1880,6 @@ viewGun proj state =
     , part cubeMesh 0.85 (vec3 0 0.14 -0.84) (vec3 0.02 0.06 0.04)
     ]
         ++ flash
-
-
-viewDeathScreen : Int -> Html msg
-viewDeathScreen score =
-    div
-        [ Attr.class "absolute absolute--fill flex flex-column items-center justify-center tracked"
-        , Attr.style "background" "rgba(0,0,0,0.7)"
-        ]
-        [ div
-            [ Attr.class "f1 fw6"
-            , Attr.style "color" "#ff4040"
-            , Attr.style "text-shadow" "0 0 18px rgba(255,0,0,0.6)"
-            ]
-            [ text "YOU DIED" ]
-        , div
-            [ Attr.class "f4 mt3"
-            , Attr.style "color" "rgba(220,220,220,0.9)"
-            ]
-            [ text ("SCORE " ++ String.fromInt score) ]
-        , div
-            [ Attr.class "f6 mt4 blink"
-            , Attr.style "color" "rgba(180,180,180,0.8)"
-            ]
-            [ text "CLICK TO RESTART" ]
-        ]
 
 
 viewLockPrompt : Html msg

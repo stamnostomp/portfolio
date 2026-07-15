@@ -1,4 +1,4 @@
-module Pages.Games.RatSnatcher exposing (GameState, Msg, init, subscriptions, update, view)
+module Pages.Games.RatSnatcher exposing (GameState, Msg, accuracy, finalScore, formatTime, init, subscriptions, update, view)
 
 import Browser.Events
 import Html exposing (Html, div, text)
@@ -36,7 +36,7 @@ type alias GameState =
     , hammerZ : Float
     , swing : Float
     , swings : Int
-    , whacked : Int
+    , hits : Int -- swings that connected with at least one rat
     , elapsed : Float
     , splats : List Splat
     }
@@ -252,7 +252,7 @@ init =
       , hammerZ = 0
       , swing = 0
       , swings = 0
-      , whacked = 0
+      , hits = 0
       , elapsed = 0
       , splats = []
       }
@@ -385,7 +385,9 @@ update msg state =
             ( { state | keys = keys }, Cmd.none )
 
         Fire ->
-            if not state.locked then
+            -- Cleared accepts the restart click even without pointer lock
+            -- (the lock is released for the game-over screen).
+            if not state.locked && state.phase /= Cleared then
                 ( state, Cmd.none )
 
             else
@@ -424,7 +426,7 @@ fire state =
                     , hammerZ = 0
                     , swing = 0
                     , swings = 0
-                    , whacked = 0
+                    , hits = 0
                     , elapsed = 0
                     , splats = []
                   }
@@ -450,7 +452,14 @@ fire state =
                 ( { state
                     | swing = 1
                     , swings = state.swings + 1
-                    , whacked = state.whacked + List.length killed
+                    , hits =
+                        state.hits
+                            + (if List.isEmpty killed then
+                                0
+
+                               else
+                                1
+                              )
                     , rats = rats2
                     , splats = List.concatMap spawnSplats killed ++ state.splats
                   }
@@ -975,7 +984,7 @@ view state =
         , Html.Events.on "mousemove" lookDecoder
         , Html.Events.on "mousedown"
             (Decode.succeed
-                (if state.locked then
+                (if state.locked || state.phase == Cleared then
                     Fire
 
                  else
@@ -1012,12 +1021,7 @@ view state =
 
           else
             text ""
-        , if state.phase == Cleared then
-            viewClearedScreen state
-
-          else
-            text ""
-        , if state.locked then
+        , if state.locked || state.phase == Cleared then
             text ""
 
           else
@@ -1123,7 +1127,7 @@ viewHammer mvp state =
     let
         -- Raised at rest; at a swing's peak the face meets the tabletop.
         tilt =
-            0.33 + (1 - state.swing) * 0.75
+            0.24 + (1 - state.swing) * 0.8
 
         -- Cocked a touch clockwise so the claw end sits to the player's right.
         cant =
@@ -1178,11 +1182,11 @@ viewHammer mvp state =
     -- eye of the head, seated on the handle's end
     , part cubeMesh 0.85 steel (vec3 0 0.01 -0.72) (vec3 0.09 0.12 0.13)
 
-    -- neck dropping to the striking face
-    , partRot prismMesh 0.85 steel (vec3 0 -0.12 -0.72) upright (vec3 0.09 0.09 0.26)
+    -- short neck dropping to the striking face
+    , partRot prismMesh 0.85 steel (vec3 0 -0.1 -0.72) upright (vec3 0.09 0.09 0.14)
 
     -- striking face, slightly flared
-    , partRot prismMesh 0.9 steel (vec3 0 -0.26 -0.72) upright (vec3 0.13 0.13 0.05)
+    , partRot prismMesh 0.9 steel (vec3 0 -0.19 -0.72) upright (vec3 0.13 0.13 0.05)
 
     -- claw root
     , part cubeMesh 0.8 steel (vec3 0 0.08 -0.69) (vec3 0.08 0.08 0.09)
@@ -1269,29 +1273,17 @@ viewBox proj state =
         ++ peeker 0.13 2.1
 
 
-viewClearedScreen : GameState -> Html msg
-viewClearedScreen state =
-    div
-        [ Attr.class "absolute absolute--fill flex flex-column items-center justify-center tracked"
-        , Attr.style "background" "rgba(0,0,0,0.7)"
-        ]
-        [ div
-            [ Attr.class "f1 fw6"
-            , Attr.style "color" "#7fdc7f"
-            , Attr.style "text-shadow" "0 0 18px rgba(80,255,80,0.5)"
-            ]
-            [ text "TABLE CLEARED" ]
-        , div
-            [ Attr.class "f4 mt3"
-            , Attr.style "color" "rgba(220,220,220,0.9)"
-            ]
-            [ text ("TIME " ++ formatTime state.elapsed ++ "  ·  ACCURACY " ++ String.fromInt (accuracy state) ++ "%") ]
-        , div
-            [ Attr.class "f6 mt4 blink"
-            , Attr.style "color" "rgba(180,180,180,0.8)"
-            ]
-            [ text "CLICK TO RESTART" ]
-        ]
+{-| The run's score once the table is cleared; Nothing while still playing.
+Accuracy dominates, with a bonus for finishing inside a minute.
+-}
+finalScore : GameState -> Maybe Int
+finalScore state =
+    case state.phase of
+        Cleared ->
+            Just (accuracy state * 10 + Basics.max 0 (600 - round (state.elapsed / 100)))
+
+        _ ->
+            Nothing
 
 
 accuracy : GameState -> Int
@@ -1300,7 +1292,7 @@ accuracy state =
         100
 
     else
-        round (100 * toFloat state.whacked / toFloat state.swings)
+        round (100 * toFloat state.hits / toFloat state.swings)
 
 
 formatTime : Float -> String

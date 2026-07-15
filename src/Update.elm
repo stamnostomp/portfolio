@@ -10,10 +10,12 @@ import Types exposing (Page(..))
 import Http
 import BlogContent.OrgParser as OrgParser
 import Dict
+import Pages.Games.Leaderboard as Leaderboard
 import Pages.Games.MissileCommand as MissileCommand
 import Pages.Games.RatSnatcher as RatSnatcher
 import Pages.Games.Shooter as Shooter
 import Pages.Links
+import Ports
 
 
 
@@ -686,6 +688,9 @@ update msg model =
             ( { model | missileGame = newGameState }
             , Cmd.map MissileGameMsg gameCmd
             )
+                |> withLeaderboard "missile-command"
+                    (MissileCommand.finalScore model.missileGame)
+                    (MissileCommand.finalScore newGameState)
 
         ShooterGameMsg subMsg ->
             let
@@ -695,6 +700,9 @@ update msg model =
             ( { model | shooterGame = newGameState }
             , Cmd.map ShooterGameMsg gameCmd
             )
+                |> withLeaderboard "shooter"
+                    (Shooter.finalScore model.shooterGame)
+                    (Shooter.finalScore newGameState)
 
         RatGameMsg subMsg ->
             let
@@ -704,22 +712,34 @@ update msg model =
             ( { model | ratGame = newGameState }
             , Cmd.map RatGameMsg gameCmd
             )
+                |> withLeaderboard "rat-snatcher"
+                    (RatSnatcher.finalScore model.ratGame)
+                    (RatSnatcher.finalScore newGameState)
+
+        LeaderboardMsg subMsg ->
+            let
+                ( leaderboard, lbCmd ) =
+                    Leaderboard.update subMsg model.leaderboard
+            in
+            ( { model | leaderboard = leaderboard }
+            , Cmd.map LeaderboardMsg lbCmd
+            )
 
         OpenGame id ->
             -- Start the chosen game fresh; ignore ids without a game yet.
             case id of
                 "missile-command" ->
-                    ( { model | selectedGame = Just id, missileGame = Tuple.first MissileCommand.init }
+                    ( { model | selectedGame = Just id, missileGame = Tuple.first MissileCommand.init, leaderboard = Leaderboard.init }
                     , Cmd.none
                     )
 
                 "shooter" ->
-                    ( { model | selectedGame = Just id, shooterGame = Tuple.first Shooter.init }
+                    ( { model | selectedGame = Just id, shooterGame = Tuple.first Shooter.init, leaderboard = Leaderboard.init }
                     , Cmd.none
                     )
 
                 "rat-snatcher" ->
-                    ( { model | selectedGame = Just id, ratGame = Tuple.first RatSnatcher.init }
+                    ( { model | selectedGame = Just id, ratGame = Tuple.first RatSnatcher.init, leaderboard = Leaderboard.init }
                     , Cmd.none
                     )
 
@@ -728,7 +748,7 @@ update msg model =
 
         CloseGame ->
             -- Back to the games list (without leaving the Games page)
-            ( { model | selectedGame = Nothing }, Cmd.none )
+            ( { model | selectedGame = Nothing, leaderboard = Leaderboard.init }, Cmd.none )
 
         EscapePressed ->
             -- Esc backs out of an open game to the list, otherwise closes the page.
@@ -738,6 +758,30 @@ update msg model =
 
                 Nothing ->
                     update CloseContent model
+
+
+
+{-| Open the leaderboard overlay when a game's run just ended (its final score
+went from Nothing to Just), and dismiss it when a new run starts. Releases the
+pointer lock on game over so the player can click and type in the name form.
+-}
+withLeaderboard : String -> Maybe Int -> Maybe Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+withLeaderboard game before after ( model, cmd ) =
+    case ( before, after ) of
+        ( Nothing, Just score ) ->
+            let
+                ( leaderboard, lbCmd ) =
+                    Leaderboard.start game score
+            in
+            ( { model | leaderboard = leaderboard }
+            , Cmd.batch [ cmd, Cmd.map LeaderboardMsg lbCmd, Ports.exitPointerLock () ]
+            )
+
+        ( Just _, Nothing ) ->
+            ( { model | leaderboard = Leaderboard.init }, cmd )
+
+        _ ->
+            ( model, cmd )
 
 
 

@@ -11,6 +11,7 @@ RUN nix --extra-experimental-features "nix-command flakes" build . \
 FROM nginx:alpine
 
 COPY --from=build /output/ /usr/share/nginx/html/
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Nix store files carry epoch (1970) mtimes, so nginx's Last-Modified/ETag
 # never change between builds and browsers cache the old elm.js forever.

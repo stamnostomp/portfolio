@@ -1,7 +1,7 @@
 -- src/Ports.elm - Port for content bounds detection
 
 
-port module Ports exposing (contentBoundsChanged, pointerLockChanged, requestPointerLock)
+port module Ports exposing (contentBoundsChanged, exitPointerLock, pointerLockChanged, requestPointerLock)
 
 -- Port to receive content bounds changes from JavaScript
 
@@ -14,6 +14,13 @@ port contentBoundsChanged : ({ width : Int, height : Int } -> msg) -> Sub msg
 
 
 port requestPointerLock : String -> Cmd msg
+
+
+
+-- Ask JS to release the pointer lock (e.g. so a form can be used)
+
+
+port exitPointerLock : () -> Cmd msg
 
 
 

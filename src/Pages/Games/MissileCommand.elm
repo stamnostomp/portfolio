@@ -1,4 +1,4 @@
-module Pages.Games.MissileCommand exposing (GameState, Msg, init, subscriptions, update, view)
+module Pages.Games.MissileCommand exposing (GameState, Msg, finalScore, init, subscriptions, update, view)
 
 import Browser
 import Browser.Events
@@ -95,6 +95,16 @@ init =
     ( GameState cities [] [] 0 3 False (Time.millisToPosix 0) (Vec2.vec2 0 0) False initialSeed 1 (missilesForWave 1 cities) 0 []
     , Cmd.none
     )
+
+{-| The run's score once the game is over; Nothing while still playing. -}
+finalScore : GameState -> Maybe Int
+finalScore state =
+    if state.gameOver then
+        Just state.score
+
+    else
+        Nothing
+
 
 -- UPDATE
 
@@ -228,7 +238,17 @@ update msg state =
             ( { state | mouseDown = down }, Cmd.none )
 
         LaunchAntiMissile ->
-            let
+            if state.gameOver then
+                -- The click that would fire an interceptor restarts instead.
+                init
+
+            else
+                launchAntiMissile state
+
+
+launchAntiMissile : GameState -> ( GameState, Cmd Msg )
+launchAntiMissile state =
+    let
                 -- Nearest base to the aim point that still has ammo (paired with
                 -- its index so we can deplete exactly that one).
                 firingBase =
@@ -722,15 +742,8 @@ viewHud state =
             ]
             [ text ("WAVE " ++ String.fromInt state.wave) ]
         , if state.gameOver then
-            div
-                [ Attr.class "absolute f3 fw6 tracked"
-                , Attr.style "left" "50%"
-                , Attr.style "top" "50%"
-                , Attr.style "transform" "translate(-50%, -50%)"
-                , Attr.style "color" "rgba(230, 230, 230, 0.95)"
-                , Attr.style "text-shadow" "0 0 14px rgba(200, 200, 200, 0.5)"
-                ]
-                [ text "GAME OVER" ]
+            -- The shared leaderboard overlay is the game-over screen.
+            text ""
 
           else if inBreather state then
             div

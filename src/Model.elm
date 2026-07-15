@@ -18,6 +18,7 @@ import BlogContent.Types exposing (BlogPost)
 import Http
 import Json.Decode as Decode
 import Dict exposing (Dict)
+import Pages.Games.Leaderboard as Leaderboard
 import Pages.Games.MissileCommand as MissileCommand
 import Pages.Games.RatSnatcher as RatSnatcher
 import Pages.Games.Shooter as Shooter
@@ -86,6 +87,7 @@ type alias Model =
     , ratGame : RatSnatcher.GameState
     , selectedGame : Maybe String -- which game is open on the Games page (Nothing = list)
     , gameExpand : Float -- eases 0 -> 1 while a game is open; grows the goop rectangle to frame it
+    , leaderboard : Leaderboard.Model -- game-over name entry + high scores overlay
     }
 
 
@@ -150,6 +152,7 @@ type Msg
     | OpenGame String
     | CloseGame
     | EscapePressed
+    | LeaderboardMsg Leaderboard.Msg
 
 
 
@@ -208,6 +211,7 @@ init flags =
       , ratGame = Tuple.first RatSnatcher.init
       , selectedGame = Nothing
       , gameExpand = 0
+      , leaderboard = Leaderboard.init
       }
     , Cmd.none
     )

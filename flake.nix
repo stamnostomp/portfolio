@@ -17,6 +17,77 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+
+        # Real executables (not bash functions) so they work from any shell,
+        # including fish.
+        startDev = pkgs.writeShellScriptBin "start-dev" ''
+          elm make src/Main.elm --output=elm.js
+          elm-live src/Main.elm --start-page=index.html --hot --proxy-prefix=/api --proxy-host=http://localhost:4000/api -- --output=elm.js
+        '';
+
+        startBackend = pkgs.writeShellScriptBin "start-backend" ''
+          cd backend && mix deps.get && mix run --no-halt
+        '';
+
+        generateElmNix = pkgs.writeShellScriptBin "generate-elm-nix" ''
+          echo "Generating elm-srcs.nix..."
+          elm2nix convert > elm-srcs.nix
+          elm2nix snapshot
+          echo "Generated elm-srcs.nix and registry.dat"
+        '';
+
+        generateBlogData = pkgs.writeShellScriptBin "generate-blog-data" ''
+          echo "Generating blog/posts.json..."
+
+          POSTS_DIR="blog/posts"
+          OUTPUT_FILE="blog/posts.json"
+
+          if [ ! -d "$POSTS_DIR" ]; then
+              echo "Error: $POSTS_DIR not found"
+              exit 1
+          fi
+
+          echo "[" > "$OUTPUT_FILE"
+
+          first=true
+          for orgfile in "$POSTS_DIR"/*.org; do
+              [ -f "$orgfile" ] || continue
+
+              if [ "$first" = false ]; then
+                  echo "," >> "$OUTPUT_FILE"
+              fi
+              first=false
+
+              title=$(grep "^#+TITLE:" "$orgfile" | sed 's/^#+TITLE: *//' || echo "Untitled")
+              date=$(grep "^#+DATE:" "$orgfile" | sed 's/^#+DATE: *//' || echo "Unknown")
+              slug=$(basename "$orgfile" .org)
+              summary=$(grep "^#+SUMMARY:" "$orgfile" | sed 's/^#+SUMMARY: *//' || echo "")
+              tags=$(grep "^#+TAGS:" "$orgfile" | sed 's/^#+TAGS: *//' || echo "")
+              categories=$(grep "^#+CATEGORIES:" "$orgfile" | sed 's/^#+CATEGORIES: *//' || echo "")
+              author=$(grep "^#+AUTHOR:" "$orgfile" | sed 's/^#+AUTHOR: *//' || echo "")
+
+              tags_json=$(echo "$tags" | awk -F', *' '{for(i=1;i<=NF;i++) printf "\"%s\"%s", $i, (i<NF?",":"")}')
+              categories_json=$(echo "$categories" | awk -F', *' '{for(i=1;i<=NF;i++) printf "\"%s\"%s", $i, (i<NF?",":"")}')
+
+              cat >> "$OUTPUT_FILE" << EOF
+  {
+    "title": "$title",
+    "date": "$date",
+    "slug": "$slug",
+    "summary": "$summary",
+    "tags": [$tags_json],
+    "categories": [$categories_json],
+    "author": $(if [ -n "$author" ]; then echo "\"$author\""; else echo "null"; fi)
+  }
+EOF
+              echo "  $slug"
+          done
+
+          echo "" >> "$OUTPUT_FILE"
+          echo "]" >> "$OUTPUT_FILE"
+
+          echo "Generated $OUTPUT_FILE"
+        '';
       in
       {
         packages.default = pkgs.stdenv.mkDerivation {
@@ -64,117 +135,34 @@
             pkgs.uglify-js
             pkgs.elm2nix
 
+            # Elixir leaderboard backend
+            pkgs.beamPackages.elixir
+            pkgs.elixir-ls
+
             # Essential networking tools
             pkgs.cacert
             pkgs.curl
             pkgs.openssl
+
+            # Dev commands (real binaries, so they work from fish too)
+            startDev
+            startBackend
+            generateBlogData
+            generateElmNix
           ];
 
           shellHook = ''
-                        export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-                        export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-                        export CURL_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-                        export REQUESTS_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-                        export SSL_CERT_DIR="${pkgs.cacert}/etc/ssl/certs"
+            export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            export CURL_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            export REQUESTS_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            export SSL_CERT_DIR="${pkgs.cacert}/etc/ssl/certs"
 
-                        echo "Available commands:"
-                        echo "  start-dev          - Start development server"
-                        echo "  generate-blog-data - Generate posts.json from .org files"
-                        echo "  generate-elm-nix   - Generate elm-srcs.nix for Nix builds"
-
-                        start-dev() {
-                            elm make src/Main.elm --output=elm.js
-                            elm-live src/Main.elm --start-page=index.html --hot -- --output=elm.js
-                        }
-
-                        generate-blog-data() {
-                            echo "Generating blog/posts.json..."
-
-                            POSTS_DIR="blog/posts"
-                            OUTPUT_FILE="blog/posts.json"
-
-                            if [ ! -d "$POSTS_DIR" ]; then
-                                echo "Error: $POSTS_DIR not found"
-                                return 1
-                            fi
-
-                            echo "[" > "$OUTPUT_FILE"
-
-                            first=true
-                            for orgfile in "$POSTS_DIR"/*.org; do
-                                [ -f "$orgfile" ] || continue
-
-                                if [ "$first" = false ]; then
-                                    echo "," >> "$OUTPUT_FILE"
-                                fi
-                                first=false
-
-                                title=$(grep "^#+TITLE:" "$orgfile" | sed 's/^#+TITLE: *//' || echo "Untitled")
-                                date=$(grep "^#+DATE:" "$orgfile" | sed 's/^#+DATE: *//' || echo "Unknown")
-                                slug=$(basename "$orgfile" .org)
-                                summary=$(grep "^#+SUMMARY:" "$orgfile" | sed 's/^#+SUMMARY: *//' || echo "")
-                                tags=$(grep "^#+TAGS:" "$orgfile" | sed 's/^#+TAGS: *//' || echo "")
-                                categories=$(grep "^#+CATEGORIES:" "$orgfile" | sed 's/^#+CATEGORIES: *//' || echo "")
-                                author=$(grep "^#+AUTHOR:" "$orgfile" | sed 's/^#+AUTHOR: *//' || echo "")
-
-                                tags_json=$(echo "$tags" | awk -F', *' '{for(i=1;i<=NF;i++) printf "\"%s\"%s", $i, (i<NF?",":"")}')
-                                categories_json=$(echo "$categories" | awk -F', *' '{for(i=1;i<=NF;i++) printf "\"%s\"%s", $i, (i<NF?",":"")}')
-
-                                cat >> "$OUTPUT_FILE" << EOF
-  {
-    "title": "$title",
-    "date": "$date",
-    "slug": "$slug",
-    "summary": "$summary",
-    "tags": [$tags_json],
-    "categories": [$categories_json],
-    "author": $(if [ -n "$author" ]; then echo "\"$author\""; else echo "null"; fi)
-  }
-EOF
-                                echo "  $slug"
-                            done
-
-                            echo "" >> "$OUTPUT_FILE"
-                            echo "]" >> "$OUTPUT_FILE"
-
-                            echo "Generated $OUTPUT_FILE"
-                        }
-
-                        manual-elm() {
-                            cat > elm.json << 'EOF'
-{
-    "type": "application",
-    "source-directories": ["src"],
-    "elm-version": "0.19.1",
-    "dependencies": {
-        "direct": {
-            "elm/browser": "1.0.2",
-            "elm/core": "1.0.5",
-            "elm/html": "1.0.0",
-            "elm/json": "1.1.3",
-            "elm/time": "1.0.0"
-        },
-        "indirect": {
-            "elm/url": "1.0.0",
-            "elm/virtual-dom": "1.0.3"
-        }
-    },
-    "test-dependencies": {"direct": {}, "indirect": {}}
-}
-EOF
-                        }
-
-                        generate-elm-nix() {
-                            echo "Generating elm-srcs.nix..."
-                            elm2nix convert > elm-srcs.nix
-                            elm2nix snapshot
-                            echo "Generated elm-srcs.nix and registry.dat"
-                        }
-
-                        export -f start-dev
-                        export -f generate-blog-data
-                        export -f generate-elm-nix
-                        export -f manual-elm
+            echo "Available commands:"
+            echo "  start-dev          - Start development server (proxies /api to :4000)"
+            echo "  start-backend      - Start the Elixir leaderboard backend on :4000"
+            echo "  generate-blog-data - Generate posts.json from .org files"
+            echo "  generate-elm-nix   - Generate elm-srcs.nix for Nix builds"
           '';
         };
       }

@@ -406,6 +406,13 @@
       } else {
         console.warn('requestPointerLock port missing from Elm app');
       }
+      if (app.ports && app.ports.exitPointerLock) {
+        app.ports.exitPointerLock.subscribe(function() {
+          if (document.pointerLockElement) {
+            document.exitPointerLock();
+          }
+        });
+      }
       document.addEventListener('pointerlockchange', function() {
         if (app.ports && app.ports.pointerLockChanged) {
           app.ports.pointerLockChanged.send(document.pointerLockElement !== null);

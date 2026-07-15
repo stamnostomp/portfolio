@@ -16,6 +16,7 @@ import Pages.About
 import Pages.Blog
 import Pages.Contact
 import Pages.Games
+import Pages.Games.Leaderboard as Leaderboard
 import Pages.Games.MissileCommand as MissileCommand
 import Pages.Games.RatSnatcher as RatSnatcher
 import Pages.Games.Shooter as Shooter
@@ -525,12 +526,66 @@ viewFullscreenGame model =
         , Attr.style "height" "96vh"
         ]
         [ viewSelectedGame model
-        , button
-            [ Attr.class "absolute top-1 right-1 z-4 bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer ttu goop-close-button"
-            , onClick CloseGame
-            ]
-            [ text "✕ BACK" ]
+        , Html.map LeaderboardMsg (Leaderboard.view (gameOverTheme model) model.leaderboard)
+        , if pointerCaptured model then
+            -- Hidden while the game owns the mouse; Esc releases it first.
+            text ""
+
+          else
+            button
+                [ Attr.class "absolute top-1 right-1 z-4 bg-transparent pa1 ph2 f7 fw6 monospace tracked pointer overflow-hidden ttu goop-close-button"
+                , onClick CloseGame
+                ]
+                [ text "✕ BACK" ]
         ]
+
+
+{-| True while the open game holds the pointer lock. -}
+pointerCaptured : Model -> Bool
+pointerCaptured model =
+    case model.selectedGame of
+        Just "shooter" ->
+            model.shooterGame.locked
+
+        Just "rat-snatcher" ->
+            model.ratGame.locked
+
+        _ ->
+            False
+
+
+{-| How the shared game-over screen is dressed for the open game. -}
+gameOverTheme : Model -> Leaderboard.Theme
+gameOverTheme model =
+    case model.selectedGame of
+        Just "shooter" ->
+            { title = "YOU DIED"
+            , accent = "#ff4040"
+            , glow = "rgba(255,0,0,0.6)"
+            , stats = Just ("SCORE " ++ String.fromInt model.shooterGame.score)
+            }
+
+        Just "rat-snatcher" ->
+            { title = "TABLE CLEARED"
+            , accent = "#7fdc7f"
+            , glow = "rgba(80,255,80,0.5)"
+            , stats =
+                Just
+                    ("TIME "
+                        ++ RatSnatcher.formatTime model.ratGame.elapsed
+                        ++ "  ·  ACCURACY "
+                        ++ String.fromInt (RatSnatcher.accuracy model.ratGame)
+                        ++ "%  ·  SCORE "
+                        ++ String.fromInt (Maybe.withDefault 0 (RatSnatcher.finalScore model.ratGame))
+                    )
+            }
+
+        _ ->
+            { title = "GAME OVER"
+            , accent = "rgba(230,230,230,0.95)"
+            , glow = "rgba(200,200,200,0.5)"
+            , stats = Just ("SCORE " ++ String.fromInt model.missileGame.score)
+            }
 
 
 viewSelectedGame : Model -> Html Msg
