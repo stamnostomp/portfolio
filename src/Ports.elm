@@ -1,7 +1,7 @@
 -- src/Ports.elm - Port for content bounds detection
 
 
-port module Ports exposing (contentBoundsChanged, exitPointerLock, pointerLockChanged, requestPointerLock)
+port module Ports exposing (contentBoundsChanged, exitPointerLock, playSound, pointerLockChanged, requestPointerLock)
 
 -- Port to receive content bounds changes from JavaScript
 
@@ -28,3 +28,10 @@ port exitPointerLock : () -> Cmd msg
 
 
 port pointerLockChanged : (Bool -> msg) -> Sub msg
+
+
+
+-- Ask JS to play the sound effect at the given URL
+
+
+port playSound : String -> Cmd msg

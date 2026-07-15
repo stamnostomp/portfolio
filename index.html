@@ -406,6 +406,19 @@
       } else {
         console.warn('requestPointerLock port missing from Elm app');
       }
+      if (app.ports && app.ports.playSound) {
+        var sfxCache = {};
+        app.ports.playSound.subscribe(function(url) {
+          if (!sfxCache[url]) {
+            sfxCache[url] = new Audio(encodeURI(url));
+          }
+          // Clone so rapid triggers overlap instead of cutting off.
+          var sound = sfxCache[url].cloneNode();
+          sound.play().catch(function(err) {
+            console.warn('playSound failed:', err);
+          });
+        });
+      }
       if (app.ports && app.ports.exitPointerLock) {
         app.ports.exitPointerLock.subscribe(function() {
           if (document.pointerLockElement) {

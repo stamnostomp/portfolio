@@ -463,7 +463,7 @@ fire state =
                     , rats = rats2
                     , splats = List.concatMap spawnSplats killed ++ state.splats
                   }
-                , Cmd.none
+                , Ports.playSound "sfx/EEnE Bite 2.wav"
                 )
 
         Cleared ->
